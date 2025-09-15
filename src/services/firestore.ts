@@ -18,7 +18,7 @@ import { db } from './firebase';
 import { User, Student, Activity, AIInsight } from '../types';
 
 // User operations
-export const createUser = async (uid: string, data: { email: string; name: string }) => {
+export const createUser = async (uid: string, data: { email: string; name: string; role: 'teacher' | 'student'; age?: number; teacherId?: string }) => {
   if (!uid) throw new Error("UID boş geldi");
   const ref = doc(db, "users", uid); // belge id = UID
   await setDoc(ref, { uid, ...data, createdAt: serverTimestamp() }, { merge: true });

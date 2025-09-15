@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
 import { LoginForm } from '../components/auth/LoginForm';
 import { RegisterForm } from '../components/auth/RegisterForm';
+import { StudentLoginForm } from '../components/auth/StudentLoginForm';
+import { StudentRegisterForm } from '../components/auth/StudentRegisterForm';
 import { Brain, Sparkles } from 'lucide-react';
 
 export const AuthPage: React.FC = () => {
   const [isLogin, setIsLogin] = useState(true);
+  const [userRole, setUserRole] = useState<'teacher' | 'student'>('teacher');
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center p-4">
@@ -58,10 +61,49 @@ export const AuthPage: React.FC = () => {
 
         {/* Right side - Auth Forms */}
         <div className="flex-1 max-w-md">
-          {isLogin ? (
-            <LoginForm onToggleMode={() => setIsLogin(false)} />
+          {/* Role Toggle */}
+          <div className="bg-white p-1 rounded-lg shadow-sm mb-6 flex">
+            <button
+              onClick={() => setUserRole('teacher')}
+              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                userRole === 'teacher'
+                  ? 'bg-secondary text-white'
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              Öğretmen
+            </button>
+            <button
+              onClick={() => setUserRole('student')}
+              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                userRole === 'student'
+                  ? 'bg-primary text-white'
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              Öğrenci
+            </button>
+          </div>
+
+          {/* Auth Forms */}
+          {userRole === 'teacher' ? (
+            isLogin ? (
+              <LoginForm onToggleMode={() => setIsLogin(false)} />
+            ) : (
+              <RegisterForm onToggleMode={() => setIsLogin(true)} />
+            )
           ) : (
-            <RegisterForm onToggleMode={() => setIsLogin(true)} />
+            isLogin ? (
+              <StudentLoginForm
+                onToggleMode={() => setIsLogin(false)}
+                onToggleRole={() => setUserRole('teacher')}
+              />
+            ) : (
+              <StudentRegisterForm
+                onToggleMode={() => setIsLogin(true)}
+                onToggleRole={() => setUserRole('teacher')}
+              />
+            )
           )}
         </div>
       </div>

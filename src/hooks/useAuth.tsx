@@ -14,7 +14,7 @@ interface AuthContextType {
   currentUser: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, name: string) => Promise<void>;
+  register: (email: string, password: string, name: string, role?: 'teacher' | 'student', age?: number, teacherId?: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -64,17 +64,35 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     await signInWithEmailAndPassword(auth, email, password);
   };
 
-  const register = async (email: string, password: string, name: string) => {
+  const register = async (
+    email: string,
+    password: string,
+    name: string,
+    role: 'teacher' | 'student' = 'teacher',
+    age?: number,
+    teacherId?: string
+  ) => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const uid = userCredential.user?.uid;
     if (!uid) throw new Error("Kullanıcı UID alınamadı");
-    await createUser(uid, { email: userCredential.user.email ?? email, name });
+
+    const userData = {
+      email: userCredential.user.email ?? email,
+      name,
+      role,
+      ...(age && { age }),
+      ...(teacherId && { teacherId })
+    };
+
+    await createUser(uid, userData);
 
     setCurrentUser({
       id: uid,
       name,
       email,
-      role: 'teacher',
+      role,
+      ...(age && { age }),
+      ...(teacherId && { teacherId }),
       createdAt: new Date()
     });
   };
