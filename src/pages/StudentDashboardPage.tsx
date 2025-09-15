@@ -30,13 +30,27 @@ export const StudentDashboardPage: React.FC = () => {
   };
 
   const renderGame = () => {
+    if (!currentUser?.id) return null;
+
     switch (selectedGame) {
       case 'word-image':
-        return <WordImageGame onGameComplete={handleGameComplete} />;
+        return <WordImageGame
+          studentId={currentUser.id}
+          studentAge={currentUser.age || 6}
+          onGameComplete={handleGameComplete}
+        />;
       case 'number':
-        return <NumberGame onGameComplete={handleGameComplete} />;
+        return <NumberGame
+          studentId={currentUser.id}
+          studentAge={currentUser.age || 6}
+          onGameComplete={handleGameComplete}
+        />;
       case 'color':
-        return <ColorGame onGameComplete={handleGameComplete} />;
+        return <ColorGame
+          studentId={currentUser.id}
+          studentAge={currentUser.age || 6}
+          onGameComplete={handleGameComplete}
+        />;
       default:
         return null;
     }

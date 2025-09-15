@@ -3,18 +3,24 @@ import { Card, CardContent } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { GameQuestion, EmotionResult } from '../../types';
 import { huggingFaceService } from '../../services/huggingface';
-import { Clock, RotateCcw, Mic, MicOff, Star } from 'lucide-react';
+import { adaptiveQuestionGenerator } from '../../services/adaptiveQuestionGenerator';
+import { performanceTracker } from '../../services/performanceTracker';
+import { Clock, RotateCcw, Mic, MicOff, Star, Brain } from 'lucide-react';
 
 interface NumberGameProps {
   studentId: string;
+  studentAge?: number;
   onGameComplete: (score: number, duration: number, emotions: EmotionResult[]) => void;
   onEmotionDetected?: (emotion: EmotionResult) => void;
+  useAdaptiveAI?: boolean;
 }
 
 export const NumberGame: React.FC<NumberGameProps> = ({
   studentId,
+  studentAge = 6,
   onGameComplete,
-  onEmotionDetected
+  onEmotionDetected,
+  useAdaptiveAI = true
 }) => {
   const [currentQuestion, setCurrentQuestion] = useState<GameQuestion | null>(null);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
@@ -25,21 +31,54 @@ export const NumberGame: React.FC<NumberGameProps> = ({
   const [emotions, setEmotions] = useState<EmotionResult[]>([]);
   const [isListening, setIsListening] = useState(false);
   const [gameStartTime] = useState(Date.now());
+  const [isAIGenerating, setIsAIGenerating] = useState(false);
+  const [adaptiveInsight, setAdaptiveInsight] = useState<string>('');
 
   const totalQuestions = 5;
 
   const generateQuestion = useCallback(async () => {
     setGameState('loading');
+    setIsAIGenerating(true);
+
     try {
-      const question = await huggingFaceService.generateNumberQuestion({ min: 1, max: 10 }, 6);
+      let question: GameQuestion;
+
+      if (useAdaptiveAI) {
+        // Use AI-powered adaptive question generation
+        const currentEmotion = emotions.length > 0 ? emotions[emotions.length - 1] : undefined;
+        question = await adaptiveQuestionGenerator.generateQuestionWithContext(
+          studentId,
+          'number',
+          studentAge,
+          currentEmotion
+        );
+
+        // Get performance insights
+        const insights = performanceTracker.getInsights(studentId);
+        if (insights.length > 0) {
+          setAdaptiveInsight(insights[0]);
+        }
+      } else {
+        // Use traditional question generation
+        question = await huggingFaceService.generateNumberQuestion({ min: 1, max: 10 }, studentAge);
+      }
+
       setCurrentQuestion(question);
       setSelectedAnswer(null);
       setTimeLeft(60);
       setGameState('playing');
     } catch (error) {
       console.error('Error generating question:', error);
+      // Fallback to traditional generation
+      const fallbackQuestion = await huggingFaceService.generateNumberQuestion({ min: 1, max: 10 }, studentAge);
+      setCurrentQuestion(fallbackQuestion);
+      setSelectedAnswer(null);
+      setTimeLeft(60);
+      setGameState('playing');
+    } finally {
+      setIsAIGenerating(false);
     }
-  }, []);
+  }, [studentId, studentAge, useAdaptiveAI, emotions]);
 
   useEffect(() => {
     generateQuestion();
@@ -159,6 +198,19 @@ export const NumberGame: React.FC<NumberGameProps> = ({
   const completeGame = () => {
     setGameState('completed');
     const gameDuration = Math.floor((Date.now() - gameStartTime) / 1000);
+
+    // Record performance data for adaptive AI
+    if (useAdaptiveAI) {
+      performanceTracker.recordGameResult(
+        studentId,
+        score,
+        totalQuestions,
+        gameDuration,
+        'number',
+        emotions
+      );
+    }
+
     onGameComplete(score, gameDuration, emotions);
   };
 
@@ -166,6 +218,11 @@ export const NumberGame: React.FC<NumberGameProps> = ({
     setScore(0);
     setQuestionNumber(1);
     setEmotions([]);
+    setAdaptiveInsight('');
+    // Initialize player performance for new game
+    if (useAdaptiveAI) {
+      performanceTracker.initializePlayer(studentId, studentAge);
+    }
     generateQuestion();
   };
 
@@ -204,7 +261,17 @@ export const NumberGame: React.FC<NumberGameProps> = ({
       <Card className="max-w-2xl mx-auto">
         <CardContent className="text-center py-12">
           <div className="w-16 h-16 border-4 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Sayı sorusu hazırlanıyor...</p>
+          {isAIGenerating && useAdaptiveAI ? (
+            <div className="space-y-2">
+              <div className="flex items-center justify-center space-x-2">
+                <Brain className="h-5 w-5 text-green-600" />
+                <p className="text-gray-600">AI sayı sorusu üretiyor...</p>
+              </div>
+              <p className="text-sm text-gray-500">Performansına göre uyarlanıyor</p>
+            </div>
+          ) : (
+            <p className="text-gray-600">Sayı sorusu hazırlanıyor...</p>
+          )}
         </CardContent>
       </Card>
     );
@@ -236,15 +303,40 @@ export const NumberGame: React.FC<NumberGameProps> = ({
               <div className="text-sm font-medium text-gray-800">
                 Skor: {score}
               </div>
+              {useAdaptiveAI && currentQuestion?.difficulty && (
+                <div className={`text-xs px-2 py-1 rounded-full ${
+                  currentQuestion.difficulty === 'easy' ? 'bg-green-100 text-green-700' :
+                  currentQuestion.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                  'bg-red-100 text-red-700'
+                }`}>
+                  {currentQuestion.difficulty === 'easy' ? 'Kolay' :
+                   currentQuestion.difficulty === 'medium' ? 'Orta' : 'Zor'}
+                </div>
+              )}
             </div>
 
             <div className="flex items-center space-x-2">
+              {useAdaptiveAI && (
+                <div title="AI Powered">
+                  <Brain className="h-4 w-4 text-green-600" />
+                </div>
+              )}
               <Clock className="h-4 w-4 text-gray-600" />
               <span className={`font-medium ${timeLeft <= 15 ? 'text-red-600' : 'text-gray-800'}`}>
                 {timeLeft}s
               </span>
             </div>
           </div>
+
+          {/* Adaptive Insight */}
+          {useAdaptiveAI && adaptiveInsight && (
+            <div className="mt-3 p-2 bg-blue-50 rounded-lg">
+              <div className="flex items-center space-x-2">
+                <Brain className="h-4 w-4 text-blue-600" />
+                <p className="text-sm text-blue-700">{adaptiveInsight}</p>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

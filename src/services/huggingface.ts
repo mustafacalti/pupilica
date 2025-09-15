@@ -1,4 +1,4 @@
-// huggingface.ts (Vite/browser uyumlu sürüm)
+// huggingface.ts (Vite/browser uyumlu, düzeltilmiş sürüm)
 import { GameQuestion } from "../types";
 
 const API_BASE_URL = "https://api-inference.huggingface.co/models";
@@ -14,7 +14,7 @@ if (!HF_TOKEN) {
 const MODELS = {
   TEXT_GENERATION:
     (import.meta.env.VITE_HUGGINGFACE_TEXT_MODEL as string) ||
-    "gpt2",
+    "openai-community/gpt2",
   QUESTION_ANSWERING:
     (import.meta.env.VITE_HUGGINGFACE_QA_MODEL as string) ||
     "distilbert-base-cased-distilled-squad",
@@ -23,40 +23,73 @@ const MODELS = {
     "cardiffnlp/twitter-roberta-base-sentiment-latest",
 } as const;
 
-// HF API yanıtları için gevşek tipler
+// HF API yanıt tipleri (gevşek)
 type HFTextGen = Array<{ generated_text?: string }>;
 type HFSentiment = Array<{ label: string; score: number }>;
-type HFQA = Array<{ answer: string; score: number; start?: number; end?: number }>;
+type HFQAObj = { answer: string; score: number; start?: number; end?: number };
+type HFQA = HFQAObj | HFQAObj[];
+
+// Ufak yardımcı: model path güvenli hale getir
+function sanitizeModelId(model: string): string {
+  try {
+    // Eğer yanlışlıkla encode edilmişse düzelt (openai-community%2Fgpt2 -> openai-community/gpt2)
+    const maybeDecoded = model.includes("%2F") ? decodeURIComponent(model) : model;
+    // Yolun başında/sonunda slash varsa düzelt
+    return maybeDecoded.replace(/^\/+|\/+$/g, "");
+  } catch {
+    return model.replace(/^\/+|\/+$/g, "");
+  }
+}
 
 class HuggingFaceService {
   // Model load (503) durumunda kısa retry ile istek
   private async makeRequest<T = unknown>(
     model: string,
     inputs: unknown,
-    options: Record<string, unknown> = {},
-    retries = 2
+    {
+      // HF'de generation ayarları "parameters" altında, altyapı ayarları "options" altında olmalı:
+      parameters,
+      options,
+      retries = 2,
+    }: {
+      parameters?: Record<string, unknown>;
+      options?: Record<string, unknown>;
+      retries?: number;
+    } = {}
   ): Promise<T> {
-    const res = await fetch(`${API_BASE_URL}/${encodeURIComponent(model)}`, {
+    const safeModel = sanitizeModelId(model);
+    const url = `${API_BASE_URL}/${safeModel}`;
+
+    const res = await fetch(url, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${HF_TOKEN}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ inputs, options }),
+      body: JSON.stringify({
+        inputs,
+        parameters: parameters ?? {},
+        options: { wait_for_model: true, ...(options ?? {}) },
+      }),
     });
 
     if (!res.ok) {
       const text = await res.text().catch(() => "");
-      // Model loading: 503
+      // 503 ise kısa bir bekleme ile tekrar dene
       if (res.status === 503 && retries > 0) {
-        // küçük bir gecikme, sonra tekrar dene
         await new Promise((r) => setTimeout(r, 1200));
-        return this.makeRequest<T>(model, inputs, options, retries - 1);
+        return this.makeRequest<T>(model, inputs, { parameters, options, retries: retries - 1 });
       }
-      // Daha anlamlı hata
+
+      // 404 için ek ipucu: %2F / yanlış repo-id
+      const extraHint =
+        res.status === 404 && (safeModel.includes("%2F") || safeModel.split("/").length < 2)
+          ? " (Muhtemel neden: model id encode edilmiş ya da organizasyon adı eksik. Örn: 'openai-community/gpt2')"
+          : "";
+
       throw new Error(
-        `HuggingFace API ${res.status}: ${res.statusText}${
-          text ? ` — ${text.slice(0, 200)}` : ""
+        `HuggingFace API ${res.status}: ${res.statusText}${extraHint}${
+          text ? ` — ${text.slice(0, 500)}` : ""
         }`
       );
     }
@@ -72,7 +105,7 @@ class HuggingFaceService {
     age: number = 5
   ): Promise<GameQuestion> {
     try {
-      // Demo/fallback yaklaşımı; istersen burada TEXT_GENERATION modelini de çağırabilirsin
+      // İstersen burada TEXT_GENERATION modelini de kullanıp prompt tabanlı üretim yapabilirsin.
       const questions = await this.generateFallbackQuestions(topic, difficulty, age);
       return questions[Math.floor(Math.random() * questions.length)];
     } catch (err) {
@@ -162,13 +195,13 @@ class HuggingFaceService {
     const set = questionSets[topic as keyof typeof questionSets] || questionSets.animals;
 
     return set.map((q, i): GameQuestion => ({
-  id: `${topic}_${i}_${Date.now()}`,
-  question: q.question,
-  options: [...q.options],        // <-- readonly'u kopyalayarak mutable string[] yapar
-  correctAnswer: q.correctAnswer,
-  confidence: 0.95,
-  gameType: "word-image" as const // union daraltma gerekiyorsa
-}));
+      id: `${topic}_${i}_${Date.now()}`,
+      question: q.question,
+      options: [...q.options],
+      correctAnswer: q.correctAnswer,
+      confidence: 0.95,
+      gameType: "word-image" as const
+    }));
   }
 
   // --- Analiz fonksiyonları ---
@@ -185,7 +218,7 @@ class HuggingFaceService {
         NEUTRAL: "neutral",
         POSITIVE: "happy",
       };
-      const emotion = result ? emotionMap[result.label] ?? "neutral" : "neutral";
+      const emotion = result ? (emotionMap[result.label] ?? "neutral") : "neutral";
       const confidence = result?.score ?? 0.5;
       return { emotion, confidence };
     } catch (e) {
@@ -195,17 +228,23 @@ class HuggingFaceService {
   }
 
   async textGenerate(prompt: string, maxNewTokens = 30): Promise<string> {
-    // Not: Bazı modellerin güvenli kullanım için özel parametreleri olabilir
-    const options = { wait_for_model: true, max_new_tokens: maxNewTokens };
-    const out = await this.makeRequest<HFTextGen>(MODELS.TEXT_GENERATION, prompt, options);
+    // Generation parametreleri "parameters" altında olmalı
+    const out = await this.makeRequest<HFTextGen>(
+      MODELS.TEXT_GENERATION,
+      prompt,
+      { parameters: { max_new_tokens: maxNewTokens } }
+    );
     return out?.[0]?.generated_text ?? "";
-    // İstersen: return out.map(x => x.generated_text).filter(Boolean).join("\n");
   }
 
   async questionAnswering(question: string, context: string): Promise<{ answer: string; score: number }> {
-    // QA için inputs nesnesi { question, context } olmalı
-    const out = await this.makeRequest<HFQA>(MODELS.QUESTION_ANSWERING, { question, context }, { wait_for_model: true });
-    const best = out?.[0];
+    // QA için inputs: { question, context }
+    const raw = await this.makeRequest<HFQA>(
+      MODELS.QUESTION_ANSWERING,
+      { question, context }
+    );
+    // Bazı modeller array, bazıları object döndürebiliyor; normalize edelim
+    const best: HFQAObj | undefined = Array.isArray(raw) ? raw[0] : raw;
     return { answer: best?.answer ?? "", score: best?.score ?? 0 };
   }
 

@@ -49,6 +49,26 @@ export interface GameQuestion {
   correctAnswer: number;
   confidence: number;
   gameType: string;
+  difficulty?: 'easy' | 'medium' | 'hard';
+  adaptedFor?: 'success' | 'struggle' | 'confusion';
+}
+
+export interface PlayerPerformance {
+  recentScores: number[];
+  averageResponseTime: number;
+  recentEmotions: EmotionResult[];
+  strugglingTopics: string[];
+  strengths: string[];
+  currentDifficulty: 'easy' | 'medium' | 'hard';
+}
+
+export interface QuestionGenerationContext {
+  performance: PlayerPerformance;
+  currentEmotion?: EmotionResult;
+  gameType: 'word-image' | 'number' | 'color';
+  previousQuestions: GameQuestion[];
+  studentAge: number;
+  adaptiveMode: boolean;
 }
 
 export interface PerformanceStats {
