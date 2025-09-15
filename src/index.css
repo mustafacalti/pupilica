@@ -1,3 +1,13 @@
+/* 1) Tailwind en başta */
+@import "tailwindcss";
+
+/* 2) Tailwind config dosyası (varsa) */
+@config "../tailwind.config.js";
+
+/* 3) Tailwind plugin'leri (örn: forms) */
+@plugin "@tailwindcss/forms";
+
+/* 4) Kendi global stillerin */
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
@@ -5,9 +15,4 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-}
-
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
 }

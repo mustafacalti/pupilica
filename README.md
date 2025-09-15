@@ -1,46 +1,166 @@
-# Getting Started with Create React App
+# NeuroLearn AI - Otizm Eğitim Platformu
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Otizmli öğrenciler için yapay zeka destekli eğitim platformu. Bu platform, öğretmenlerin öğrencilerini takip etmesini sağlar ve AI teknolojileri ile kişiselleştirilmiş öğrenme deneyimi sunar.
 
-## Available Scripts
+## 🚀 Özellikler
 
-In the project directory, you can run:
+### 🎯 Ana Özellikler
+- **Öğretmen Dashboard'u** - Öğrenci yönetimi ve AI insights
+- **Öğrenci Oyun Arayüzü** - 3 eğitim oyunu (kelime-resim, sayı, renk)
+- **AI Entegrasyonları** - İçerik üretimi, duygu analizi, ses tanıma
+- **Analytics Dashboard** - Gerçek zamanlı raporlama
+
+### 🎮 Eğitim Oyunları
+
+#### 1. Kelime-Resim Eşleştirme
+- AI ile otomatik soru üretimi
+- 4 seçenekli multiple choice
+- Timer (45 saniye)
+- Sesli feedback
+- Emoji/resim kartları
+
+#### 2. Sayı Öğrenme
+- "Kaç tane [nesne] var?" soruları
+- Görsel nesneler (emoji'ler)
+- Sayı butonları (1-10)
+- Sesli cevap verme özelliği
+
+#### 3. Renk Eşleştirme
+- Renk kartlarını eşleştirme
+- Drag & drop interaction
+- Progress feedback
+
+### 🤖 AI Özellikleri
+
+#### İçerik Üretimi (Hugging Face API)
+- Otomatik soru üretimi
+- Kişiselleştirilmiş içerik
+- Yaş ve zorluk seviyesine göre uyarlama
+
+#### Duygu Analizi (TensorFlow.js)
+- Gerçek zamanlı duygu tanıma
+- Kamera tabanlı analiz
+- 6 farklı duygu durumu (mutlu, üzgün, kızgın, nötr, odaklanmış, kafası karışık)
+
+#### Ses Tanıma (Web Speech API)
+- Sesli cevap verme
+- Türkçe dil desteği
+- Oyun içi etkileşim
+
+## 🛠️ Teknik Stack
+
+### Frontend
+- **React 18** - Modern component yapısı
+- **TypeScript** - Type safety
+- **Tailwind CSS** - Utility-first CSS framework
+- **Lucide React** - Modern icon library
+
+### Backend & Database
+- **Firebase Authentication** - Kullanıcı yönetimi
+- **Firestore** - NoSQL veritabanı
+- **Firebase Hosting** - Static site hosting
+
+### AI & ML
+- **Hugging Face API** - NLP ve content generation
+- **TensorFlow.js** - Browser-based ML
+- **Web Speech API** - Ses tanıma
+
+### Charts & Analytics
+- **Chart.js** - Grafik ve analytics
+- **React Chart.js 2** - React wrapper
+
+## 🚀 Kurulum
+
+### 1. Dependencies'i Yükleyin
+```bash
+npm install
+```
+
+### 2. Environment Variables
+`.env.example` dosyasını `.env` olarak kopyalayın ve gerekli değerleri doldurun:
+
+```env
+# Firebase Configuration
+REACT_APP_FIREBASE_API_KEY=your_api_key_here
+REACT_APP_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+REACT_APP_FIREBASE_PROJECT_ID=your_project_id
+REACT_APP_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
+REACT_APP_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+REACT_APP_FIREBASE_APP_ID=your_app_id
+REACT_APP_FIREBASE_MEASUREMENT_ID=your_measurement_id
+
+# Hugging Face API
+REACT_APP_HUGGINGFACE_API_KEY=your_huggingface_api_key_here
+```
+
+### 3. Uygulamayı Başlatın
+```bash
+npm start
+```
+
+Uygulama [http://localhost:3000](http://localhost:3000) adresinde çalışacaktır.
+
+## 📊 Available Scripts
 
 ### `npm start`
-
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
-
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+Geliştirme modunda uygulamayı başlatır.
 
 ### `npm test`
-
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+Test runner'ı başlatır.
 
 ### `npm run build`
+Production için build oluşturur.
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## 📁 Proje Yapısı
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+```
+src/
+├── components/
+│   ├── auth/           # Authentication bileşenleri
+│   ├── dashboard/      # Dashboard bileşenleri
+│   ├── games/          # Oyun bileşenleri
+│   ├── ui/            # Genel UI bileşenleri
+│   └── ai/            # AI bileşenleri
+├── pages/             # Sayfa bileşenleri
+├── hooks/             # Custom React hooks
+├── services/          # API servis katmanı
+├── utils/             # Yardımcı fonksiyonlar
+└── types/             # TypeScript type tanımları
+```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+## 🎨 UI/UX Tasarım
 
-### `npm run eject`
+### Renk Paleti
+- **Primary**: Blue (#3B82F6)
+- **Secondary**: Purple (#8B5CF6)
+- **Success**: Green (#10B981)
+- **Warning**: Yellow (#F59E0B)
+- **Danger**: Red (#EF4444)
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+### Tasarım Prensipleri
+- **Accessibility First** - Yüksek kontrast, screen reader uyumlu
+- **Mobile Responsive** - Tablet ve mobil cihaz desteği
+- **Kolay Kullanım** - Otizmli öğrenciler için basitleştirilmiş UI
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+## 🤖 AI Features
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+### Demo-Ready Özellikleri
+- **Generate Question** button - Hugging Face API'den yeni soru
+- **Live emotion indicator** - Kamera varsa emotion detection
+- **Voice interaction** - Mikrofon butonları
+- **Real-time charts** - Canlı güncellenen grafikler
+- **AI recommendations** - Smart notifications
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+## 🚢 Deployment
 
-## Learn More
+### Firebase Hosting
+```bash
+npm run build
+firebase login
+firebase init hosting
+firebase deploy
+```
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+---
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+**NeuroLearn AI** - Otizmli öğrenciler için yapay zeka destekli eğitim platformu 🧠✨
