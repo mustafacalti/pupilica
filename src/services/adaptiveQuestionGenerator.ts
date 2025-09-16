@@ -1,10 +1,17 @@
 import { GameQuestion, QuestionGenerationContext, EmotionResult } from '../types';
-import { huggingFaceService } from './huggingface';
 import { performanceTracker } from './performanceTracker';
+import { ollamaService, OllamaQuestionRequest } from './ollamaService';
 
 class AdaptiveQuestionGenerator {
 
   async generateAdaptiveQuestion(context: QuestionGenerationContext): Promise<GameQuestion> {
+    console.log('🧠 [ADAPTIVE DEBUG] generateAdaptiveQuestion çağrıldı:', {
+      gameType: context.gameType,
+      studentAge: context.studentAge,
+      timestamp: new Date().toISOString(),
+      stack: new Error().stack?.split('\n').slice(1, 5).join('\n')
+    });
+
     const { performance, currentEmotion, gameType, studentAge } = context;
 
     // Determine adaptation strategy
@@ -26,27 +33,34 @@ class AdaptiveQuestionGenerator {
   private determineAdaptationStrategy(
     performance: any,
     currentEmotion?: EmotionResult
-  ): 'encourage' | 'challenge' | 'simplify' | 'refocus' {
+  ): 'encourage' | 'challenge' | 'simplify' | 'refocus' | 'energize' {
     const recentAverage = performance.recentScores.length > 0
       ? performance.recentScores.slice(-3).reduce((a: number, b: number) => a + b, 0) / Math.min(3, performance.recentScores.length)
       : 0.5;
 
-    // If student is performing well and happy/focused
-    if (recentAverage >= 0.7 && currentEmotion?.emotion === 'happy') {
+    // ADHD için özel strateji belirleme
+
+    // Çok iyi performans - dikkat dağılmasını önlemek için motivasyonu koruyarak zorlaştır
+    if (recentAverage >= 0.8 && currentEmotion?.emotion === 'happy') {
       return 'challenge';
     }
 
-    // If student is struggling or sad
+    // İyi performans ama muhtemelen sıkılma başlangıcı - enerjilendir
+    if (recentAverage >= 0.6 && recentAverage < 0.8) {
+      return 'energize';
+    }
+
+    // Düşük performans - dikkat dağınıklığı var, basitleştir ve odaklan
     if (recentAverage <= 0.4 || currentEmotion?.emotion === 'sad') {
       return 'simplify';
     }
 
-    // If student is confused
+    // Karışıklık durumu - ADHD'de sık, yeniden odaklanma gerekli
     if (currentEmotion?.emotion === 'confused') {
       return 'refocus';
     }
 
-    // Default: encourage
+    // Varsayılan: ADHD çocukları için sürekli pozitif pekiştirme
     return 'encourage';
   }
 
@@ -56,23 +70,28 @@ class AdaptiveQuestionGenerator {
   ): Promise<GameQuestion> {
     const { performance, studentAge } = context;
 
-    // AI prompt based on strategy
-    const prompt = this.buildWordImagePrompt(strategy, performance.currentDifficulty, studentAge);
+    // Determine subject based on age and strategy
+    const subject = this.getSubjectForWordImage(studentAge, strategy);
+    const difficulty = this.mapDifficultyToTurkish(performance.currentDifficulty);
 
     try {
-      // Use AI to generate question
-      const aiResponse = await huggingFaceService.textGenerate(prompt, 150);
-      const parsedQuestion = this.parseAIQuestionResponse(aiResponse, 'word-image');
+      // Use Ollama to generate question
+      const ollamaRequest: OllamaQuestionRequest = {
+        subject: subject,
+        difficulty: difficulty,
+        questionType: 'çoktan seçmeli'
+      };
 
-      if (parsedQuestion) {
-        return {
-          ...parsedQuestion,
-          difficulty: performance.currentDifficulty,
-          adaptedFor: strategy === 'challenge' ? 'success' : strategy === 'simplify' ? 'struggle' : 'confusion'
-        };
-      }
+      const generatedQuestion = await ollamaService.generateQuestion(ollamaRequest);
+
+      return {
+        ...generatedQuestion,
+        difficulty: performance.currentDifficulty,
+        adaptedFor: strategy === 'challenge' ? 'success' : strategy === 'simplify' ? 'struggle' : 'confusion',
+        gameType: 'word-image'
+      };
     } catch (error) {
-      console.error('AI question generation failed, using adaptive fallback:', error);
+      console.error('Ollama question generation failed, using adaptive fallback:', error);
     }
 
     // Fallback to enhanced traditional generation
@@ -305,6 +324,13 @@ Topic should be about animals, fruits, or vehicles. Use simple emojis as options
     studentAge: number,
     currentEmotion?: EmotionResult
   ): Promise<GameQuestion> {
+    console.log('🎯 [ADAPTIVE DEBUG] generateQuestionWithContext çağrıldı:', {
+      studentId,
+      gameType,
+      studentAge,
+      timestamp: new Date().toISOString(),
+      stack: new Error().stack?.split('\n').slice(1, 5).join('\n')
+    });
     // Initialize player if needed
     performanceTracker.initializePlayer(studentId, studentAge);
 
@@ -323,6 +349,128 @@ Topic should be about animals, fruits, or vehicles. Use simple emojis as options
     };
 
     return this.generateAdaptiveQuestion(context);
+  }
+
+  /**
+   * ADHD çocukları için yaş ve strateji bazında uygun konu seçer
+   */
+  private getSubjectForWordImage(age: number, strategy: string): string {
+    // ADHD çocukları için görsel ve ilgi çekici konular
+    const adhdFriendlySubjects = {
+      easy: ['Sevimli Hayvanlar', 'Parlak Renkler', 'Lezzetli Meyveler', 'Eğlenceli Oyuncaklar'],
+      medium: ['Hızlı Hayvanlar', 'Cool Taşıtlar', 'Maceralı Doğa', 'Süper Kahramanlar'],
+      hard: ['Uzay ve Gezegenler', 'Dinozorlar', 'Harika Icatlar', 'Büyülü Bilim']
+    };
+
+    let subjects: string[];
+    if (age <= 6) {
+      subjects = adhdFriendlySubjects.easy;
+    } else if (age <= 10) {
+      subjects = adhdFriendlySubjects.medium;
+    } else {
+      subjects = adhdFriendlySubjects.hard;
+    }
+
+    // ADHD stratejilerine göre konu seçimi
+    switch (strategy) {
+      case 'simplify':
+        subjects = adhdFriendlySubjects.easy; // En basit, dikkat dağıtmayan
+        break;
+      case 'energize':
+        subjects = ['Süper Hızlı Hayvanlar', 'Çılgın Renkler', 'Aksiyon Arabalar']; // Enerjik konular
+        break;
+      case 'challenge':
+        if (age > 7) subjects = adhdFriendlySubjects.hard; // Yaşa uygun zorluk
+        break;
+      case 'refocus':
+        subjects = ['Sakin Hayvanlar', 'Yumuşak Renkler', 'Huzurlu Doğa']; // Odaklanmayı artıran
+        break;
+    }
+
+    return subjects[Math.floor(Math.random() * subjects.length)];
+  }
+
+  /**
+   * İngilizce zorluk seviyesini Türkçeye çevirir
+   */
+  private mapDifficultyToTurkish(difficulty: string): 'kolay' | 'orta' | 'zor' {
+    const difficultyMap: Record<string, 'kolay' | 'orta' | 'zor'> = {
+      'easy': 'kolay',
+      'medium': 'orta',
+      'hard': 'zor'
+    };
+
+    return difficultyMap[difficulty] || 'orta';
+  }
+
+  /**
+   * ADHD çocukları için özel matematik soruları
+   */
+  async generateOllamaMathQuestion(
+    subject: string = 'Temel Matematik',
+    difficulty: 'kolay' | 'orta' | 'zor' = 'orta',
+    age: number = 8
+  ): Promise<GameQuestion> {
+    // ADHD çocukları için görsel ve ilgi çekici matematik konuları
+    const adhdMathSubjects = [
+      'Eğlenceli sayma (oyuncaklar, hayvanlar ile)',
+      'Görsel toplama (emojiler ile)',
+      'Kolay çıkarma (çizgi film karakterleri ile)',
+      'Renkli şekiller tanıma',
+      'Günlük yaşamdan sayılar (yaş, saat, para)'
+    ];
+
+    const selectedSubject = adhdMathSubjects[Math.floor(Math.random() * adhdMathSubjects.length)];
+
+    try {
+      const ollamaRequest: OllamaQuestionRequest = {
+        subject: `${selectedSubject} (${age} yaş için uygun)`,
+        difficulty: difficulty,
+        questionType: 'çoktan seçmeli'
+      };
+
+      const question = await ollamaService.generateQuestion(ollamaRequest);
+      return {
+        ...question,
+        gameType: 'number'
+      };
+    } catch (error) {
+      console.error('Ollama matematik sorusu üretme hatası:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * ADHD çocukları için eğlenceli fen bilgisi soruları
+   */
+  async generateOllamaScienceQuestion(
+    difficulty: 'kolay' | 'orta' | 'zor' = 'orta',
+    age: number = 10
+  ): Promise<GameQuestion> {
+    // ADHD çocukları için ilgi çekici ve görsel fen konuları
+    const adhdScienceSubjects = [
+      'Sevimli hayvanların yaşam alanları',
+      'Gökyüzündeki renkli olaylar (gökkuşağı, bulutlar)',
+      'Eğlenceli deneyimler (mıknatıs, su-yağ)',
+      'Uzaydaki parlak gezegen ve yıldızlar',
+      'Bitkilerin büyümesi ve çiçek açması',
+      'Mevsim değişimleri ve doğadaki renkler'
+    ];
+
+    const selectedSubject = adhdScienceSubjects[Math.floor(Math.random() * adhdScienceSubjects.length)];
+
+    try {
+      const ollamaRequest: OllamaQuestionRequest = {
+        subject: `${selectedSubject} (${age} yaş çocuk için basit)`,
+        difficulty: difficulty,
+        questionType: 'çoktan seçmeli'
+      };
+
+      return await ollamaService.generateQuestion(ollamaRequest);
+    } catch (error) {
+      console.error('Ollama fen bilgisi sorusu üretme hatası:', error);
+      throw error;
+    }
   }
 }
 

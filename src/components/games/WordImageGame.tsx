@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { GameQuestion, EmotionResult } from '../../types';
-import { huggingFaceService } from '../../services/huggingface';
 import { adaptiveQuestionGenerator } from '../../services/adaptiveQuestionGenerator';
+import { ollamaService } from '../../services/ollamaService';
 import { performanceTracker } from '../../services/performanceTracker';
 import { Clock, RotateCcw, Volume2, CheckCircle, XCircle, Star, Brain } from 'lucide-react';
 
@@ -26,17 +26,21 @@ export const WordImageGame: React.FC<WordImageGameProps> = ({
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [score, setScore] = useState(0);
   const [questionNumber, setQuestionNumber] = useState(1);
-  const [timeLeft, setTimeLeft] = useState(45);
+  const [timeLeft, setTimeLeft] = useState(30); // ADHD için daha kısa süre
   const [gameState, setGameState] = useState<'loading' | 'playing' | 'answered' | 'completed'>('loading');
   const [emotions, setEmotions] = useState<EmotionResult[]>([]);
   const [feedback, setFeedback] = useState<string>('');
   const [gameStartTime] = useState(Date.now());
   const [isAIGenerating, setIsAIGenerating] = useState(false);
   const [adaptiveInsight, setAdaptiveInsight] = useState<string>('');
+  const [isInitialized, setIsInitialized] = useState(false);
+  const initStartedRef = useRef(false);
 
   const totalQuestions = 5;
 
   const generateQuestion = useCallback(async () => {
+    if (isAIGenerating) return;
+
     setGameState('loading');
     setIsAIGenerating(true);
 
@@ -59,30 +63,61 @@ export const WordImageGame: React.FC<WordImageGameProps> = ({
           setAdaptiveInsight(insights[0]);
         }
       } else {
-        // Use traditional question generation
-        question = await huggingFaceService.generateWordImageQuestion('animals', 'easy', studentAge);
+        // Use Ollama question generation instead of HuggingFace
+        const topics = ['Hayvanlar', 'Meyveler', 'Taşıtlar'];
+        const randomTopic = topics[Math.floor(Math.random() * topics.length)];
+        question = await ollamaService.generateQuestion({
+          subject: randomTopic,
+          difficulty: 'kolay',
+          questionType: 'çoktan seçmeli'
+        });
       }
 
       setCurrentQuestion(question);
       setSelectedAnswer(null);
-      setTimeLeft(45);
+      setTimeLeft(30); // ADHD için 30 saniye
       setGameState('playing');
     } catch (error) {
       console.error('Error generating question:', error);
-      // Fallback to traditional generation
-      const fallbackQuestion = await huggingFaceService.generateWordImageQuestion('animals', 'easy', studentAge);
-      setCurrentQuestion(fallbackQuestion);
+      // Primary fallback to Ollama
+      try {
+        const fallbackQuestion = await ollamaService.generateQuestion({
+          subject: 'Hayvanlar',
+          difficulty: 'kolay',
+          questionType: 'çoktan seçmeli'
+        });
+        setCurrentQuestion(fallbackQuestion);
+      } catch (ollamaError) {
+        console.error('Ollama fallback failed:', ollamaError);
+        // Use static fallback question if Ollama fails
+        const staticFallbackQuestion: GameQuestion = {
+          id: `static_fallback_${Date.now()}`,
+          question: 'Hangi hayvan köpek?',
+          options: ['🐶', '🐱', '🐸', '🦋'],
+          correctAnswer: 0,
+          confidence: 1.0,
+          gameType: 'word-image',
+          difficulty: 'easy'
+        };
+        setCurrentQuestion(staticFallbackQuestion);
+      }
       setSelectedAnswer(null);
-      setTimeLeft(45);
+      setTimeLeft(30); // ADHD için 30 saniye
       setGameState('playing');
     } finally {
       setIsAIGenerating(false);
     }
-  }, [studentId, studentAge, useAdaptiveAI, emotions]);
+  }, [studentId, studentAge, useAdaptiveAI]);
 
   useEffect(() => {
-    generateQuestion();
-  }, [generateQuestion]);
+    if (initStartedRef.current) return; // StrictMode guard
+
+    if (!isInitialized) {
+      initStartedRef.current = true;
+      setIsInitialized(true);
+      generateQuestion();
+    }
+  }, [generateQuestion, isInitialized]);
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -98,12 +133,18 @@ export const WordImageGame: React.FC<WordImageGameProps> = ({
 
   const handleTimeUp = () => {
     setSelectedAnswer(-1);
-    setFeedback('Süre doldu! Bir sonraki soruya geçelim.');
+    const adhdTimeUpMessages = [
+      'Zaman bitti! 🕐 Ama sorun yok, devam edelim!',
+      'Hop, zaman doldu! ⏰ Hızlı olmaya çalışalım!',
+      'Süre bitti! 🏃‍♂️ Bir sonrakinde daha hızlı!',
+      'Zaman tamamlandı! 🎯 Sen yaparsın!'
+    ];
+    setFeedback(adhdTimeUpMessages[Math.floor(Math.random() * adhdTimeUpMessages.length)]);
     setGameState('answered');
 
     const emotion: EmotionResult = {
-      emotion: 'confused',
-      confidence: 0.8,
+      emotion: 'neutral', // ADHD için karışık yerine nötr
+      confidence: 0.6,
       timestamp: new Date()
     };
     setEmotions(prev => [...prev, emotion]);
@@ -111,7 +152,7 @@ export const WordImageGame: React.FC<WordImageGameProps> = ({
 
     setTimeout(() => {
       nextQuestion();
-    }, 2000);
+    }, 1500); // ADHD için daha kısa bekleme
   };
 
   const handleAnswerSelect = (answerIndex: number) => {
@@ -124,7 +165,14 @@ export const WordImageGame: React.FC<WordImageGameProps> = ({
 
     if (isCorrect) {
       setScore(score + 1);
-      setFeedback('Harika! Doğru cevap! 🎉');
+      const adhdPositiveFeedback = [
+        'SÜPER! ⭐ Harika bir seçim!',
+        'MÜTHİŞ! 🌟 Çok akıllısın!',
+        'WOW! 🎉 Perfect!',
+        'BRAVO! 🏆 Harikasın!',
+        'YESSss! 🚀 Devam et!'
+      ];
+      setFeedback(adhdPositiveFeedback[Math.floor(Math.random() * adhdPositiveFeedback.length)]);
 
       const emotion: EmotionResult = {
         emotion: 'happy',
@@ -134,10 +182,17 @@ export const WordImageGame: React.FC<WordImageGameProps> = ({
       setEmotions(prev => [...prev, emotion]);
       onEmotionDetected?.(emotion);
     } else {
-      setFeedback('Yanlış cevap. Bir dahaki sefere! 😊');
+      const adhdEncouragingFeedback = [
+        'Hey, yaklaştın! 💪 Bir daha dene!',
+        'Hiç sorun değil! 😊 Sen harikasın!',
+        'Önemli değil! 🌈 Denemeye devam!',
+        'Bu sefer olmadı ama 🎯 bir sonrakinde!',
+        'Gayet iyi! 🤗 Devam ediyoruz!'
+      ];
+      setFeedback(adhdEncouragingFeedback[Math.floor(Math.random() * adhdEncouragingFeedback.length)]);
 
       const emotion: EmotionResult = {
-        emotion: 'sad',
+        emotion: 'neutral', // ADHD çocukları için üzüntü yerine nötr tutuyoruz
         confidence: 0.7,
         timestamp: new Date()
       };
@@ -208,10 +263,11 @@ export const WordImageGame: React.FC<WordImageGameProps> = ({
 
   const getScoreMessage = () => {
     const percentage = (score / totalQuestions) * 100;
-    if (percentage === 100) return 'Mükemmel! 🏆';
-    if (percentage >= 80) return 'Harika! 🌟';
-    if (percentage >= 60) return 'İyi! 👏';
-    return 'Daha çok pratik yapalım! 💪';
+    if (percentage === 100) return 'WAOW! MÜKEMMEL! 🏆✨ Sen bir şampiyon!';
+    if (percentage >= 80) return 'SÜPER! 🌟🚀 Çok akıllısın!';
+    if (percentage >= 60) return 'HARİKA! 👏🎉 Çok iyi gidiyorsun!';
+    if (percentage >= 40) return 'GÜZEL! 💪🌈 Devam et!';
+    return 'HEY! 🤗⭐ Sen harikasın, tekrar deneyelim!';
   };
 
   if (gameState === 'completed') {
@@ -270,13 +326,13 @@ export const WordImageGame: React.FC<WordImageGameProps> = ({
           {isAIGenerating && useAdaptiveAI ? (
             <div className="space-y-2">
               <div className="flex items-center justify-center space-x-2">
-                <Brain className="h-5 w-5 text-primary" />
-                <p className="text-gray-600">AI soru üretiyor...</p>
+                <Brain className="h-5 w-5 text-primary animate-pulse" />
+                <p className="text-gray-600 font-medium">🤖 Senin için özel soru hazırlıyorum!</p>
               </div>
-              <p className="text-sm text-gray-500">Performansına göre uyarlanıyor</p>
+              <p className="text-sm text-gray-500">✨ ADHD dostum için en iyi soruyu seçiyorum...</p>
             </div>
           ) : (
-            <p className="text-gray-600">Yeni soru hazırlanıyor...</p>
+            <p className="text-gray-600 font-medium">🎯 Yeni macera yükleniyor...</p>
           )}
         </CardContent>
       </Card>

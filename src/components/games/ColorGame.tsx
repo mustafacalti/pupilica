@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { GameQuestion, EmotionResult } from '../../types';
-import { huggingFaceService } from '../../services/huggingface';
 import { adaptiveQuestionGenerator } from '../../services/adaptiveQuestionGenerator';
+import { ollamaService } from '../../services/ollamaService';
 import { performanceTracker } from '../../services/performanceTracker';
 import { Clock, RotateCcw, Star, Palette, Brain } from 'lucide-react';
 
@@ -26,16 +26,31 @@ export const ColorGame: React.FC<ColorGameProps> = ({
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [score, setScore] = useState(0);
   const [questionNumber, setQuestionNumber] = useState(1);
-  const [timeLeft, setTimeLeft] = useState(30);
+  const [timeLeft, setTimeLeft] = useState(25); // ADHD için daha kısa, renk oyunu zaten hızlı
   const [gameState, setGameState] = useState<'loading' | 'playing' | 'answered' | 'completed'>('loading');
   const [emotions, setEmotions] = useState<EmotionResult[]>([]);
   const [gameStartTime] = useState(Date.now());
   const [isAIGenerating, setIsAIGenerating] = useState(false);
   const [adaptiveInsight, setAdaptiveInsight] = useState<string>('');
+  const [isInitialized, setIsInitialized] = useState(false);
+  const initStartedRef = useRef(false);
 
   const totalQuestions = 5;
 
   const generateQuestion = useCallback(async () => {
+    console.log('🔍 [DEBUG] generateQuestion çağrıldı', {
+      isAIGenerating,
+      gameState,
+      questionNumber,
+      timestamp: new Date().toISOString()
+    });
+
+    if (isAIGenerating) {
+      console.log('⚠️ [DEBUG] Zaten soru üretiliyor, çıkılıyor...');
+      return; // Prevent multiple simultaneous requests
+    }
+
+    console.log('🚀 [DEBUG] Soru üretimi başlıyor...');
     setGameState('loading');
     setIsAIGenerating(true);
 
@@ -58,30 +73,68 @@ export const ColorGame: React.FC<ColorGameProps> = ({
           setAdaptiveInsight(insights[0]);
         }
       } else {
-        // Use traditional question generation
-        question = await huggingFaceService.generateColorQuestion();
+        // Use Ollama for color question generation
+        question = await ollamaService.generateQuestion({
+          subject: 'Renkler ve renk tanıma',
+          difficulty: 'kolay',
+          questionType: 'çoktan seçmeli'
+        });
+        question.gameType = 'color'; // Set the correct game type
       }
 
+      console.log('✅ [DEBUG] Soru başarıyla üretildi:', question.question);
       setCurrentQuestion(question);
       setSelectedAnswer(null);
-      setTimeLeft(30);
+      setTimeLeft(25); // ADHD için 25 saniye
       setGameState('playing');
     } catch (error) {
       console.error('Error generating question:', error);
-      // Fallback to traditional generation
-      const fallbackQuestion = await huggingFaceService.generateColorQuestion();
-      setCurrentQuestion(fallbackQuestion);
+      // Fallback to Ollama
+      try {
+        const fallbackQuestion = await ollamaService.generateQuestion({
+          subject: 'Temel renkler',
+          difficulty: 'kolay',
+          questionType: 'çoktan seçmeli'
+        });
+        fallbackQuestion.gameType = 'color';
+        setCurrentQuestion(fallbackQuestion);
+      } catch (ollamaError) {
+        console.error('Ollama fallback failed:', ollamaError);
+        // Static fallback if Ollama fails
+        const staticQuestion: GameQuestion = {
+          id: `static_color_${Date.now()}`,
+          question: 'Hangi renk kırmızı?',
+          options: ['🔴', '🔵', '🟢', '🟡'],
+          correctAnswer: 0,
+          confidence: 1.0,
+          gameType: 'color',
+          difficulty: 'easy'
+        };
+        setCurrentQuestion(staticQuestion);
+      }
       setSelectedAnswer(null);
-      setTimeLeft(30);
+      setTimeLeft(25); // ADHD için 25 saniye
       setGameState('playing');
     } finally {
+      console.log('🏁 [DEBUG] Soru üretimi tamamlandı, isAIGenerating = false');
       setIsAIGenerating(false);
     }
-  }, [studentId, studentAge, useAdaptiveAI, emotions]);
+  }, [studentId, studentAge, useAdaptiveAI]);
 
   useEffect(() => {
-    generateQuestion();
-  }, [generateQuestion]);
+    console.log('🔄 [DEBUG] useEffect çalıştı', { isInitialized, initStarted: initStartedRef.current });
+    if (initStartedRef.current) {
+      console.log('🛡️ [DEBUG] StrictMode guard - çıkılıyor');
+      return; // StrictMode guard
+    }
+
+    if (!isInitialized) {
+      console.log('🎯 [DEBUG] İlk kez başlatılıyor, generateQuestion çağrılıyor');
+      initStartedRef.current = true;
+      setIsInitialized(true);
+      generateQuestion();
+    }
+  }, [generateQuestion, isInitialized]);
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -143,14 +196,17 @@ export const ColorGame: React.FC<ColorGameProps> = ({
     }, 2000);
   };
 
-  const nextQuestion = () => {
+  const nextQuestion = useCallback(() => {
+    console.log('➡️ [DEBUG] nextQuestion çağrıldı', { questionNumber, totalQuestions });
     if (questionNumber >= totalQuestions) {
+      console.log('🏆 [DEBUG] Oyun tamamlandı');
       completeGame();
     } else {
+      console.log('🔢 [DEBUG] Sonraki soruya geçiliyor:', questionNumber + 1);
       setQuestionNumber(questionNumber + 1);
       generateQuestion();
     }
-  };
+  }, [questionNumber, totalQuestions, generateQuestion]);
 
   const completeGame = () => {
     setGameState('completed');
@@ -176,6 +232,7 @@ export const ColorGame: React.FC<ColorGameProps> = ({
     setQuestionNumber(1);
     setEmotions([]);
     setAdaptiveInsight('');
+    setIsInitialized(false);
     // Initialize player performance for new game
     if (useAdaptiveAI) {
       performanceTracker.initializePlayer(studentId, studentAge);

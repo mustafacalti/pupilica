@@ -14,7 +14,7 @@ if (!HF_TOKEN) {
 const MODELS = {
   TEXT_GENERATION:
     (import.meta.env.VITE_HUGGINGFACE_TEXT_MODEL as string) ||
-    "openai-community/gpt2",
+    "Qwen/Qwen3-Next-80B-A3B-Thinking",
   QUESTION_ANSWERING:
     (import.meta.env.VITE_HUGGINGFACE_QA_MODEL as string) ||
     "distilbert-base-cased-distilled-squad",

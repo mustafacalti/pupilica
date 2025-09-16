@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { GameQuestion, EmotionResult } from '../../types';
-import { huggingFaceService } from '../../services/huggingface';
 import { adaptiveQuestionGenerator } from '../../services/adaptiveQuestionGenerator';
+import { ollamaService } from '../../services/ollamaService';
 import { performanceTracker } from '../../services/performanceTracker';
 import { Clock, RotateCcw, Mic, MicOff, Star, Brain } from 'lucide-react';
 
@@ -26,17 +26,21 @@ export const NumberGame: React.FC<NumberGameProps> = ({
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [score, setScore] = useState(0);
   const [questionNumber, setQuestionNumber] = useState(1);
-  const [timeLeft, setTimeLeft] = useState(60);
+  const [timeLeft, setTimeLeft] = useState(45); // ADHD için daha kısa süre
   const [gameState, setGameState] = useState<'loading' | 'playing' | 'answered' | 'completed'>('loading');
   const [emotions, setEmotions] = useState<EmotionResult[]>([]);
   const [isListening, setIsListening] = useState(false);
   const [gameStartTime] = useState(Date.now());
   const [isAIGenerating, setIsAIGenerating] = useState(false);
   const [adaptiveInsight, setAdaptiveInsight] = useState<string>('');
+  const [isInitialized, setIsInitialized] = useState(false);
+  const initStartedRef = useRef(false);
 
   const totalQuestions = 5;
 
   const generateQuestion = useCallback(async () => {
+    if (isAIGenerating) return;
+
     setGameState('loading');
     setIsAIGenerating(true);
 
@@ -59,30 +63,61 @@ export const NumberGame: React.FC<NumberGameProps> = ({
           setAdaptiveInsight(insights[0]);
         }
       } else {
-        // Use traditional question generation
-        question = await huggingFaceService.generateNumberQuestion({ min: 1, max: 10 }, studentAge);
+        // Use Ollama for math question generation
+        question = await ollamaService.generateQuestion({
+          subject: 'Sayma ve temel matematik',
+          difficulty: 'kolay',
+          questionType: 'çoktan seçmeli'
+        });
+        question.gameType = 'number'; // Set the correct game type
       }
 
       setCurrentQuestion(question);
       setSelectedAnswer(null);
-      setTimeLeft(60);
+      setTimeLeft(45); // ADHD için 45 saniye
       setGameState('playing');
     } catch (error) {
       console.error('Error generating question:', error);
-      // Fallback to traditional generation
-      const fallbackQuestion = await huggingFaceService.generateNumberQuestion({ min: 1, max: 10 }, studentAge);
-      setCurrentQuestion(fallbackQuestion);
+      // Fallback to Ollama
+      try {
+        const fallbackQuestion = await ollamaService.generateQuestion({
+          subject: 'Basit sayma',
+          difficulty: 'kolay',
+          questionType: 'çoktan seçmeli'
+        });
+        fallbackQuestion.gameType = 'number';
+        setCurrentQuestion(fallbackQuestion);
+      } catch (ollamaError) {
+        console.error('Ollama fallback failed:', ollamaError);
+        // Static fallback if Ollama fails
+        const staticQuestion: GameQuestion = {
+          id: `static_number_${Date.now()}`,
+          question: 'Kaç tane 🍎 var?',
+          options: ['2', '3', '4', '5'],
+          correctAnswer: 1, // 3
+          confidence: 1.0,
+          gameType: 'number',
+          difficulty: 'easy'
+        };
+        setCurrentQuestion(staticQuestion);
+      }
       setSelectedAnswer(null);
-      setTimeLeft(60);
+      setTimeLeft(45); // ADHD için 45 saniye
       setGameState('playing');
     } finally {
       setIsAIGenerating(false);
     }
-  }, [studentId, studentAge, useAdaptiveAI, emotions]);
+  }, [studentId, studentAge, useAdaptiveAI]);
 
   useEffect(() => {
-    generateQuestion();
-  }, [generateQuestion]);
+    if (initStartedRef.current) return; // StrictMode guard
+
+    if (!isInitialized) {
+      initStartedRef.current = true;
+      setIsInitialized(true);
+      generateQuestion();
+    }
+  }, [generateQuestion, isInitialized]);
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
