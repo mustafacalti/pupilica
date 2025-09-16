@@ -25,6 +25,10 @@ class AdaptiveQuestionGenerator {
         return this.generateAdaptiveNumberQuestion(context, adaptationStrategy);
       case 'color':
         return this.generateAdaptiveColorQuestion(context, adaptationStrategy);
+      case 'attention-sprint':
+        // Attention sprint oyunu için özel handling gerekmiyor
+        // AttentionSprintGame kendi servisini kullanır
+        throw new Error('Attention sprint oyunu AttentionSprintGenerator kullanır');
       default:
         throw new Error(`Unsupported game type: ${gameType}`);
     }

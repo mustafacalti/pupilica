@@ -20,7 +20,7 @@ export interface Student {
 export interface Activity {
   id: string;
   studentId: string;
-  gameType: 'word-image' | 'number' | 'color';
+  gameType: 'word-image' | 'number' | 'color' | 'attention-sprint';
   score: number;
   duration: number;
   emotions: EmotionResult[];
@@ -65,7 +65,7 @@ export interface PlayerPerformance {
 export interface QuestionGenerationContext {
   performance: PlayerPerformance;
   currentEmotion?: EmotionResult;
-  gameType: 'word-image' | 'number' | 'color';
+  gameType: 'word-image' | 'number' | 'color' | 'attention-sprint';
   previousQuestions: GameQuestion[];
   studentAge: number;
   adaptiveMode: boolean;
@@ -76,4 +76,28 @@ export interface PerformanceStats {
   completedActivities: number;
   averageSuccess: number;
   aiRecommendations: number;
+}
+
+// Dikkat Sprintleri için özel tipler
+export interface AttentionSprintTask {
+  id: string;
+  gorev: string; // Yapılacak görev açıklaması
+  sure_saniye: number; // Görev süresi (30-60 saniye)
+  ipuclari: string[]; // Yardımcı ipuçları
+  hedefRenk?: string; // Hedef renk (varsa)
+  hedefSayi?: number; // Hedef sayı (varsa)
+  hedefSekil?: string; // Hedef şekil (varsa)
+  dikkatDagitici: number; // 0-1 arası dikkat dağıtıcı sayısı
+  difficulty: 'kolay' | 'orta' | 'zor';
+}
+
+export interface AttentionSprintPerformance {
+  son3Tur: {
+    basari: boolean;
+    sure: number;
+    zorluk: 'kolay' | 'orta' | 'zor';
+  }[];
+  ortalamaReaksiyonSuresi: number;
+  basariOrani: number;
+  odaklanmaDurumu: 'yuksek' | 'orta' | 'dusuk';
 }

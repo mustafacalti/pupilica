@@ -3,9 +3,10 @@ import { useAuth } from '../hooks/useAuth';
 import { WordImageGame } from '../components/games/WordImageGame';
 import { NumberGame } from '../components/games/NumberGame';
 import { ColorGame } from '../components/games/ColorGame';
-import { Brain, BookOpen, Hash, Palette, LogOut, User, Trophy, Clock } from 'lucide-react';
+import { AttentionSprintGame } from '../components/games/AttentionSprintGame';
+import { Brain, BookOpen, Hash, Palette, Target, LogOut, User, Trophy, Clock } from 'lucide-react';
 
-type GameType = 'word-image' | 'number' | 'color' | null;
+type GameType = 'word-image' | 'number' | 'color' | 'attention-sprint' | null;
 
 export const StudentDashboardPage: React.FC = () => {
   const { currentUser, logout } = useAuth();
@@ -49,6 +50,12 @@ export const StudentDashboardPage: React.FC = () => {
         return <ColorGame
           studentId={currentUser.id}
           studentAge={currentUser.age || 6}
+          onGameComplete={handleGameComplete}
+        />;
+      case 'attention-sprint':
+        return <AttentionSprintGame
+          studentId={currentUser.id}
+          studentAge={currentUser.age || 12}
           onGameComplete={handleGameComplete}
         />;
       default:
@@ -160,7 +167,7 @@ export const StudentDashboardPage: React.FC = () => {
         </div>
 
         {/* Games Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {/* Word-Image Game */}
           <div className="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
             <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-6 text-white">
@@ -239,6 +246,34 @@ export const StudentDashboardPage: React.FC = () => {
               <button
                 onClick={() => setSelectedGame('color')}
                 className="w-full bg-purple-500 hover:bg-purple-600 text-white py-3 px-4 rounded-lg font-medium transition-colors"
+              >
+                Oyunu Başlat
+              </button>
+            </div>
+          </div>
+
+          {/* Attention Sprint Game */}
+          <div className="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
+            <div className="bg-gradient-to-r from-orange-500 to-red-500 p-6 text-white">
+              <Target className="h-12 w-12 mb-4" />
+              <h3 className="text-xl font-bold mb-2">Dikkat Sprintleri</h3>
+              <p className="text-orange-100">
+                Hızlı görevlerle odaklanma becerileri
+              </p>
+            </div>
+            <div className="p-6">
+              <div className="mb-4">
+                <div className="flex justify-between text-sm text-gray-600 mb-1">
+                  <span>Son Puan</span>
+                  <span>4/5</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div className="bg-orange-500 h-2 rounded-full" style={{ width: '80%' }}></div>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedGame('attention-sprint')}
+                className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 px-4 rounded-lg font-medium transition-colors"
               >
                 Oyunu Başlat
               </button>
