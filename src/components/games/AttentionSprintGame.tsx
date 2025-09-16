@@ -241,12 +241,24 @@ export const AttentionSprintGame: React.FC<AttentionSprintGameProps> = ({
   /**
    * Hedefe tıklama
    */
-  const handleTargetClick = () => {
+  const handleTargetClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Oyun alanına tıklama eventini engelle
     if (gameState !== 'active' || !showTarget || targetClicked) return;
 
     setTargetClicked(true);
     const reactionTime = (Date.now() - roundStartTimeRef.current) / 1000;
     endRound(true, reactionTime);
+  };
+
+  /**
+   * Oyun alanına (yanlış yere) tıklama
+   */
+  const handleGameAreaClick = () => {
+    if (gameState !== 'active' || !showTarget || targetClicked) return;
+
+    // Yanlış yere tıklandı, görev başarısız
+    const reactionTime = (Date.now() - roundStartTimeRef.current) / 1000;
+    endRound(false, reactionTime);
   };
 
   /**
@@ -457,32 +469,40 @@ export const AttentionSprintGame: React.FC<AttentionSprintGameProps> = ({
               </div>
             </div>
           ) : gameState === 'active' ? (
-            <div className="space-y-6">
+            <div
+              className="space-y-6 cursor-crosshair"
+              onClick={handleGameAreaClick}
+            >
               <h2 className="text-xl font-bold text-gray-800">{currentTask?.gorev}</h2>
 
               {showTarget && currentTask && (
                 <div className="relative">
-                  {/* Hedef buton/alan */}
-                  <button
-                    onClick={handleTargetClick}
-                    disabled={targetClicked}
+                  {/* Büyük zemin yuvarlağı - tıklanamaz */}
+                  <div
                     className={`
-                      w-32 h-32 rounded-full text-4xl border-4 transition-all duration-200
+                      w-32 h-32 rounded-full border-4 transition-all duration-200 relative flex items-center justify-center
                       ${targetClicked
-                        ? 'bg-green-500 border-green-600 text-white scale-110'
-                        : 'bg-blue-500 border-blue-600 text-white hover:scale-105 animate-pulse'
+                        ? 'bg-green-500 border-green-600 scale-110'
+                        : 'bg-blue-500 border-blue-600 animate-pulse'
                       }
                     `}
                   >
-                    {currentTask.hedefSekil === 'yıldız' && '⭐'}
-                    {currentTask.hedefSekil === 'daire' && '⭕'}
-                    {currentTask.hedefSekil === 'kare' && '⬜'}
-                    {currentTask.hedefRenk === 'kırmızı' && '🔴'}
-                    {currentTask.hedefRenk === 'mavi' && '🔵'}
-                    {currentTask.hedefRenk === 'yeşil' && '🟢'}
-                    {currentTask.hedefRenk === 'sarı' && '🟡'}
-                    {!currentTask.hedefSekil && !currentTask.hedefRenk && '🎯'}
-                  </button>
+                    {/* Küçük hedef alan - sadece bu tıklanabilir */}
+                    <button
+                      onClick={handleTargetClick}
+                      disabled={targetClicked}
+                      className="w-12 h-12 rounded-full bg-white hover:bg-gray-100 transition-colors duration-200 flex items-center justify-center text-2xl shadow-lg"
+                    >
+                      {currentTask.hedefSekil === 'yıldız' && '⭐'}
+                      {currentTask.hedefSekil === 'daire' && '⭕'}
+                      {currentTask.hedefSekil === 'kare' && '⬜'}
+                      {currentTask.hedefRenk === 'kırmızı' && '🔴'}
+                      {currentTask.hedefRenk === 'mavi' && '🔵'}
+                      {currentTask.hedefRenk === 'yeşil' && '🟢'}
+                      {currentTask.hedefRenk === 'sarı' && '🟡'}
+                      {!currentTask.hedefSekil && !currentTask.hedefRenk && '🎯'}
+                    </button>
+                  </div>
 
                   {/* Dikkat dağıtıcılar */}
                   {currentTask.dikkatDagitici > 0 && (
