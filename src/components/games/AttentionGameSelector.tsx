@@ -121,7 +121,9 @@ export const AttentionGameSelector: React.FC<AttentionGameSelectorProps> = ({
   };
 
   const handleDifficultySelect = (difficulty: DifficultyLevel) => {
+    console.log('🎯 [DEBUG] Difficulty selected:', difficulty);
     setSelectedDifficulty(difficulty);
+    console.log('🎯 [DEBUG] Selected difficulty updated to:', difficulty);
   };
 
   const handleStartGame = () => {
@@ -188,6 +190,7 @@ export const AttentionGameSelector: React.FC<AttentionGameSelectorProps> = ({
   // Zorluk seçimi ekranı
   if (selectedGame) {
     const gameInfo = gameTypes.find(g => g.id === selectedGame)!;
+    console.log('🎯 [DEBUG] Zorluk seçim ekranı açıldı. Oyun:', selectedGame, 'Mevcut zorluk:', selectedDifficulty);
 
     return (
       <div className="max-w-4xl mx-auto space-y-6">
@@ -227,15 +230,26 @@ export const AttentionGameSelector: React.FC<AttentionGameSelectorProps> = ({
             <Card
               key={level.id}
               className={`
-                cursor-pointer transition-all duration-200 hover:scale-105
+                cursor-pointer transition-all duration-200 hover:scale-105 pointer-events-auto
                 ${selectedDifficulty === level.id
                   ? 'ring-2 ring-blue-500 shadow-lg'
                   : 'hover:shadow-md'
                 }
               `}
-              onClick={() => handleDifficultySelect(level.id)}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('🖱️ [DEBUG] Card clicked for difficulty:', level.id, 'Game:', selectedGame);
+                handleDifficultySelect(level.id);
+              }}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                console.log('🖱️ [DEBUG] MouseDown for difficulty:', level.id);
+                handleDifficultySelect(level.id);
+              }}
+              style={{ zIndex: 1 }}
             >
-              <CardContent className="text-center py-8">
+              <CardContent className="text-center py-8 pointer-events-none">
                 <div className="mb-4">
                   <div className={`
                     w-16 h-16 mx-auto rounded-full flex items-center justify-center text-2xl font-bold
@@ -267,6 +281,20 @@ export const AttentionGameSelector: React.FC<AttentionGameSelectorProps> = ({
                     </div>
                   </div>
                 )}
+
+                <div className="mt-4 pointer-events-auto">
+                  <button
+                    className="w-full py-2 px-4 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      console.log('🔘 [DEBUG] Button clicked for difficulty:', level.id);
+                      handleDifficultySelect(level.id);
+                    }}
+                  >
+                    {selectedDifficulty === level.id ? '✓ Seçili' : 'Seç'}
+                  </button>
+                </div>
               </CardContent>
             </Card>
           ))}

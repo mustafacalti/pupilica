@@ -96,7 +96,8 @@ export const AttentionCountGame: React.FC<AttentionCountGameProps> = ({
       const task = await attentionSprintGenerator.generateAttentionSprint({
         performansOzeti: initialPerformance,
         studentAge,
-        sonGorevler: ['sayma'] // Sadece sayma türü görevler iste
+        sonGorevler: ['sayma'], // Sadece sayma türü görevler iste
+        forcedDifficulty: difficulty // Kullanıcının seçtiği zorluk seviyesini geç
       });
 
       // Eğer AI sayma görevi vermezse zorla sayma görevine çevir
@@ -237,7 +238,8 @@ export const AttentionCountGame: React.FC<AttentionCountGameProps> = ({
           targetCount: Math.ceil(gameDurationSeconds / 8), // Hedef obje sayısı
           spawnInterval: 3000, // 3 saniyede bir
           objectLifespan: 6000, // 6 saniye yaşar
-          spawnDuration
+          spawnDuration,
+          persistanceChance: 0.0 // Kolay: yeni obje gelince eski hemen kalkar
         };
       case 'orta':
         return {
@@ -245,7 +247,8 @@ export const AttentionCountGame: React.FC<AttentionCountGameProps> = ({
           targetCount: Math.ceil(gameDurationSeconds / 6), // Hedef obje sayısı
           spawnInterval: 2500, // 2.5 saniyede bir
           objectLifespan: 5000, // 5 saniye yaşar
-          spawnDuration
+          spawnDuration,
+          persistanceChance: 0.35 // Orta: %35 şans ile eski objeler durabilir
         };
       case 'zor':
         return {
@@ -253,7 +256,8 @@ export const AttentionCountGame: React.FC<AttentionCountGameProps> = ({
           targetCount: Math.ceil(gameDurationSeconds / 4), // Hedef obje sayısı
           spawnInterval: 2000, // 2 saniyede bir
           objectLifespan: 4000, // 4 saniye yaşar
-          spawnDuration
+          spawnDuration,
+          persistanceChance: 0.7 // Zor: %70 şans ile eski objeler durabilir
         };
       default:
         return {
@@ -261,7 +265,8 @@ export const AttentionCountGame: React.FC<AttentionCountGameProps> = ({
           targetCount: Math.ceil(gameDurationSeconds / 6),
           spawnInterval: 2500,
           objectLifespan: 5000,
-          spawnDuration
+          spawnDuration,
+          persistanceChance: 0.5
         };
     }
   };
@@ -336,6 +341,7 @@ export const AttentionCountGame: React.FC<AttentionCountGameProps> = ({
       targetCount: params.targetCount,
       spawnDuration: params.spawnDuration,
       spawnInterval: params.spawnInterval,
+      persistanceChance: params.persistanceChance,
       answerTime: '5 saniye (son kısım)'
     });
 
@@ -346,6 +352,22 @@ export const AttentionCountGame: React.FC<AttentionCountGameProps> = ({
       if (spawnedCount >= params.totalObjects) {
         clearInterval(spawnInterval);
         return;
+      }
+
+      // Kolay mod: yeni obje gelince eski objeleri kaldır
+      if (difficulty === 'kolay') {
+        setCountingObjects(prev => {
+          // Sadece hedef objeleri kaldır, yanıltıcıları bırak
+          return prev.filter(obj => !obj.isTarget);
+        });
+      } else {
+        // Orta ve zor modlarda: bazı objeleri rastgele kaldır
+        setCountingObjects(prev => {
+          return prev.filter(obj => {
+            // persistanceChance oranında objeler durabilir
+            return Math.random() < params.persistanceChance;
+          });
+        });
       }
 
       // Hedef mi yoksa yanıltıcı mı spawn edeceğini karar ver

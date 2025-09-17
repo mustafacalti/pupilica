@@ -5,6 +5,7 @@ interface AttentionSprintRequest {
   performansOzeti: AttentionSprintPerformance;
   studentAge: number;
   sonGorevler?: string[]; // Son 3-5 görevin tipleri
+  forcedDifficulty?: 'kolay' | 'orta' | 'zor'; // Kullanıcının seçtiği zorluk seviyesi
 }
 
 class AttentionSprintGenerator {
@@ -13,10 +14,14 @@ class AttentionSprintGenerator {
    * ADHD'li 12 yaş çocukları için dikkat sprintleri üretir
    */
   async generateAttentionSprint(request: AttentionSprintRequest): Promise<AttentionSprintTask> {
-    const { performansOzeti, studentAge, sonGorevler = [] } = request;
+    const { performansOzeti, studentAge, sonGorevler = [], forcedDifficulty } = request;
 
-    // Performansa göre zorluk seviyesi belirleme
-    const difficulty = this.determineDifficulty(performansOzeti);
+    // Zorluk seviyesi belirleme - kullanıcı seçimi varsa onu kullan
+    const difficulty = forcedDifficulty || this.determineDifficulty(performansOzeti);
+
+    if (forcedDifficulty) {
+      console.log('👤 [USER CHOICE] Kullanıcının seçtiği zorluk kullanılıyor:', forcedDifficulty);
+    }
 
     // Görev çeşitliliğini kontrol et
     const onerilenTip = this.determineTaskVariety(sonGorevler);
