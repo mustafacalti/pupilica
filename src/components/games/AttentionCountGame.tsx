@@ -500,12 +500,6 @@ export const AttentionCountGame: React.FC<AttentionCountGameProps> = ({
         return;
       }
 
-      // Maksimum obje sayısı kontrolü - eğer limit aşılırsa spawn yapma
-      if (countingObjects.length >= maxObjectsOnScreen) {
-        console.log('🚫 [MAX LIMIT] Maksimum obje sayısına ulaşıldı:', maxObjectsOnScreen, 'spawn bekliyor');
-        return;
-      }
-
       // Zorluk moduna göre eski objeleri kaldır
       setCountingObjects(prev => {
         let filteredPrev = prev;
@@ -542,116 +536,154 @@ export const AttentionCountGame: React.FC<AttentionCountGameProps> = ({
         return filteredPrev;
       });
 
-      // Hedef mi yoksa yanıltıcı mı spawn edeceğini karar ver
-      const shouldSpawnTarget =
-        targetSpawnedCount < params.targetCount &&
-        (Math.random() < 0.4 || spawnedCount >= params.totalObjects - (params.targetCount - targetSpawnedCount));
+      // Kaç obje spawn edeceğini belirle
+      let spawnCount = 1; // Varsayılan: 1 obje
 
-      const isTarget = shouldSpawnTarget;
-      if (isTarget) {
-        targetSpawnedCount++;
-        setTotalTargetCount(prev => prev + 1);
-      }
-
-      const position = generateRandomPosition();
-
-      // Hedef ve yanıltıcı değerler
-      let value = '';
-      if (currentTask?.hedefRenk && currentTask?.hedefSekil) {
-        if (isTarget) {
-          // Karma hedefler - renk + şekil
-          if (currentTask.hedefRenk === 'yeşil' && currentTask.hedefSekil === 'daire') {
-            value = '🟢';
-          } else if (currentTask.hedefRenk === 'yeşil' && currentTask.hedefSekil === 'kare') {
-            value = '🟩';
-          } else if (currentTask.hedefRenk === 'sarı' && currentTask.hedefSekil === 'daire') {
-            value = '🟡';
-          } else if (currentTask.hedefRenk === 'sarı' && currentTask.hedefSekil === 'kare') {
-            value = '🟨';
-          } else if (currentTask.hedefRenk === 'mavi' && currentTask.hedefSekil === 'üçgen') {
-            value = '🔹';
-          } else if (currentTask.hedefRenk === 'kırmızı' && currentTask.hedefSekil === 'daire') {
-            value = '🔴';
-          } else if (currentTask.hedefRenk === 'kırmızı' && currentTask.hedefSekil === 'kare') {
-            value = '🟥';
-          } else if (currentTask.hedefRenk === 'mavi' && currentTask.hedefSekil === 'daire') {
-            value = '🔵';
-          } else if (currentTask.hedefRenk === 'mavi' && currentTask.hedefSekil === 'kare') {
-            value = '🟦';
-          } else {
-            value = '🔴';
-          }
-        } else {
-          // Yanıltıcılar - hedefle aynı renk OLMAYAN objeler
-          const targetColor = currentTask.hedefRenk;
-          let wrongValues: string[] = [];
-
-          if (targetColor === 'mavi') {
-            wrongValues = ['🔴', '🟢', '🟡', '🟣', '🟠'];
-          } else if (targetColor === 'kırmızı') {
-            wrongValues = ['🔵', '🟢', '🟡', '🟣', '🟠'];
-          } else if (targetColor === 'yeşil') {
-            wrongValues = ['🔴', '🔵', '🟡', '🟣', '🟠'];
-          } else if (targetColor === 'sarı') {
-            wrongValues = ['🔴', '🔵', '🟢', '🟣', '🟠'];
-          } else {
-            wrongValues = ['🔴', '🔵', '🟢', '🟡'];
-          }
-
-          value = wrongValues[Math.floor(Math.random() * wrongValues.length)];
+      if (difficulty === 'orta') {
+        // Orta mod: %20 şans ile 2 obje
+        if (Math.random() < 0.2) {
+          spawnCount = 2;
+          console.log('🎲 [ORTA MOD] Çoklu spawn! 2 obje birden');
         }
-      } else if (currentTask?.hedefRenk) {
-        const colorMap = { 'kırmızı': '🔴', 'mavi': '🔵', 'yeşil': '🟢', 'sarı': '🟡', 'mor': '🟣', 'turuncu': '🟠' };
-        if (isTarget) {
-          value = colorMap[currentTask.hedefRenk as keyof typeof colorMap] || '🟢';
-        } else {
-          const wrongColors = Object.values(colorMap).filter(c => c !== colorMap[currentTask.hedefRenk as keyof typeof colorMap]);
-          value = wrongColors[Math.floor(Math.random() * wrongColors.length)];
-        }
-      } else if (currentTask?.hedefSekil) {
-        const shapeMap = { 'yıldız': '⭐', 'daire': '⭕', 'kare': '⬜', 'üçgen': '🔺', 'kalp': '❤️', 'elmas': '💎' };
-        if (isTarget) {
-          value = shapeMap[currentTask.hedefSekil as keyof typeof shapeMap] || '🔺';
-        } else {
-          const wrongShapes = Object.values(shapeMap).filter(s => s !== shapeMap[currentTask.hedefSekil as keyof typeof shapeMap]);
-          value = wrongShapes[Math.floor(Math.random() * wrongShapes.length)];
+      } else if (difficulty === 'zor') {
+        // Zor mod: %15 şans ile 2 obje, %5 şans ile 3 obje
+        const rand = Math.random();
+        if (rand < 0.05) {
+          spawnCount = 3;
+          console.log('🎲 [ZOR MOD] Süper spawn! 3 obje birden');
+        } else if (rand < 0.2) { // %15 toplam şans (0.05 + 0.15)
+          spawnCount = 2;
+          console.log('🎲 [ZOR MOD] Çoklu spawn! 2 obje birden');
         }
       }
 
-      const newObject = {
-        id: `counting-${Date.now()}-${Math.random()}`,
-        x: position.x,
-        y: position.y,
-        value,
-        isTarget,
-        createdAt: Date.now(),
-        lifespan: params.objectLifespan
-      };
+      // Maksimum obje sayısına göre spawn sayısını sınırla
+      const currentObjectCount = countingObjects.length;
+      const availableSlots = maxObjectsOnScreen - currentObjectCount;
+      spawnCount = Math.min(spawnCount, availableSlots);
 
-      setCountingObjects(prev => [...prev, newObject]);
+      if (spawnCount <= 0) {
+        console.log('🚫 [MAX LIMIT] Maksimum obje sayısına ulaşıldı:', maxObjectsOnScreen, 'spawn bekliyor');
+        return;
+      }
 
-      console.log('➕ [SPAWN]', {
-        isTarget,
-        value,
-        targetSpawnedCount,
-        totalTargetCountCurrent: totalTargetCount,
-        spawnedCount: spawnedCount + 1,
-        totalObjects: params.totalObjects
-      });
+      console.log(`🎯 [SPAWN COUNT] ${spawnCount} obje spawn edilecek (maks: ${maxObjectsOnScreen}, mevcut: ${currentObjectCount})`);
 
-      // Objeyi yaşam süresinden sonra kaldır
-      setTimeout(() => {
-        setCountingObjects(prev => {
+      // Belirlenen sayıda obje spawn et
+      for (let i = 0; i < spawnCount; i++) {
+        // Hedef mi yoksa yanıltıcı mı spawn edeceğini karar ver
+        const shouldSpawnTarget =
+          targetSpawnedCount < params.targetCount &&
+          (Math.random() < 0.4 || spawnedCount >= params.totalObjects - (params.targetCount - targetSpawnedCount));
+
+        const isTarget = shouldSpawnTarget;
+        if (isTarget) {
+          targetSpawnedCount++;
+          setTotalTargetCount(prev => prev + 1);
+        }
+
+        const position = generateRandomPosition();
+
+        // Hedef ve yanıltıcı değerler
+        let value = '';
+        if (currentTask?.hedefRenk && currentTask?.hedefSekil) {
+          if (isTarget) {
+            // Karma hedefler - renk + şekil
+            if (currentTask.hedefRenk === 'yeşil' && currentTask.hedefSekil === 'daire') {
+              value = '🟢';
+            } else if (currentTask.hedefRenk === 'yeşil' && currentTask.hedefSekil === 'kare') {
+              value = '🟩';
+            } else if (currentTask.hedefRenk === 'sarı' && currentTask.hedefSekil === 'daire') {
+              value = '🟡';
+            } else if (currentTask.hedefRenk === 'sarı' && currentTask.hedefSekil === 'kare') {
+              value = '🟨';
+            } else if (currentTask.hedefRenk === 'mavi' && currentTask.hedefSekil === 'üçgen') {
+              value = '🔹';
+            } else if (currentTask.hedefRenk === 'kırmızı' && currentTask.hedefSekil === 'daire') {
+              value = '🔴';
+            } else if (currentTask.hedefRenk === 'kırmızı' && currentTask.hedefSekil === 'kare') {
+              value = '🟥';
+            } else if (currentTask.hedefRenk === 'mavi' && currentTask.hedefSekil === 'daire') {
+              value = '🔵';
+            } else if (currentTask.hedefRenk === 'mavi' && currentTask.hedefSekil === 'kare') {
+              value = '🟦';
+            } else {
+              value = '🔴';
+            }
+          } else {
+            // Yanıltıcılar - hedefle aynı renk OLMAYAN objeler
+            const targetColor = currentTask.hedefRenk;
+            let wrongValues: string[] = [];
+
+            if (targetColor === 'mavi') {
+              wrongValues = ['🔴', '🟢', '🟡', '🟣', '🟠'];
+            } else if (targetColor === 'kırmızı') {
+              wrongValues = ['🔵', '🟢', '🟡', '🟣', '🟠'];
+            } else if (targetColor === 'yeşil') {
+              wrongValues = ['🔴', '🔵', '🟡', '🟣', '🟠'];
+            } else if (targetColor === 'sarı') {
+              wrongValues = ['🔴', '🔵', '🟢', '🟣', '🟠'];
+            } else {
+              wrongValues = ['🔴', '🔵', '🟢', '🟡'];
+            }
+
+            value = wrongValues[Math.floor(Math.random() * wrongValues.length)];
+          }
+        } else if (currentTask?.hedefRenk) {
+          const colorMap = { 'kırmızı': '🔴', 'mavi': '🔵', 'yeşil': '🟢', 'sarı': '🟡', 'mor': '🟣', 'turuncu': '🟠' };
+          if (isTarget) {
+            value = colorMap[currentTask.hedefRenk as keyof typeof colorMap] || '🟢';
+          } else {
+            const wrongColors = Object.values(colorMap).filter(c => c !== colorMap[currentTask.hedefRenk as keyof typeof colorMap]);
+            value = wrongColors[Math.floor(Math.random() * wrongColors.length)];
+          }
+        } else if (currentTask?.hedefSekil) {
+          const shapeMap = { 'yıldız': '⭐', 'daire': '⭕', 'kare': '⬜', 'üçgen': '🔺', 'kalp': '❤️', 'elmas': '💎' };
+          if (isTarget) {
+            value = shapeMap[currentTask.hedefSekil as keyof typeof shapeMap] || '🔺';
+          } else {
+            const wrongShapes = Object.values(shapeMap).filter(s => s !== shapeMap[currentTask.hedefSekil as keyof typeof shapeMap]);
+            value = wrongShapes[Math.floor(Math.random() * wrongShapes.length)];
+          }
+        }
+
+        const newObject = {
+          id: `counting-${Date.now()}-${Math.random()}-${i}`, // i ekleyerek unique ID
+          x: position.x,
+          y: position.y,
+          value,
+          isTarget,
+          createdAt: Date.now(),
+          lifespan: params.objectLifespan
+        };
+
+        setCountingObjects(prev => [...prev, newObject]);
+
+        console.log('➕ [SPAWN]', {
+          spawnIndex: i + 1,
+          spawnTotal: spawnCount,
+          isTarget,
+          value,
+          targetSpawnedCount,
+          totalTargetCountCurrent: totalTargetCount,
+          spawnedCount: spawnedCount + 1,
+          totalObjects: params.totalObjects
+        });
+
+        // Objeyi yaşam süresinden sonra kaldır
+        setTimeout(() => {
+          setCountingObjects(prev => {
           const filtered = prev.filter(obj => obj.id !== newObject.id);
           // Lifespan bitince sadece ekrandan kaldır, sayımdan çıkarma!
           if (newObject.isTarget) {
             console.log('⏱️ [LIFESPAN END] Hedef obje yaşam süresi bitti, ekrandan kaldırılıyor (sayım değişmiyor)');
           }
           return filtered;
-        });
-      }, params.objectLifespan);
+          });
+        }, params.objectLifespan);
+      }
 
-      spawnedCount++;
+      spawnedCount += spawnCount; // Spawn edilen obje sayısı kadar artır
     }, params.spawnInterval);
 
     // Spawn süresinden sonra durdur
