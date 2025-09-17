@@ -508,6 +508,10 @@ export const AttentionCountGame: React.FC<AttentionCountGameProps> = ({
             value = '🟢';
           } else if (currentTask.hedefRenk === 'yeşil' && currentTask.hedefSekil === 'kare') {
             value = '🟩';
+          } else if (currentTask.hedefRenk === 'sarı' && currentTask.hedefSekil === 'daire') {
+            value = '🟡';
+          } else if (currentTask.hedefRenk === 'sarı' && currentTask.hedefSekil === 'kare') {
+            value = '🟨';
           } else if (currentTask.hedefRenk === 'mavi' && currentTask.hedefSekil === 'üçgen') {
             value = '🔹';
           } else if (currentTask.hedefRenk === 'kırmızı' && currentTask.hedefSekil === 'daire') {
@@ -518,8 +522,6 @@ export const AttentionCountGame: React.FC<AttentionCountGameProps> = ({
             value = '🔵';
           } else if (currentTask.hedefRenk === 'mavi' && currentTask.hedefSekil === 'kare') {
             value = '🟦';
-          } else if (currentTask.hedefRenk === 'sarı' && currentTask.hedefSekil === 'kare') {
-            value = '🟨';
           } else {
             value = '🔴';
           }

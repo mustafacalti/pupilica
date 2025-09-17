@@ -421,6 +421,7 @@ GÖREV KURALLARI:
 - Net talimat: Basit, anlaşılır komutlar
 - Görsel zengin: Renkler, şekiller, emojiler kullan
 - Olumlu dil: "Yapma" yerine "Yap" kalıbı
+${onerilenTip === 'sayma' ? '- ÖNEMLİ: SADECE SAYMA GÖREVİ ÜRETİN! "tıkla", "bas", "yakala" gibi eylemler YOK. Sadece "say", "hesapla", "bul" kullanın.' : ''}
 
 ZORLUK SEVİYESİ: ${difficulty}
 
@@ -429,7 +430,7 @@ ${performansMetni}
 
 ÇIKTI ŞEMASI:
 {
-  "gorev": string, // "3 saniye bekle, sonra 🔴 kırmızı daire tıkla"
+  "gorev": string, // ÖRNERİLEN TİPE GÖRE: ${onerilenTip === 'sayma' ? '"🔴 Kırmızı daireleri say"' : '"3 saniye bekle, sonra 🔴 kırmızı daire tıkla"'}
   "sure_saniye": number, // 30-60 arası
   "ipuclari": [string], // Max 2 ipucu, kısa ve net
   "hedefRenk": string, // Varsa: "kırmızı", "mavi" vs
@@ -438,12 +439,18 @@ ${performansMetni}
   "dikkatDagitici": number // 0-1 arası (0=yok, 1=maksimum)
 }
 
-12 YAŞ İÇİN GÖREV ÖRNEKLERİ:
-- "🔴 Kırmızı butona 2 saniye sonra bas"
+12 YAŞ İÇİN GÖREV ÖRNEKLERİ (ÖNERİLEN TİP: ${onerilenTip}):
+${onerilenTip === 'sayma' ?
+`- "🔴 Kırmızı daireleri say"
+- "🟢 Yeşil kareleri hesapla"
+- "⭐ Yıldızların sayısını bul"
+- "🔵 Mavi şekilleri say"
+- "🟡 Sarı objeleri hesapla"` :
+`- "🔴 Kırmızı butona 2 saniye sonra bas"
 - "🟢 Yeşil kareler sayısını bul"
 - "👀 Mavi ⭐ yıldızları takip et"
 - "⏰ 5 saniye sessizce bekle"
-- "🎯 Ortadaki hedefe odaklan"
+- "🎯 Ortadaki hedefe odaklan"`}
 
 YAPMA:
 - Uzun açıklamalar
