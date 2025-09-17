@@ -89,6 +89,7 @@ export interface AttentionSprintTask {
   hedefSekil?: string; // Hedef şekil (varsa)
   dikkatDagitici: number; // 0-1 arası dikkat dağıtıcı sayısı
   difficulty: 'kolay' | 'orta' | 'zor';
+  hedefTipi: 'renk' | 'sekil' | 'sayi' | 'genel'; // Ana hedef tipi
 }
 
 export interface AttentionSprintPerformance {
@@ -96,8 +97,25 @@ export interface AttentionSprintPerformance {
     basari: boolean;
     sure: number;
     zorluk: 'kolay' | 'orta' | 'zor';
+    hedefTipi?: 'renk' | 'sekil' | 'sayi' | 'genel';
+    hedefSayi?: number; // Sayı görevlerinde hedef değer
+    hizliCozum?: boolean; // Çok hızlı çözüldü mü
+    zamanlamaSapmasi?: number; // Hedef zamana göre sapma (saniye)
+    hedefZaman?: number; // Beklenen ideal süre (saniye)
   }[];
   ortalamaReaksiyonSuresi: number;
   basariOrani: number;
   odaklanmaDurumu: 'yuksek' | 'orta' | 'dusuk';
+  zamanlamaPerformansi?: {
+    ortalamaSapma: number; // Hedeften ortalama sapma
+    sapmaStandartSapma: number; // Tutarlılık ölçüsü
+    idealZamanlamaOrani: number; // ±1 saniye içinde çözme oranı
+    zamanlamaBasariOrani: number; // Zamanlama hedeflerindeki başarı
+  };
+  sayiGorevPerformansi?: {
+    ortalamaSayiZorlugu: number; // 1-9 arası ortalama
+    sayiBasariOrani: number;
+    ortalamaReaksiyonSuresiSayi: number;
+    hizliCozumSayisi: number; // Çok hızlı çözülen görev sayısı
+  };
 }

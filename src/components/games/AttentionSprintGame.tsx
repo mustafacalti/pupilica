@@ -38,6 +38,41 @@ export const AttentionSprintGame: React.FC<AttentionSprintGameProps> = ({
   const [showTarget, setShowTarget] = useState(false);
   const [targetClicked, setTargetClicked] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [targetPosition, setTargetPosition] = useState({ x: 50, y: 50 });
+  const [distractors, setDistractors] = useState<{id: string, x: number, y: number, type: string, value: string}[]>([]);
+
+  // Sayma modu için state'ler
+  const [isCountingMode, setIsCountingMode] = useState(false);
+  const [countingObjects, setCountingObjects] = useState<{
+    id: string,
+    x: number,
+    y: number,
+    value: string,
+    isTarget: boolean,
+    createdAt: number,
+    lifespan: number
+  }[]>([]);
+  const [userCount, setUserCount] = useState('');
+  const [totalTargetCount, setTotalTargetCount] = useState(0);
+  const [countingStartTime, setCountingStartTime] = useState(0);
+
+  // Dinamik tıklama modu için state'ler
+  const [isClickingMode, setIsClickingMode] = useState(false);
+  const [clickingObjects, setClickingObjects] = useState<{
+    id: string,
+    x: number,
+    y: number,
+    value: string,
+    isTarget: boolean,
+    createdAt: number,
+    lifespan: number
+  }[]>([]);
+  const [correctClicks, setCorrectClicks] = useState(0);
+  const [wrongClicks, setWrongClicks] = useState(0);
+  const [totalSpawned, setTotalSpawned] = useState(0);
+
+  // Son görevleri takip et (çeşitlilik için)
+  const [sonGorevler, setSonGorevler] = useState<string[]>([]);
 
   const roundStartTimeRef = useRef<number>(0);
   const hasGeneratedFirstTask = useRef(false);
@@ -45,6 +80,18 @@ export const AttentionSprintGame: React.FC<AttentionSprintGameProps> = ({
   const isEndingRound = useRef(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const totalRounds = 5;
+
+  /**
+   * Görev metninden hedef zamanlamayı çıkar
+   */
+  const extractTargetTiming = (gorevText: string): number | null => {
+    // "3 saniye sonra" → 3
+    // "5 saniye bekle" → 5
+    // "2 saniye sonra tıkla" → 2
+    const pattern = /(\d+)\s*saniye/i;
+    const match = gorevText.match(pattern);
+    return match ? parseInt(match[1]) : null;
+  };
 
   // İlk görevi yükle
   useEffect(() => {
@@ -84,11 +131,18 @@ export const AttentionSprintGame: React.FC<AttentionSprintGameProps> = ({
     try {
       const task = await attentionSprintGenerator.generateAttentionSprint({
         performansOzeti: initialPerformance,
-        studentAge
+        studentAge,
+        sonGorevler: [] // İlk görev için boş liste
       });
 
       setCurrentTask(task);
       setTimeLeft(task.sure_saniye);
+
+      // Son görevleri güncelle
+      setSonGorevler(prev => {
+        const yeniListe = [task.gorev, ...prev];
+        return yeniListe.slice(0, 5); // Son 5 görevi tut
+      });
     } catch (error) {
       console.error('İlk görev üretme hatası:', error);
     } finally {
@@ -120,12 +174,22 @@ export const AttentionSprintGame: React.FC<AttentionSprintGameProps> = ({
     // Ref'ten güncel rounds değerini al
     const currentRounds = roundsRef.current;
 
-    // Son 3 turu al
-    const son3Tur = currentRounds.slice(-3).map(round => ({
-      basari: round.success,
-      sure: round.reactionTime,
-      zorluk: round.task.difficulty
-    }));
+    // Son 3 turu al - gelişmiş performans verileriyle
+    const son3Tur = currentRounds.slice(-3).map(round => {
+      const hedefZaman = extractTargetTiming(round.task.gorev);
+      const zamanlamaSapmasi = hedefZaman ? Math.abs(round.reactionTime - hedefZaman) : 0;
+
+      return {
+        basari: round.success,
+        sure: round.reactionTime,
+        zorluk: round.task.difficulty,
+        hedefTipi: round.task.hedefTipi,
+        hedefSayi: round.task.hedefSayi,
+        hizliCozum: round.success && round.reactionTime < 3,
+        zamanlamaSapmasi: zamanlamaSapmasi,
+        hedefZaman: hedefZaman
+      };
+    });
 
     // Performans hesapla
     const basariOrani = currentRounds.length > 0 ? currentRounds.filter(r => r.success).length / currentRounds.length : 0.7;
@@ -141,21 +205,91 @@ export const AttentionSprintGame: React.FC<AttentionSprintGameProps> = ({
       odaklanmaDurumu = 'dusuk';
     }
 
+    // Zamanlama görevleri için özel performans analizi
+    const zamanlamaGorevleri = currentRounds.filter(r => {
+      const hedefZaman = extractTargetTiming(r.task.gorev);
+      return hedefZaman !== null;
+    });
+
+    const zamanlamaPerformansi = zamanlamaGorevleri.length > 0 ? {
+      ortalamaSapma: zamanlamaGorevleri.reduce((sum, r) => {
+        const hedefZaman = extractTargetTiming(r.task.gorev);
+        const sapma = hedefZaman ? Math.abs(r.reactionTime - hedefZaman) : 0;
+        return sum + sapma;
+      }, 0) / zamanlamaGorevleri.length,
+
+      sapmaStandartSapma: (() => {
+        const sapmalar = zamanlamaGorevleri.map(r => {
+          const hedefZaman = extractTargetTiming(r.task.gorev);
+          return hedefZaman ? Math.abs(r.reactionTime - hedefZaman) : 0;
+        });
+        const ortalama = sapmalar.reduce((sum, sapma) => sum + sapma, 0) / sapmalar.length;
+        const varyans = sapmalar.reduce((sum, sapma) => sum + Math.pow(sapma - ortalama, 2), 0) / sapmalar.length;
+        return Math.sqrt(varyans);
+      })(),
+
+      idealZamanlamaOrani: zamanlamaGorevleri.filter(r => {
+        const hedefZaman = extractTargetTiming(r.task.gorev);
+        const sapma = hedefZaman ? Math.abs(r.reactionTime - hedefZaman) : Infinity;
+        return sapma <= 1; // ±1 saniye içinde
+      }).length / zamanlamaGorevleri.length,
+
+      zamanlamaBasariOrani: zamanlamaGorevleri.filter(r => r.success).length / zamanlamaGorevleri.length
+
+    } : undefined;
+
+    // Sayı görevleri için özel performans analizi
+    const sayiGorevleri = currentRounds.filter(r => r.task.hedefTipi === 'sayi');
+    const sayiGorevPerformansi = sayiGorevleri.length > 0 ? {
+      ortalamaSayiZorlugu: sayiGorevleri.reduce((sum, r) => sum + (r.task.hedefSayi || 1), 0) / sayiGorevleri.length,
+      sayiBasariOrani: sayiGorevleri.filter(r => r.success).length / sayiGorevleri.length,
+      ortalamaReaksiyonSuresiSayi: sayiGorevleri.reduce((sum, r) => sum + r.reactionTime, 0) / sayiGorevleri.length,
+      hizliCozumSayisi: sayiGorevleri.filter(r => r.success && r.reactionTime < 3).length
+    } : undefined;
+
     const performance: AttentionSprintPerformance = {
       son3Tur,
       ortalamaReaksiyonSuresi,
       basariOrani,
-      odaklanmaDurumu
+      odaklanmaDurumu,
+      zamanlamaPerformansi,
+      sayiGorevPerformansi
     };
 
+    console.log('📊 [ADAPTIVE PERFORMANCE]', {
+      genel: { basariOrani, ortalamaReaksiyonSuresi, odaklanmaDurumu },
+      zamanlama: zamanlamaPerformansi,
+      sayiGorevleri: sayiGorevPerformansi,
+      son3Tur: son3Tur
+    });
+
     try {
+      console.log('🔍 [TASK GENERATION] Mevcut son görevler:', sonGorevler);
+
       const task = await attentionSprintGenerator.generateAttentionSprint({
         performansOzeti: performance,
-        studentAge
+        studentAge,
+        sonGorevler: sonGorevler
+      });
+
+      console.log('🎯 [TASK DEBUG] Üretilen görev:', {
+        gorev: task.gorev,
+        hedefRenk: task.hedefRenk,
+        hedefSekil: task.hedefSekil,
+        hedefSayi: task.hedefSayi,
+        dikkatDagitici: task.dikkatDagitici
       });
 
       setCurrentTask(task);
       setTimeLeft(task.sure_saniye);
+
+      // Son görevleri güncelle (en fazla 5 görev tutuyoruz)
+      setSonGorevler(prev => {
+        const yeniListe = [task.gorev, ...prev];
+        console.log('📝 [TASK HISTORY] Görev geçmişi güncellendi:', yeniListe);
+        return yeniListe.slice(0, 5); // Son 5 görevi tut
+      });
+
       console.log('✅ [ATTENTION SPRINT] Yeni görev hazır:', task.gorev);
     } catch (error) {
       console.error('Görev üretme hatası:', error);
@@ -216,25 +350,456 @@ export const AttentionSprintGame: React.FC<AttentionSprintGameProps> = ({
   };
 
   /**
+   * Rastgele pozisyon üret
+   */
+  const generateRandomPosition = () => ({
+    x: Math.random() * 70 + 15, // %15-85 arası
+    y: Math.random() * 60 + 20  // %20-80 arası
+  });
+
+  /**
+   * Yanıltıcı öğeler üret
+   */
+  const generateDistractors = () => {
+    if (!currentTask) return [];
+
+    const count = Math.floor(currentTask.dikkatDagitici * 5); // 0-5 arası
+    const distractorList = [];
+
+    for (let i = 0; i < count; i++) {
+      const position = generateRandomPosition();
+      let type = 'shape';
+      let value = '⚫';
+
+      // Görev tipine göre yanıltıcı seç
+      if (currentTask.hedefRenk && currentTask.hedefSekil) {
+        // Karma hedef (renk + şekil) - hedefle aynı rengi KULLANMA
+        type = 'combo';
+        const targetColor = currentTask.hedefRenk;
+        let comboOptions: string[] = [];
+
+        if (targetColor === 'mavi') {
+          comboOptions = ['🔴', '🟢', '🟡', '🟠', '🟣', '⭐', '⭕', '⬜', '🔺', '❤️', '💎']; // Mavi hariç
+        } else if (targetColor === 'kırmızı') {
+          comboOptions = ['🔵', '🟢', '🟡', '🟠', '🟣', '⭐', '⭕', '⬜', '🔺', '❤️', '💎']; // Kırmızı hariç
+        } else if (targetColor === 'yeşil') {
+          comboOptions = ['🔴', '🔵', '🟡', '🟠', '🟣', '⭐', '⭕', '⬜', '🔺', '❤️', '💎']; // Yeşil hariç
+        } else if (targetColor === 'sarı') {
+          comboOptions = ['🔴', '🔵', '🟢', '🟠', '🟣', '⭐', '⭕', '⬜', '🔺', '❤️', '💎']; // Sarı hariç
+        } else {
+          comboOptions = ['🔴', '🔵', '🟢', '🟡', '🟠', '🟣', '⭐', '⭕', '⬜', '🔺', '❤️', '💎'];
+        }
+
+        value = comboOptions[Math.floor(Math.random() * comboOptions.length)];
+      } else if (currentTask.hedefRenk) {
+        type = 'color';
+        const colors = ['🔴', '🔵', '🟢', '🟡', '🟠', '🟣'].filter(c => {
+          const colorMap: {[key: string]: string} = {
+            '🔴': 'kırmızı', '🔵': 'mavi', '🟢': 'yeşil',
+            '🟡': 'sarı', '🟠': 'turuncu', '🟣': 'mor'
+          };
+          return colorMap[c] !== currentTask.hedefRenk;
+        });
+        value = colors[Math.floor(Math.random() * colors.length)];
+      } else if (currentTask.hedefSekil) {
+        type = 'shape';
+        const shapes = ['⭐', '⭕', '⬜', '🔺', '❤️', '💎'].filter(s => {
+          const shapeMap: {[key: string]: string} = {
+            '⭐': 'yıldız', '⭕': 'daire', '⬜': 'kare', '🔺': 'üçgen', '❤️': 'kalp', '💎': 'elmas'
+          };
+          return shapeMap[s] !== currentTask.hedefSekil;
+        });
+        value = shapes[Math.floor(Math.random() * shapes.length)];
+      } else if (currentTask.hedefSayi) {
+        type = 'number';
+        const numbers = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣'].filter((_, idx) =>
+          (idx + 1) !== currentTask.hedefSayi
+        );
+        value = numbers[Math.floor(Math.random() * numbers.length)];
+      }
+
+      distractorList.push({
+        id: `distractor-${i}`,
+        x: position.x,
+        y: position.y,
+        type,
+        value
+      });
+    }
+
+    return distractorList;
+  };
+
+  /**
+   * Sayma görevi olup olmadığını kontrol et
+   */
+  const isCountingTask = (taskDescription: string): boolean => {
+    return taskDescription.toLowerCase().includes('say') ||
+           taskDescription.toLowerCase().includes('count') ||
+           taskDescription.toLowerCase().includes('adet');
+  };
+
+  /**
+   * Dinamik tıklama görevi olup olmadığını kontrol et
+   */
+  const isClickingTask = (taskDescription: string): boolean => {
+    const text = taskDescription.toLowerCase();
+    return (text.includes('tüm') && text.includes('tıkla')) ||
+           (text.includes('hepsi') && text.includes('tıkla')) ||
+           (text.includes('içinde') && text.includes('tıkla') && (text.includes('saniye') || text.includes('dakika')));
+  };
+
+  /**
+   * Zorluk seviyesine göre sayma parametreleri
+   */
+  const getCountingParams = (difficulty: string) => {
+    switch (difficulty) {
+      case 'kolay':
+        return {
+          totalObjects: 8,      // Toplam 8 obje
+          targetCount: 3,       // 3 tanesi hedef
+          spawnInterval: 2000,  // 2 saniyede bir spawn
+          objectLifespan: 4000, // 4 saniye yaşam süresi
+          spawnDuration: 15000  // 15 saniye boyunca spawn
+        };
+      case 'orta':
+        return {
+          totalObjects: 12,
+          targetCount: 5,
+          spawnInterval: 1500,
+          objectLifespan: 3000,
+          spawnDuration: 20000
+        };
+      case 'zor':
+        return {
+          totalObjects: 16,
+          targetCount: 7,
+          spawnInterval: 1000,
+          objectLifespan: 2000,
+          spawnDuration: 25000
+        };
+      default:
+        return {
+          totalObjects: 10,
+          targetCount: 4,
+          spawnInterval: 1800,
+          objectLifespan: 3500,
+          spawnDuration: 18000
+        };
+    }
+  };
+
+  /**
+   * Zorluk seviyesine göre tıklama parametreleri
+   */
+  const getClickingParams = (difficulty: string) => {
+    switch (difficulty) {
+      case 'kolay':
+        return {
+          spawnInterval: 2500,  // 2.5 saniyede bir spawn
+          objectLifespan: 5000, // 5 saniye yaşam süresi
+          targetRatio: 0.6,     // %60 hedef, %40 yanıltıcı
+        };
+      case 'orta':
+        return {
+          spawnInterval: 2000,  // 2 saniyede bir spawn
+          objectLifespan: 4000, // 4 saniye yaşam süresi
+          targetRatio: 0.5,     // %50 hedef, %50 yanıltıcı
+        };
+      case 'zor':
+        return {
+          spawnInterval: 1500,  // 1.5 saniyede bir spawn
+          objectLifespan: 3000, // 3 saniye yaşam süresi
+          targetRatio: 0.4,     // %40 hedef, %60 yanıltıcı
+        };
+      default:
+        return {
+          spawnInterval: 2000,
+          objectLifespan: 4000,
+          targetRatio: 0.5,
+        };
+    }
+  };
+
+  /**
+   * Dinamik tıklama objeler spawn et
+   */
+  const startClickingSpawn = () => {
+    const params = getClickingParams(currentTask?.difficulty || 'orta');
+    let spawnIntervalId: NodeJS.Timeout;
+
+    setCorrectClicks(0);
+    setWrongClicks(0);
+    setTotalSpawned(0);
+
+    const spawnObject = () => {
+      const shouldSpawnTarget = Math.random() < params.targetRatio;
+      const position = generateRandomPosition();
+
+      // Hedef ve yanıltıcı değerler
+      let value = '';
+      if (currentTask?.hedefRenk && currentTask?.hedefSekil) {
+        if (shouldSpawnTarget) {
+          // Karma hedefler - renk + şekil
+          if (currentTask.hedefRenk === 'mavi' && currentTask.hedefSekil === 'üçgen') {
+            value = '🔹';
+          } else if (currentTask.hedefRenk === 'yeşil' && currentTask.hedefSekil === 'daire') {
+            value = '🟢';
+          } else if (currentTask.hedefRenk === 'kırmızı' && currentTask.hedefSekil === 'daire') {
+            value = '🔴';
+          } else if (currentTask.hedefRenk === 'mavi' && currentTask.hedefSekil === 'daire') {
+            value = '🔵';
+          } else if (currentTask.hedefRenk === 'sarı' && currentTask.hedefSekil === 'daire') {
+            value = '🟡';
+          } else if (currentTask.hedefRenk === 'kırmızı' && currentTask.hedefSekil === 'üçgen') {
+            value = '🔺';
+          } else if (currentTask.hedefRenk === 'kırmızı' && currentTask.hedefSekil === 'kare') {
+            value = '🟥';
+          } else if (currentTask.hedefRenk === 'mavi' && currentTask.hedefSekil === 'kare') {
+            value = '🟦';
+          } else if (currentTask.hedefRenk === 'yeşil' && currentTask.hedefSekil === 'kare') {
+            value = '🟩';
+          } else {
+            value = '🔴'; // Fallback
+          }
+        } else {
+          // Yanıltıcılar - hedefle aynı renk OLMAYAN objeler
+          const targetColor = currentTask.hedefRenk;
+          const targetShape = currentTask.hedefSekil;
+
+          let wrongValues: string[] = [];
+          if (targetColor === 'mavi') {
+            wrongValues = ['🔴', '🟢', '🟡', '🟣', '🟠']; // Mavi hariç renkler
+          } else if (targetColor === 'kırmızı') {
+            wrongValues = ['🔵', '🟢', '🟡', '🟣', '🟠']; // Kırmızı hariç renkler
+          } else if (targetColor === 'yeşil') {
+            wrongValues = ['🔴', '🔵', '🟡', '🟣', '🟠']; // Yeşil hariç renkler
+          } else if (targetColor === 'sarı') {
+            wrongValues = ['🔴', '🔵', '🟢', '🟣', '🟠']; // Sarı hariç renkler
+          } else {
+            wrongValues = ['🔴', '🔵', '🟢', '🟡', '🔺', '⭕', '⬜', '💎'];
+          }
+
+          // Hedefle aynı şekli de ekleyebiliriz ama farklı renkte
+          if (targetShape === 'daire' && targetColor !== 'yeşil') wrongValues.push('🟢');
+          if (targetShape === 'daire' && targetColor !== 'kırmızı') wrongValues.push('🔴');
+          if (targetShape === 'üçgen' && targetColor !== 'kırmızı') wrongValues.push('🔺');
+          if (targetShape === 'kare' && targetColor !== 'mavi') wrongValues.push('🟦');
+
+          value = wrongValues[Math.floor(Math.random() * wrongValues.length)];
+        }
+      } else if (currentTask?.hedefRenk) {
+        const colorMap = { 'kırmızı': '🔴', 'mavi': '🔵', 'yeşil': '🟢', 'sarı': '🟡', 'mor': '🟣', 'turuncu': '🟠' };
+        if (shouldSpawnTarget) {
+          value = colorMap[currentTask.hedefRenk as keyof typeof colorMap] || '🔵';
+        } else {
+          // Hedef renk HARİCİNDEKİ renkler
+          const wrongColors = Object.values(colorMap).filter(c => c !== colorMap[currentTask.hedefRenk as keyof typeof colorMap]);
+          value = wrongColors[Math.floor(Math.random() * wrongColors.length)];
+        }
+      } else if (currentTask?.hedefSekil) {
+        const shapeMap = { 'yıldız': '⭐', 'daire': '⭕', 'kare': '⬜', 'üçgen': '🔺', 'kalp': '❤️', 'elmas': '💎' };
+        if (shouldSpawnTarget) {
+          value = shapeMap[currentTask.hedefSekil as keyof typeof shapeMap] || '🔺';
+        } else {
+          // Hedef şekil HARİCİNDEKİ şekiller
+          const wrongShapes = Object.values(shapeMap).filter(s => s !== shapeMap[currentTask.hedefSekil as keyof typeof shapeMap]);
+          value = wrongShapes[Math.floor(Math.random() * wrongShapes.length)];
+        }
+      }
+
+      const newObject = {
+        id: `clicking-${Date.now()}-${Math.random()}`,
+        x: position.x,
+        y: position.y,
+        value,
+        isTarget: shouldSpawnTarget,
+        createdAt: Date.now(),
+        lifespan: params.objectLifespan
+      };
+
+      setClickingObjects(prev => [...prev, newObject]);
+      setTotalSpawned(prev => prev + 1);
+
+      // Objeyi yaşam süresinden sonra kaldır
+      setTimeout(() => {
+        setClickingObjects(prev => prev.filter(obj => obj.id !== newObject.id));
+      }, params.objectLifespan);
+    };
+
+    // İlk objeyi hemen spawn et
+    spawnObject();
+
+    // Düzenli spawn
+    spawnIntervalId = setInterval(spawnObject, params.spawnInterval);
+
+    // Süre bitiminde spawn'ı durdur
+    setTimeout(() => {
+      clearInterval(spawnIntervalId);
+    }, (currentTask?.sure_saniye || 30) * 1000);
+  };
+
+  /**
+   * Dinamik objeler spawn et (sayma modu)
+   */
+  const startCountingSpawn = () => {
+    const params = getCountingParams(currentTask?.difficulty || 'orta');
+    let spawnedCount = 0;
+    let targetSpawnedCount = 0;
+
+    setTotalTargetCount(0); // Reset counter
+    setCountingStartTime(Date.now());
+
+    const spawnInterval = setInterval(() => {
+      if (spawnedCount >= params.totalObjects) {
+        clearInterval(spawnInterval);
+        return;
+      }
+
+      // Hedef mi yoksa yanıltıcı mı spawn edeceğini karar ver
+      const shouldSpawnTarget =
+        targetSpawnedCount < params.targetCount &&
+        (Math.random() < 0.4 || spawnedCount >= params.totalObjects - (params.targetCount - targetSpawnedCount));
+
+      const isTarget = shouldSpawnTarget;
+      if (isTarget) {
+        targetSpawnedCount++;
+        setTotalTargetCount(prev => prev + 1);
+      }
+
+      // Rastgele pozisyon
+      const position = generateRandomPosition();
+
+      // Hedef ve yanıltıcı değerler
+      let value = '';
+      if (currentTask?.hedefRenk && currentTask?.hedefSekil) {
+        if (isTarget) {
+          // Karma hedefler - renk + şekil
+          if (currentTask.hedefRenk === 'yeşil' && currentTask.hedefSekil === 'daire') {
+            value = '🟢';
+          } else if (currentTask.hedefRenk === 'mavi' && currentTask.hedefSekil === 'üçgen') {
+            value = '🔹';
+          } else if (currentTask.hedefRenk === 'kırmızı' && currentTask.hedefSekil === 'daire') {
+            value = '🔴';
+          } else if (currentTask.hedefRenk === 'mavi' && currentTask.hedefSekil === 'daire') {
+            value = '🔵';
+          } else {
+            value = '🔴'; // Fallback
+          }
+        } else {
+          // Yanıltıcılar - hedefle aynı renk OLMAYAN objeler
+          const targetColor = currentTask.hedefRenk;
+          let wrongValues: string[] = [];
+
+          if (targetColor === 'mavi') {
+            wrongValues = ['🔴', '🟢', '🟡', '🟣', '🟠'];
+          } else if (targetColor === 'kırmızı') {
+            wrongValues = ['🔵', '🟢', '🟡', '🟣', '🟠'];
+          } else if (targetColor === 'yeşil') {
+            wrongValues = ['🔴', '🔵', '🟡', '🟣', '🟠'];
+          } else if (targetColor === 'sarı') {
+            wrongValues = ['🔴', '🔵', '🟢', '🟣', '🟠'];
+          } else {
+            wrongValues = ['🔴', '🔵', '🟢', '🟡'];
+          }
+
+          value = wrongValues[Math.floor(Math.random() * wrongValues.length)];
+        }
+      } else if (currentTask?.hedefRenk) {
+        const colorMap = { 'kırmızı': '🔴', 'mavi': '🔵', 'yeşil': '🟢', 'sarı': '🟡', 'mor': '🟣', 'turuncu': '🟠' };
+        if (isTarget) {
+          value = colorMap[currentTask.hedefRenk as keyof typeof colorMap] || '🟢';
+        } else {
+          // Hedef renk HARİCİNDEKİ renkler
+          const wrongColors = Object.values(colorMap).filter(c => c !== colorMap[currentTask.hedefRenk as keyof typeof colorMap]);
+          value = wrongColors[Math.floor(Math.random() * wrongColors.length)];
+        }
+      } else if (currentTask?.hedefSekil) {
+        const shapeMap = { 'yıldız': '⭐', 'daire': '⭕', 'kare': '⬜', 'üçgen': '🔺', 'kalp': '❤️', 'elmas': '💎' };
+        if (isTarget) {
+          value = shapeMap[currentTask.hedefSekil as keyof typeof shapeMap] || '🔺';
+        } else {
+          // Hedef şekil HARİCİNDEKİ şekiller
+          const wrongShapes = Object.values(shapeMap).filter(s => s !== shapeMap[currentTask.hedefSekil as keyof typeof shapeMap]);
+          value = wrongShapes[Math.floor(Math.random() * wrongShapes.length)];
+        }
+      }
+
+      const newObject = {
+        id: `counting-${Date.now()}-${Math.random()}`,
+        x: position.x,
+        y: position.y,
+        value,
+        isTarget,
+        createdAt: Date.now(),
+        lifespan: params.objectLifespan
+      };
+
+      setCountingObjects(prev => [...prev, newObject]);
+
+      // Objeyi yaşam süresinden sonra kaldır
+      setTimeout(() => {
+        setCountingObjects(prev => prev.filter(obj => obj.id !== newObject.id));
+      }, params.objectLifespan);
+
+      spawnedCount++;
+    }, params.spawnInterval);
+
+    // Spawn süresinden sonra durdur
+    setTimeout(() => {
+      clearInterval(spawnInterval);
+    }, params.spawnDuration);
+  };
+
+  /**
    * Görevi başlat
    */
   const startTask = () => {
     if (!currentTask) return;
 
+    const isCountingTask_ = isCountingTask(currentTask.gorev);
+    const isClickingTask_ = isClickingTask(currentTask.gorev);
+
+    setIsCountingMode(isCountingTask_);
+    setIsClickingMode(isClickingTask_);
+
     setGameState('active');
     setTimeLeft(currentTask.sure_saniye);
 
-    // Hedef gösterme (görev tipine göre)
-    if (currentTask.hedefRenk || currentTask.hedefSekil) {
-      // 1-3 saniye arasında rastgele gecikme
-      const delay = Math.random() * 2000 + 1000;
-      setTimeout(() => {
-        setShowTarget(true);
-        startTimer(); // Hedef göründüğünde timer başlat
-      }, delay);
+    // DEBUG: Hedef bilgilerini logla
+    console.log('🔍 [HEDEF DEBUG]', {
+      gorev: currentTask.gorev,
+      hedefRenk: currentTask.hedefRenk,
+      hedefSekil: currentTask.hedefSekil,
+      hedefSayi: currentTask.hedefSayi,
+      hedefTipi: currentTask.hedefTipi,
+      isCountingMode: isCountingTask_,
+      isClickingMode: isClickingTask_
+    });
+
+    if (isCountingTask_) {
+      // Sayma modu
+      startCountingSpawn();
+      startTimer();
+    } else if (isClickingTask_) {
+      // Dinamik tıklama modu
+      startClickingSpawn();
+      startTimer();
     } else {
-      setShowTarget(true);
-      startTimer(); // Hemen hedef görünüyorsa timer başlat
+      // Normal tek tıklama modu
+      setTargetPosition(generateRandomPosition());
+      setDistractors(generateDistractors());
+
+      if (currentTask.hedefRenk || currentTask.hedefSekil || currentTask.hedefSayi) {
+        const delay = Math.random() * 2000 + 1000;
+        setTimeout(() => {
+          setShowTarget(true);
+          startTimer();
+        }, delay);
+      } else {
+        setShowTarget(true);
+        startTimer();
+      }
     }
   };
 
@@ -251,14 +816,74 @@ export const AttentionSprintGame: React.FC<AttentionSprintGameProps> = ({
   };
 
   /**
+   * Yanıltıcı öğeye tıklama
+   */
+  const handleDistractorClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (gameState !== 'active' || targetClicked) return;
+
+    // Yanlış hedefe tıklandı
+    const reactionTime = (Date.now() - roundStartTimeRef.current) / 1000;
+    endRound(false, reactionTime);
+  };
+
+  /**
    * Oyun alanına (yanlış yere) tıklama
    */
   const handleGameAreaClick = () => {
-    if (gameState !== 'active' || !showTarget || targetClicked) return;
+    if (gameState !== 'active' || !showTarget || targetClicked || isCountingMode) return;
 
     // Yanlış yere tıklandı, görev başarısız
     const reactionTime = (Date.now() - roundStartTimeRef.current) / 1000;
     endRound(false, reactionTime);
+  };
+
+  /**
+   * Sayma cevabını kontrol et
+   */
+  const handleCountSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isCountingMode || userCount.trim() === '') return;
+
+    const countAnswer = parseInt(userCount);
+    const isCorrect = countAnswer === totalTargetCount;
+    const reactionTime = (Date.now() - roundStartTimeRef.current) / 1000;
+
+    console.log('🔢 [COUNTING RESULT]', {
+      userAnswer: countAnswer,
+      correctAnswer: totalTargetCount,
+      isCorrect,
+      reactionTime
+    });
+
+    endRound(isCorrect, reactionTime);
+  };
+
+  /**
+   * Sayma input değişimi
+   */
+  const handleCountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    // Sadece sayıları kabul et
+    if (value === '' || /^\d+$/.test(value)) {
+      setUserCount(value);
+    }
+  };
+
+  /**
+   * Dinamik tıklama objesine tıklama
+   */
+  const handleClickingObjectClick = (objectId: string, isTargetObject: boolean) => {
+    // Objeyi hemen kaldır
+    setClickingObjects(prev => prev.filter(obj => obj.id !== objectId));
+
+    if (isTargetObject) {
+      setCorrectClicks(prev => prev + 1);
+      console.log('✅ [CLICKING] Doğru tıklama!');
+    } else {
+      setWrongClicks(prev => prev + 1);
+      console.log('❌ [CLICKING] Yanlış tıklama!');
+    }
   };
 
   /**
@@ -278,6 +903,15 @@ export const AttentionSprintGame: React.FC<AttentionSprintGameProps> = ({
 
     const finalReactionTime = reactionTime || (Date.now() - roundStartTimeRef.current) / 1000;
 
+    // Zamanlama sapması analizi
+    const hedefZaman = extractTargetTiming(currentTask.gorev);
+    const zamanlamaSapmasi = hedefZaman ? Math.abs(finalReactionTime - hedefZaman) : 0;
+    const idealZamanlama = hedefZaman && zamanlamaSapmasi <= 1; // ±1 saniye ideal
+
+    // Hızlı çözüm analizi
+    const isQuickSolution = success && finalReactionTime < 3; // 3 saniyeden hızlı
+    const isVeryQuickSolution = success && finalReactionTime < 1.5; // 1.5 saniyeden çok hızlı
+
     const round: SprintRound = {
       task: currentTask,
       startTime: roundStartTimeRef.current,
@@ -285,6 +919,26 @@ export const AttentionSprintGame: React.FC<AttentionSprintGameProps> = ({
       success,
       reactionTime: finalReactionTime
     };
+
+    console.log('⚡ [PERFORMANCE ANALYSIS]', {
+      görev: currentTask.gorev,
+      hedefTipi: currentTask.hedefTipi,
+      hedefSayi: currentTask.hedefSayi,
+      başarılı: success,
+      reaksiyonSüresi: finalReactionTime,
+      hedefZaman: hedefZaman,
+      zamanlamaSapmasi: zamanlamaSapmasi,
+      idealZamanlama: idealZamanlama,
+      hızlıÇözüm: isQuickSolution,
+      çokHızlıÇözüm: isVeryQuickSolution,
+      // Sayma modu analizi
+      saymaModu: isCountingMode,
+      ...(isCountingMode && {
+        doğruSayı: totalTargetCount,
+        kullanıcıCevabı: parseInt(userCount) || 0,
+        saymaDoğruluğu: success ? 'mükemmel' : 'hatalı'
+      })
+    });
 
     setRounds(prev => [...prev, round]);
 
@@ -318,6 +972,21 @@ export const AttentionSprintGame: React.FC<AttentionSprintGameProps> = ({
         completeGame();
       } else {
         setCurrentRound(prev => prev + 1);
+        setShowTarget(false);
+        setTargetClicked(false);
+        setDistractors([]);
+        // Sayma modu state'lerini temizle
+        setIsCountingMode(false);
+        setCountingObjects([]);
+        setUserCount('');
+        setTotalTargetCount(0);
+        setCountingStartTime(0);
+        // Tıklama modu state'lerini temizle
+        setIsClickingMode(false);
+        setClickingObjects([]);
+        setCorrectClicks(0);
+        setWrongClicks(0);
+        setTotalSpawned(0);
         await generateNextTask();
         // Görev üretildikten sonra ready durumuna geç
         setGameState('ready');
@@ -351,6 +1020,24 @@ export const AttentionSprintGame: React.FC<AttentionSprintGameProps> = ({
     setScore(0);
     setEmotions([]);
     setGameState('ready');
+    setShowTarget(false);
+    setTargetClicked(false);
+    setTargetPosition({ x: 50, y: 50 });
+    setDistractors([]);
+    // Sayma modu state'lerini temizle
+    setIsCountingMode(false);
+    setCountingObjects([]);
+    setUserCount('');
+    setTotalTargetCount(0);
+    setCountingStartTime(0);
+    // Tıklama modu state'lerini temizle
+    setIsClickingMode(false);
+    setClickingObjects([]);
+    setCorrectClicks(0);
+    setWrongClicks(0);
+    setTotalSpawned(0);
+    // Son görevleri temizle
+    setSonGorevler([]);
     hasGeneratedFirstTask.current = false;
     isGeneratingRef.current = false;
     isEndingRound.current = false;
@@ -470,59 +1157,191 @@ export const AttentionSprintGame: React.FC<AttentionSprintGameProps> = ({
             </div>
           ) : gameState === 'active' ? (
             <div
-              className="space-y-6 cursor-crosshair"
-              onClick={handleGameAreaClick}
+              className={`space-y-6 ${!isCountingMode ? 'cursor-crosshair' : ''}`}
+              onClick={!isCountingMode ? handleGameAreaClick : undefined}
             >
               <h2 className="text-xl font-bold text-gray-800">{currentTask?.gorev}</h2>
 
-              {showTarget && currentTask && (
-                <div className="relative">
-                  {/* Büyük zemin yuvarlağı - tıklanamaz */}
-                  <div
-                    className={`
-                      w-32 h-32 rounded-full border-4 transition-all duration-200 relative flex items-center justify-center
-                      ${targetClicked
-                        ? 'bg-green-500 border-green-600 scale-110'
-                        : 'bg-blue-500 border-blue-600 animate-pulse'
-                      }
-                    `}
-                  >
-                    {/* Küçük hedef alan - sadece bu tıklanabilir */}
-                    <button
-                      onClick={handleTargetClick}
-                      disabled={targetClicked}
-                      className="w-12 h-12 rounded-full bg-white hover:bg-gray-100 transition-colors duration-200 flex items-center justify-center text-2xl shadow-lg"
-                    >
-                      {currentTask.hedefSekil === 'yıldız' && '⭐'}
-                      {currentTask.hedefSekil === 'daire' && '⭕'}
-                      {currentTask.hedefSekil === 'kare' && '⬜'}
-                      {currentTask.hedefRenk === 'kırmızı' && '🔴'}
-                      {currentTask.hedefRenk === 'mavi' && '🔵'}
-                      {currentTask.hedefRenk === 'yeşil' && '🟢'}
-                      {currentTask.hedefRenk === 'sarı' && '🟡'}
-                      {!currentTask.hedefSekil && !currentTask.hedefRenk && '🎯'}
-                    </button>
+              {isCountingMode ? (
+                // SAYMA MODU
+                <div className="space-y-6">
+                  {/* Dinamik objeler */}
+                  <div className="relative w-full h-96 bg-gray-50 rounded-lg overflow-hidden">
+                    {countingObjects.map((obj) => (
+                      <div
+                        key={obj.id}
+                        className="absolute w-8 h-8 text-2xl animate-bounce transition-all duration-500"
+                        style={{
+                          left: `${obj.x}%`,
+                          top: `${obj.y}%`,
+                          transform: 'translate(-50%, -50%)',
+                          animationDuration: `${1 + Math.random()}s`
+                        }}
+                      >
+                        {obj.value}
+                      </div>
+                    ))}
                   </div>
 
-                  {/* Dikkat dağıtıcılar */}
-                  {currentTask.dikkatDagitici > 0 && (
-                    <div className="absolute inset-0 pointer-events-none">
-                      {Array.from({ length: Math.ceil(currentTask.dikkatDagitici * 3) }).map((_, i) => (
-                        <div
-                          key={i}
-                          className="absolute w-8 h-8 bg-gray-300 rounded opacity-50 animate-bounce"
-                          style={{
-                            left: `${20 + (i * 25)}%`,
-                            top: `${30 + (i * 20)}%`,
-                            animationDelay: `${i * 0.2}s`
-                          }}
-                        >
-                          ⚫
-                        </div>
-                      ))}
+                  {/* Sayma input */}
+                  <form onSubmit={handleCountSubmit} className="space-y-4">
+                    <div className="flex items-center justify-center space-x-4">
+                      <label className="text-lg font-medium">Toplam:</label>
+                      <input
+                        type="text"
+                        value={userCount}
+                        onChange={handleCountChange}
+                        className="w-20 h-12 text-center text-xl font-bold border-2 border-blue-400 rounded-lg focus:outline-none focus:border-green-400"
+                        placeholder="0"
+                        maxLength={2}
+                      />
+                      <button
+                        type="submit"
+                        disabled={userCount.trim() === ''}
+                        className="px-6 py-2 bg-green-500 text-white rounded-lg font-medium hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                      >
+                        Gönder
+                      </button>
                     </div>
-                  )}
+                  </form>
+
+                  {/* Süre göstergesi */}
+                  <div className="flex items-center justify-center space-x-2 text-lg">
+                    <Clock className="h-5 w-5 text-blue-600" />
+                    <span className="font-mono font-bold text-blue-600">{timeLeft}s</span>
+                  </div>
                 </div>
+              ) : isClickingMode ? (
+                // DİNAMİK TIKLAMA MODU - 50 saniye mavi üçgen tıkla gibi
+                <div className="space-y-6">
+                  {/* Dinamik tıklama objeleri */}
+                  <div className="relative w-full h-96 bg-gray-50 rounded-lg overflow-hidden">
+                    {clickingObjects.map((obj) => (
+                      <button
+                        key={obj.id}
+                        onClick={() => handleClickingObjectClick(obj.id, obj.isTarget)}
+                        className={`
+                          absolute w-12 h-12 rounded-full transition-all duration-300 flex items-center justify-center text-2xl shadow-lg border-2
+                          ${obj.isTarget
+                            ? 'bg-green-50 border-green-300 hover:bg-green-100 hover:scale-110'
+                            : 'bg-red-50 border-red-300 hover:bg-red-100'
+                          }
+                          animate-bounce
+                        `}
+                        style={{
+                          left: `${obj.x}%`,
+                          top: `${obj.y}%`,
+                          transform: 'translate(-50%, -50%)',
+                          animationDuration: `${0.8 + Math.random() * 0.4}s`
+                        }}
+                      >
+                        {obj.value}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Tıklama modu skorları */}
+                  <div className="flex items-center justify-center space-x-8">
+                    <div className="flex items-center space-x-2 text-green-600">
+                      <Star className="h-5 w-5" />
+                      <span className="text-lg font-bold">Doğru: {correctClicks}</span>
+                    </div>
+                    <div className="flex items-center space-x-2 text-red-600">
+                      <X className="h-5 w-5" />
+                      <span className="text-lg font-bold">Yanlış: {wrongClicks}</span>
+                    </div>
+                    <div className="flex items-center space-x-2 text-blue-600">
+                      <Target className="h-5 w-5" />
+                      <span className="text-lg font-bold">Toplam Çıkan: {totalSpawned}</span>
+                    </div>
+                  </div>
+
+                  {/* Süre göstergesi */}
+                  <div className="flex items-center justify-center space-x-2 text-lg">
+                    <Clock className="h-5 w-5 text-blue-600" />
+                    <span className="font-mono font-bold text-blue-600">{timeLeft}s</span>
+                  </div>
+                </div>
+              ) : (
+                // NORMAL TIKLAMA MODU
+                showTarget && currentTask && (
+                  <div className="relative w-full h-96">
+                  {/* Yanıltıcı öğeler */}
+                  {distractors.map((distractor) => (
+                    <button
+                      key={distractor.id}
+                      onClick={handleDistractorClick}
+                      className="absolute w-12 h-12 rounded-full bg-white hover:bg-red-100 transition-colors duration-200 flex items-center justify-center text-2xl shadow-lg border-2 border-gray-300"
+                      style={{
+                        left: `${distractor.x}%`,
+                        top: `${distractor.y}%`,
+                        transform: 'translate(-50%, -50%)'
+                      }}
+                    >
+                      {distractor.value}
+                    </button>
+                  ))}
+
+                  {/* Gerçek hedef - sadece küçük buton */}
+                  <button
+                    onClick={handleTargetClick}
+                    disabled={targetClicked}
+                    className={`
+                      absolute w-12 h-12 rounded-full transition-colors duration-200 flex items-center justify-center text-2xl shadow-lg border-2
+                      ${targetClicked
+                        ? 'bg-green-100 border-green-400 scale-110'
+                        : 'bg-white hover:bg-green-50 border-blue-400 hover:border-green-400'
+                      }
+                    `}
+                    style={{
+                      left: `${targetPosition.x}%`,
+                      top: `${targetPosition.y}%`,
+                      transform: 'translate(-50%, -50%)'
+                    }}
+                  >
+                        {/* ÖNCE KARMA HEDEFLERİ KONTROL ET */}
+                        {currentTask.hedefRenk === 'kırmızı' && currentTask.hedefSekil === 'daire' && '🔴'}
+                        {currentTask.hedefRenk === 'mavi' && currentTask.hedefSekil === 'daire' && '🔵'}
+                        {currentTask.hedefRenk === 'yeşil' && currentTask.hedefSekil === 'daire' && '🟢'}
+                        {currentTask.hedefRenk === 'sarı' && currentTask.hedefSekil === 'daire' && '🟡'}
+                        {currentTask.hedefRenk === 'mor' && currentTask.hedefSekil === 'daire' && '🟣'}
+                        {currentTask.hedefRenk === 'turuncu' && currentTask.hedefSekil === 'daire' && '🟠'}
+
+                        {currentTask.hedefRenk === 'kırmızı' && currentTask.hedefSekil === 'üçgen' && '🔺'}
+                        {currentTask.hedefRenk === 'mavi' && currentTask.hedefSekil === 'üçgen' && '🔹'}
+                        {currentTask.hedefRenk === 'yeşil' && currentTask.hedefSekil === 'üçgen' && '🔸'}
+                        {currentTask.hedefRenk === 'sarı' && currentTask.hedefSekil === 'üçgen' && '🟨'}
+
+                        {currentTask.hedefRenk === 'kırmızı' && currentTask.hedefSekil === 'kare' && '🟥'}
+                        {currentTask.hedefRenk === 'mavi' && currentTask.hedefSekil === 'kare' && '🟦'}
+                        {currentTask.hedefRenk === 'yeşil' && currentTask.hedefSekil === 'kare' && '🟩'}
+                        {currentTask.hedefRenk === 'sarı' && currentTask.hedefSekil === 'kare' && '🟨'}
+
+                        {/* SONRA TEK HEDEFLERİ KONTROL ET - sadece karma yoksa */}
+                        {/* Sadece Şekil Hedefleri */}
+                        {!currentTask.hedefRenk && currentTask.hedefSekil === 'yıldız' && '⭐'}
+                        {!currentTask.hedefRenk && currentTask.hedefSekil === 'daire' && '⭕'}
+                        {!currentTask.hedefRenk && currentTask.hedefSekil === 'kare' && '⬜'}
+                        {!currentTask.hedefRenk && currentTask.hedefSekil === 'üçgen' && '🔺'}
+                        {!currentTask.hedefRenk && currentTask.hedefSekil === 'kalp' && '❤️'}
+                        {!currentTask.hedefRenk && currentTask.hedefSekil === 'elmas' && '💎'}
+
+                        {/* Sadece Renk Hedefleri */}
+                        {!currentTask.hedefSekil && currentTask.hedefRenk === 'kırmızı' && '🔴'}
+                        {!currentTask.hedefSekil && currentTask.hedefRenk === 'mavi' && '🔵'}
+                        {!currentTask.hedefSekil && currentTask.hedefRenk === 'yeşil' && '🟢'}
+                        {!currentTask.hedefSekil && currentTask.hedefRenk === 'sarı' && '🟡'}
+                        {!currentTask.hedefSekil && currentTask.hedefRenk === 'mor' && '🟣'}
+                        {!currentTask.hedefSekil && currentTask.hedefRenk === 'turuncu' && '🟠'}
+
+                        {/* Sayı Hedefleri */}
+                        {currentTask.hedefSayi && !currentTask.hedefRenk && !currentTask.hedefSekil && `${currentTask.hedefSayi}️⃣`}
+
+                        {/* Varsayılan */}
+                        {!currentTask.hedefSekil && !currentTask.hedefRenk && !currentTask.hedefSayi && '🎯'}
+                  </button>
+                </div>
+                )
               )}
 
               {!showTarget && (
