@@ -147,6 +147,23 @@ class AttentionSprintGenerator {
    * Görev çeşitliliğini belirle - tekrarları engelle
    */
   private determineTaskVariety(sonGorevler: string[]): string {
+    // Eğer sonGorevler'de özel oyun tipi belirtilmişse onu kullan
+    if (sonGorevler.length === 1) {
+      const ozelTip = sonGorevler[0];
+      if (ozelTip === 'sayma') {
+        console.log('🎨 [VARIETY] Özel istek: Sayma oyunu');
+        return 'sayma';
+      }
+      if (ozelTip === 'dinamik-tıklama') {
+        console.log('🎨 [VARIETY] Özel istek: Dinamik tıklama oyunu');
+        return 'dinamik-tıklama';
+      }
+      if (ozelTip === 'tıklama') {
+        console.log('🎨 [VARIETY] Özel istek: Normal tıklama oyunu');
+        return 'renk-tıklama';
+      }
+    }
+
     // Son görevlerin tiplerini analiz et
     const sonTipler = sonGorevler.map(gorev => this.analyzeTaskType(gorev));
 

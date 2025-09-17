@@ -3,7 +3,7 @@ import { useAuth } from '../hooks/useAuth';
 import { WordImageGame } from '../components/games/WordImageGame';
 import { NumberGame } from '../components/games/NumberGame';
 import { ColorGame } from '../components/games/ColorGame';
-import { AttentionSprintGame } from '../components/games/AttentionSprintGame';
+import { AttentionGameSelector } from '../components/games/AttentionGameSelector';
 import { Brain, BookOpen, Hash, Palette, Target, LogOut, User, Trophy, Clock } from 'lucide-react';
 
 type GameType = 'word-image' | 'number' | 'color' | 'attention-sprint' | null;
@@ -26,8 +26,12 @@ export const StudentDashboardPage: React.FC = () => {
     }
   };
 
-  const handleGameComplete = () => {
+  const handleGameComplete = (score?: number, duration?: number, emotions?: any[]) => {
     setSelectedGame(null);
+    // İsteğe bağlı: Oyun sonuç verilerini kaydet
+    if (score !== undefined) {
+      console.log('Oyun tamamlandı:', { score, duration, emotions });
+    }
   };
 
   const renderGame = () => {
@@ -53,7 +57,7 @@ export const StudentDashboardPage: React.FC = () => {
           onGameComplete={handleGameComplete}
         />;
       case 'attention-sprint':
-        return <AttentionSprintGame
+        return <AttentionGameSelector
           studentId={currentUser.id}
           studentAge={currentUser.age || 12}
           onGameComplete={handleGameComplete}
@@ -252,30 +256,33 @@ export const StudentDashboardPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Attention Sprint Game */}
+          {/* Attention Games */}
           <div className="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
             <div className="bg-gradient-to-r from-orange-500 to-red-500 p-6 text-white">
               <Target className="h-12 w-12 mb-4" />
-              <h3 className="text-xl font-bold mb-2">Dikkat Sprintleri</h3>
+              <h3 className="text-xl font-bold mb-2">Dikkat Oyunları</h3>
               <p className="text-orange-100">
-                Hızlı görevlerle odaklanma becerileri
+                3 farklı dikkat geliştirici oyun seçeneği
               </p>
             </div>
             <div className="p-6">
               <div className="mb-4">
                 <div className="flex justify-between text-sm text-gray-600 mb-1">
-                  <span>Son Puan</span>
-                  <span>4/5</span>
+                  <span>Oyun Çeşidi</span>
+                  <span>3 Tür</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div className="bg-orange-500 h-2 rounded-full" style={{ width: '80%' }}></div>
+                  <div className="bg-orange-500 h-2 rounded-full" style={{ width: '100%' }}></div>
+                </div>
+                <div className="mt-2 text-xs text-gray-600">
+                  Tıklama • Sayma • Dinamik
                 </div>
               </div>
               <button
                 onClick={() => setSelectedGame('attention-sprint')}
                 className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 px-4 rounded-lg font-medium transition-colors"
               >
-                Oyunu Başlat
+                Oyunları Keşfet
               </button>
             </div>
           </div>
