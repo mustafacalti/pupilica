@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { WordImageGame } from '../components/games/WordImageGame';
 import { NumberGame } from '../components/games/NumberGame';

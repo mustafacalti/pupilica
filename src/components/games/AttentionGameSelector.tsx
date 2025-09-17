@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Card, CardContent } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { EmotionResult } from '../../types';
@@ -45,6 +45,34 @@ export const AttentionGameSelector: React.FC<AttentionGameSelectorProps> = ({
   const [selectedGame, setSelectedGame] = useState<GameType | null>(null);
   const [selectedDifficulty, setSelectedDifficulty] = useState<DifficultyLevel>('orta');
   const [gameStarted, setGameStarted] = useState(false);
+
+  const prevPropsRef = useRef({ studentId, studentAge, onGameComplete, onEmotionDetected });
+  const renderCountRef = useRef(0);
+  renderCountRef.current += 1;
+
+  // Props değişiklik kontrolü
+  const propsChanged =
+    prevPropsRef.current.studentId !== studentId ||
+    prevPropsRef.current.studentAge !== studentAge ||
+    prevPropsRef.current.onGameComplete !== onGameComplete ||
+    prevPropsRef.current.onEmotionDetected !== onEmotionDetected;
+
+  console.log('🔄 [RENDER] AttentionGameSelector render edildi:', {
+    renderCount: renderCountRef.current,
+    selectedGame,
+    selectedDifficulty,
+    gameStarted,
+    propsChanged,
+    changedProps: propsChanged ? {
+      studentId: prevPropsRef.current.studentId !== studentId,
+      studentAge: prevPropsRef.current.studentAge !== studentAge,
+      onGameComplete: prevPropsRef.current.onGameComplete !== onGameComplete,
+      onEmotionDetected: prevPropsRef.current.onEmotionDetected !== onEmotionDetected
+    } : 'none',
+    timestamp: new Date().toISOString()
+  });
+
+  prevPropsRef.current = { studentId, studentAge, onGameComplete, onEmotionDetected };
 
   const gameTypes: GameInfo[] = [
     {

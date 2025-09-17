@@ -665,6 +665,8 @@ Genel Durum:
       corrected.hedefRenk = detectedColors;
       corrected.hedefSekil = detectedShapes;
       corrected.hedefSayi = undefined; // Sayı temizle
+      // Görev metnindeki sayıları da temizle
+      corrected.gorev = corrected.gorev.replace(/\d+/g, '').replace(/\s+/g, ' ').trim();
     }
     // Sadece renk
     else if (detectedColors && !detectedShapes) {
@@ -672,6 +674,8 @@ Genel Durum:
       corrected.hedefRenk = detectedColors;
       corrected.hedefSekil = undefined;
       corrected.hedefSayi = undefined;
+      // Görev metnindeki sayıları da temizle
+      corrected.gorev = corrected.gorev.replace(/\d+/g, '').replace(/\s+/g, ' ').trim();
     }
     // Sadece şekil
     else if (detectedShapes && !detectedColors) {
@@ -679,6 +683,8 @@ Genel Durum:
       corrected.hedefSekil = detectedShapes;
       corrected.hedefRenk = undefined;
       corrected.hedefSayi = undefined;
+      // Görev metnindeki sayıları da temizle
+      corrected.gorev = corrected.gorev.replace(/\d+/g, '').replace(/\s+/g, ' ').trim();
     }
 
     // Sayı düzeltmesi (sadece gerçek hedef sayı görevleri için)
@@ -692,6 +698,8 @@ Genel Durum:
     else if (task.hedefSayi && !detectedNumbers && (detectedColors || detectedShapes)) {
       console.log(`🔧 [TASK FIX] Yanlış sayı temizleme: hedefSayi ${task.hedefSayi} silindi`);
       corrected.hedefSayi = undefined;
+      // Görev metnindeki sayıları da temizle
+      corrected.gorev = corrected.gorev.replace(/\d+/g, '').replace(/\s+/g, ' ').trim();
     }
 
     return corrected;

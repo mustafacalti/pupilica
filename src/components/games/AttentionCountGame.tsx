@@ -56,31 +56,30 @@ export const AttentionCountGame: React.FC<AttentionCountGameProps> = ({
   const [countingStartTime, setCountingStartTime] = useState(0);
   const [showFinalMessage, setShowFinalMessage] = useState(false);
 
+  // Dinamik zorluk için state'ler
+  const [dynamicDifficulty, setDynamicDifficulty] = useState(difficulty);
+  const [gameDurationMultiplier, setGameDurationMultiplier] = useState(1.0);
+  const [performanceHistory, setPerformanceHistory] = useState<{
+    correct: boolean;
+    accuracy: number;
+    round: number;
+  }[]>([]);
+
   const roundStartTimeRef = useRef<number>(0);
   const hasGeneratedFirstTask = useRef(false);
   const isGeneratingRef = useRef(false);
   const isEndingRound = useRef(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const spawnIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const totalRounds = 5;
 
-  // İlk görevi yükle
-  useEffect(() => {
-    if (!hasGeneratedFirstTask.current && !isGenerating) {
-      hasGeneratedFirstTask.current = true;
-      generateFirstTask();
+  const generateFirstTask = useCallback(async () => {
+    if (isGeneratingRef.current) {
+      console.log('🚫 [DUPLICATE CALL] generateFirstTask already running, skipping');
+      return;
     }
 
-    return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
-      }
-    };
-  }, []);
-
-  const generateFirstTask = useCallback(async () => {
-    if (isGeneratingRef.current) return;
-
+    console.log('🎬 [TASK GENERATION] Starting task generation');
     isGeneratingRef.current = true;
     setIsGenerating(true);
 
@@ -121,6 +120,25 @@ export const AttentionCountGame: React.FC<AttentionCountGameProps> = ({
       setIsGenerating(false);
     }
   }, [studentAge, difficulty]);
+
+  // İlk görevi yükle
+  useEffect(() => {
+    if (!hasGeneratedFirstTask.current && !isGenerating) {
+      hasGeneratedFirstTask.current = true;
+      generateFirstTask();
+    }
+
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      if (spawnIntervalRef.current) {
+        clearInterval(spawnIntervalRef.current);
+        spawnIntervalRef.current = null;
+      }
+    };
+  }, [generateFirstTask]);
 
   // AI görevini sayma görevine zorla çevir
   const ensureCountingTask = (gorev: string): string => {
@@ -225,50 +243,122 @@ export const AttentionCountGame: React.FC<AttentionCountGameProps> = ({
     };
   };
 
-  // Zorluk seviyesine göre sayma parametreleri
-  const getCountingParams = (difficulty: 'kolay' | 'orta' | 'zor', gameDurationSeconds: number) => {
-    // Son 5 saniye hariç spawn et (cevap verme süresi için)
-    const answerTime = 5; // Son 5 saniye cevap verme
-    const spawnDuration = Math.max((gameDurationSeconds - answerTime) * 1000, 10000); // Milisaniyeye çevir
+  // Dinamik oyun süresi ayarlama fonksiyonu
+  const calculateGameDuration = (baseDuration: number) => {
+    if (performanceHistory.length < 1) return baseDuration;
 
-    switch (difficulty) {
-      case 'kolay':
-        return {
-          totalObjects: Math.ceil(gameDurationSeconds / 4), // Her 4 saniyede 1 obje
-          targetCount: Math.ceil(gameDurationSeconds / 8), // Hedef obje sayısı
-          spawnInterval: 3000, // 3 saniyede bir
-          objectLifespan: 6000, // 6 saniye yaşar
-          spawnDuration,
-          persistanceChance: 0.0 // Kolay: yeni obje gelince eski hemen kalkar
-        };
-      case 'orta':
-        return {
-          totalObjects: Math.ceil(gameDurationSeconds / 3), // Her 3 saniyede 1 obje
-          targetCount: Math.ceil(gameDurationSeconds / 6), // Hedef obje sayısı
-          spawnInterval: 2500, // 2.5 saniyede bir
-          objectLifespan: 5000, // 5 saniye yaşar
-          spawnDuration,
-          persistanceChance: 0.35 // Orta: %35 şans ile eski objeler durabilir
-        };
-      case 'zor':
-        return {
-          totalObjects: Math.ceil(gameDurationSeconds / 2), // Her 2 saniyede 1 obje
-          targetCount: Math.ceil(gameDurationSeconds / 4), // Hedef obje sayısı
-          spawnInterval: 2000, // 2 saniyede bir
-          objectLifespan: 4000, // 4 saniye yaşar
-          spawnDuration,
-          persistanceChance: 0.7 // Zor: %70 şans ile eski objeler durabilir
-        };
-      default:
-        return {
-          totalObjects: Math.ceil(gameDurationSeconds / 3),
-          targetCount: Math.ceil(gameDurationSeconds / 6),
-          spawnInterval: 2500,
-          objectLifespan: 5000,
-          spawnDuration,
-          persistanceChance: 0.5
-        };
+    const recent3 = performanceHistory.slice(-3);
+    const correctCount = recent3.filter(p => p.correct).length;
+    const avgAccuracy = recent3.reduce((sum, p) => sum + p.accuracy, 0) / recent3.length;
+
+    let newMultiplier = gameDurationMultiplier;
+
+    console.log('⏱️ [GAME DURATION] Analiz:', {
+      recent3Count: recent3.length,
+      correctCount,
+      avgAccuracy: avgAccuracy.toFixed(2),
+      currentMultiplier: gameDurationMultiplier.toFixed(2),
+      baseDuration
+    });
+
+    // En az 2 oyun oynandıktan sonra performans analizine başla
+    if (recent3.length < 2) {
+      console.log('⏸️ [DURATION] Henüz yeterli veri yok - süre sabit kalıyor');
     }
+    // Mükemmel performans - oyunu uzat (daha fazla obje çıksın)
+    else if (avgAccuracy > 0.9) {
+      newMultiplier = Math.min(1.5, gameDurationMultiplier + 0.2);
+      console.log('⬆️ [DURATION] Mükemmel performans - oyunu uzatıyorum!');
+    }
+    // İyi performans - hafif uzat
+    else if (avgAccuracy > 0.8) {
+      newMultiplier = Math.min(1.3, gameDurationMultiplier + 0.1);
+      console.log('↗️ [DURATION] İyi performans - hafif uzatıyorum');
+    }
+    // Orta performans - mevcut süreyi koru
+    else if (avgAccuracy > 0.6) {
+      // Değişiklik yok
+      console.log('➡️ [DURATION] Dengeli performans - süre sabit');
+    }
+    // Zayıf performans - oyunu kısalt (daha az obje)
+    else if (avgAccuracy < 0.5) {
+      newMultiplier = Math.max(0.7, gameDurationMultiplier - 0.1);
+      console.log('⬇️ [DURATION] Zayıf performans - oyunu kısaltıyorum');
+    }
+    // Çok kötü performans - çok kısalt
+    else if (avgAccuracy < 0.3) {
+      newMultiplier = Math.max(0.6, gameDurationMultiplier - 0.2);
+      console.log('↘️ [DURATION] Çok kötü performans - fazla kısaltıyorum');
+    }
+
+    setGameDurationMultiplier(newMultiplier);
+    const adjustedDuration = Math.round(baseDuration * newMultiplier);
+
+    console.log('🎯 [DURATION] Süre ayarlandı:', {
+      baseDuration,
+      multiplier: newMultiplier.toFixed(2),
+      adjustedDuration
+    });
+
+    return adjustedDuration;
+  };
+
+  // Zorluk seviyesine göre sayma parametreleri
+  const getCountingParams = (difficulty: 'kolay' | 'orta' | 'zor', baseDurationSeconds: number) => {
+    // Dinamik oyun süresi hesapla
+    const adjustedGameDuration = calculateGameDuration(baseDurationSeconds);
+
+    // Son 5 saniye hariç spawn et (cevap verme süresi için) - SABİT
+    const answerTime = 5; // Son 5 saniye cevap verme - DEĞİŞMEZ
+    const spawnDuration = Math.max((adjustedGameDuration - answerTime) * 1000, 10000); // Milisaniyeye çevir
+
+    // Dinamik zorluk uygulaması
+    const baseParams = {
+      'kolay': {
+        totalObjectsRatio: 4, // Her 4 saniyede 1 obje
+        targetCountRatio: 8, // Hedef obje sayısı
+        spawnInterval: 3000, // 3 saniyede bir
+        objectLifespan: 6000, // 6 saniye yaşar
+        persistanceChance: 0.0 // Kolay: yeni obje gelince eski hemen kalkar
+      },
+      'orta': {
+        totalObjectsRatio: 3, // Her 3 saniyede 1 obje
+        targetCountRatio: 6, // Hedef obje sayısı
+        spawnInterval: 2500, // 2.5 saniyede bir
+        objectLifespan: 5000, // 5 saniye yaşar
+        persistanceChance: 0.35 // Orta: %35 şans ile eski objeler durabilir
+      },
+      'zor': {
+        totalObjectsRatio: 2, // Her 2 saniyede 1 obje
+        targetCountRatio: 4, // Hedef obje sayısı
+        spawnInterval: 2000, // 2 saniyede bir
+        objectLifespan: 4000, // 4 saniye yaşar
+        persistanceChance: 0.7 // Zor: %70 şans ile eski objeler durabilir
+      }
+    };
+
+    const base = baseParams[difficulty] || baseParams['orta'];
+
+    // Sadece oyun süresine dayalı ayarlama (obje sayısı değişir)
+    const adjustedParams = {
+      totalObjects: Math.ceil(adjustedGameDuration / base.totalObjectsRatio),
+      targetCount: Math.ceil(adjustedGameDuration / base.targetCountRatio),
+      spawnInterval: base.spawnInterval, // Sabit - değişmez
+      objectLifespan: base.objectLifespan, // Sabit - değişmez
+      spawnDuration,
+      persistanceChance: base.persistanceChance, // Sabit - değişmez
+      adjustedGameDuration // Toplam oyun süresi (5 saniye cevap verme dahil)
+    };
+
+    console.log('🎮 [PARAMS] Süre bazlı parametreler:', {
+      baseParams: base,
+      baseDurationSeconds,
+      adjustedGameDuration,
+      durationMultiplier: gameDurationMultiplier.toFixed(2),
+      adjustedParams
+    });
+
+    return adjustedParams;
   };
 
   // Oyunu başlat
@@ -331,6 +421,14 @@ export const AttentionCountGame: React.FC<AttentionCountGameProps> = ({
   const startCountingSpawn = () => {
     if (!currentTask) return;
 
+    // Eğer zaten bir spawn interval çalışıyorsa iptal et
+    if (spawnIntervalRef.current) {
+      console.log('🚫 [DUPLICATE SPAWN] Spawn already running, clearing previous');
+      clearInterval(spawnIntervalRef.current);
+      spawnIntervalRef.current = null;
+    }
+
+    console.log('🎬 [SPAWN START] Starting counting spawn');
     const params = getCountingParams(difficulty, currentTask.sure_saniye);
     let spawnedCount = 0;
     let targetSpawnedCount = 0;
@@ -348,25 +446,43 @@ export const AttentionCountGame: React.FC<AttentionCountGameProps> = ({
     setTotalTargetCount(0);
     setCountingStartTime(Date.now());
 
-    const spawnInterval = setInterval(() => {
+    spawnIntervalRef.current = setInterval(() => {
       if (spawnedCount >= params.totalObjects) {
-        clearInterval(spawnInterval);
+        clearInterval(spawnIntervalRef.current!);
+        spawnIntervalRef.current = null;
         return;
       }
 
-      // Kolay mod: yeni obje gelince eski objeleri kaldır
+      // Kolay mod: yeni obje gelince bazı eski objeleri kaldır (%30 kalma şansı)
       if (difficulty === 'kolay') {
         setCountingObjects(prev => {
-          // Sadece hedef objeleri kaldır, yanıltıcıları bırak
-          return prev.filter(obj => !obj.isTarget);
+          let removedTargetCount = 0;
+
+          const remainingObjects = prev.filter(obj => {
+            const shouldStay = Math.random() < 0.3; // %30 şans kalma
+            if (!shouldStay && obj.isTarget) {
+              removedTargetCount++;
+            }
+            return shouldStay;
+          });
+
+          if (removedTargetCount > 0) {
+            console.log('🔄 [KOLAY MOD] Bazı eski objeler kaldırılıyor:', removedTargetCount, '(sayım değişmiyor)');
+          }
+
+          return remainingObjects;
         });
       } else {
         // Orta ve zor modlarda: bazı objeleri rastgele kaldır
         setCountingObjects(prev => {
-          return prev.filter(obj => {
-            // persistanceChance oranında objeler durabilir
-            return Math.random() < params.persistanceChance;
-          });
+          const remainingObjects = prev.filter(obj => Math.random() < params.persistanceChance);
+          const removedTargets = prev.filter(obj => obj.isTarget && Math.random() >= params.persistanceChance).length;
+
+          if (removedTargets > 0) {
+            console.log('🔄 [ORTA/ZOR MOD] Rastgele objeler kaldırılıyor:', removedTargets, '(sayım değişmiyor)');
+          }
+
+          return remainingObjects;
         });
       }
 
@@ -390,12 +506,18 @@ export const AttentionCountGame: React.FC<AttentionCountGameProps> = ({
           // Karma hedefler - renk + şekil
           if (currentTask.hedefRenk === 'yeşil' && currentTask.hedefSekil === 'daire') {
             value = '🟢';
+          } else if (currentTask.hedefRenk === 'yeşil' && currentTask.hedefSekil === 'kare') {
+            value = '🟩';
           } else if (currentTask.hedefRenk === 'mavi' && currentTask.hedefSekil === 'üçgen') {
             value = '🔹';
           } else if (currentTask.hedefRenk === 'kırmızı' && currentTask.hedefSekil === 'daire') {
             value = '🔴';
+          } else if (currentTask.hedefRenk === 'kırmızı' && currentTask.hedefSekil === 'kare') {
+            value = '🟥';
           } else if (currentTask.hedefRenk === 'mavi' && currentTask.hedefSekil === 'daire') {
             value = '🔵';
+          } else if (currentTask.hedefRenk === 'mavi' && currentTask.hedefSekil === 'kare') {
+            value = '🟦';
           } else if (currentTask.hedefRenk === 'sarı' && currentTask.hedefSekil === 'kare') {
             value = '🟨';
           } else {
@@ -450,9 +572,25 @@ export const AttentionCountGame: React.FC<AttentionCountGameProps> = ({
 
       setCountingObjects(prev => [...prev, newObject]);
 
+      console.log('➕ [SPAWN]', {
+        isTarget,
+        value,
+        targetSpawnedCount,
+        totalTargetCountCurrent: totalTargetCount,
+        spawnedCount: spawnedCount + 1,
+        totalObjects: params.totalObjects
+      });
+
       // Objeyi yaşam süresinden sonra kaldır
       setTimeout(() => {
-        setCountingObjects(prev => prev.filter(obj => obj.id !== newObject.id));
+        setCountingObjects(prev => {
+          const filtered = prev.filter(obj => obj.id !== newObject.id);
+          // Lifespan bitince sadece ekrandan kaldır, sayımdan çıkarma!
+          if (newObject.isTarget) {
+            console.log('⏱️ [LIFESPAN END] Hedef obje yaşam süresi bitti, ekrandan kaldırılıyor (sayım değişmiyor)');
+          }
+          return filtered;
+        });
       }, params.objectLifespan);
 
       spawnedCount++;
@@ -460,7 +598,11 @@ export const AttentionCountGame: React.FC<AttentionCountGameProps> = ({
 
     // Spawn süresinden sonra durdur
     setTimeout(() => {
-      clearInterval(spawnInterval);
+      if (spawnIntervalRef.current) {
+        clearInterval(spawnIntervalRef.current);
+        spawnIntervalRef.current = null;
+        console.log('⏹️ [SPAWN END] Spawn duration ended, clearing interval');
+      }
     }, params.spawnDuration);
   };
 
@@ -468,10 +610,20 @@ export const AttentionCountGame: React.FC<AttentionCountGameProps> = ({
   const startTask = () => {
     if (!currentTask) return;
 
+    // Dinamik süre hesapla
+    const params = getCountingParams(difficulty, currentTask.sure_saniye);
+    const finalGameDuration = params.adjustedGameDuration;
+
     setGameState('active');
-    setTimeLeft(currentTask.sure_saniye);
+    setTimeLeft(finalGameDuration); // Dinamik süre kullan
     setUserCount('');
     setShowFinalMessage(false); // Reset final message
+
+    console.log('🚀 [GAME START] Oyun başlıyor:', {
+      originalDuration: currentTask.sure_saniye,
+      adjustedDuration: finalGameDuration,
+      answerTime: 5
+    });
 
     // Sayma modunu başlat
     startCountingSpawn();
@@ -491,7 +643,9 @@ export const AttentionCountGame: React.FC<AttentionCountGameProps> = ({
       userAnswer: countAnswer,
       correctAnswer: totalTargetCount,
       isCorrect,
-      reactionTime
+      reactionTime,
+      currentObjectsOnScreen: countingObjects.length,
+      targetObjectsOnScreen: countingObjects.filter(obj => obj.isTarget).length
     });
 
     endRound(isCorrect, reactionTime, countAnswer);
@@ -518,6 +672,27 @@ export const AttentionCountGame: React.FC<AttentionCountGameProps> = ({
 
     const finalReactionTime = reactionTime || (Date.now() - roundStartTimeRef.current) / 1000;
     const finalUserAnswer = userAnswer || parseInt(userCount) || 0;
+
+    // Doğruluk hesaplama (sapma oranı)
+    const accuracy = totalTargetCount > 0 ? Math.max(0, 1 - Math.abs(finalUserAnswer - totalTargetCount) / totalTargetCount) : 0;
+
+    // Performans geçmişine ekle
+    const performanceEntry = {
+      correct: success,
+      accuracy: accuracy,
+      round: currentRound + 1
+    };
+
+    setPerformanceHistory(prev => [...prev.slice(-4), performanceEntry]); // Son 5 performansı tut
+
+    console.log('📈 [PERFORMANCE] Yeni kayıt:', {
+      round: currentRound + 1,
+      correct: success,
+      accuracy: accuracy.toFixed(2),
+      userAnswer: finalUserAnswer,
+      correctAnswer: totalTargetCount,
+      currentDurationMultiplier: gameDurationMultiplier.toFixed(2)
+    });
 
     const round: CountRound = {
       task: currentTask,
@@ -591,6 +766,12 @@ export const AttentionCountGame: React.FC<AttentionCountGameProps> = ({
     setUserCount('');
     setTotalTargetCount(0);
     setCountingStartTime(0);
+
+    // Dinamik zorluk state'lerini sıfırla
+    setDynamicDifficulty(difficulty);
+    setGameDurationMultiplier(1.0);
+    setPerformanceHistory([]);
+
     hasGeneratedFirstTask.current = false;
     isGeneratingRef.current = false;
     isEndingRound.current = false;
@@ -657,7 +838,14 @@ export const AttentionCountGame: React.FC<AttentionCountGameProps> = ({
               </div>
               <div className="flex items-center space-x-2">
                 <Brain className="h-4 w-4 text-purple-600" />
-                <span className="text-xs text-purple-600">Zorluk: {difficulty}</span>
+                <span className="text-xs text-purple-600">
+                  Zorluk: {difficulty}
+                  {gameDurationMultiplier !== 1.0 &&
+                    <span className="ml-1 text-xs bg-purple-100 px-1 rounded">
+                      ⏱️ {gameDurationMultiplier > 1.0 ? '⬆️' : '⬇️'} {gameDurationMultiplier.toFixed(1)}x
+                    </span>
+                  }
+                </span>
               </div>
             </div>
           </div>
