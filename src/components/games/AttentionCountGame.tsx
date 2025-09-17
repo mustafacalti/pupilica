@@ -59,6 +59,10 @@ export const AttentionCountGame: React.FC<AttentionCountGameProps> = ({
   // Dinamik zorluk için state'ler
   const [dynamicDifficulty, setDynamicDifficulty] = useState(difficulty);
   const [gameDurationMultiplier, setGameDurationMultiplier] = useState(1.0);
+  const [maxObjectsOnScreen, setMaxObjectsOnScreen] = useState(() => {
+    // Başlangıç değerleri
+    return difficulty === 'kolay' ? 2 : difficulty === 'orta' ? 3 : 5;
+  });
   const [performanceHistory, setPerformanceHistory] = useState<{
     correct: boolean;
     accuracy: number;
@@ -294,6 +298,48 @@ export const AttentionCountGame: React.FC<AttentionCountGameProps> = ({
     setGameDurationMultiplier(newMultiplier);
     const adjustedDuration = Math.round(baseDuration * newMultiplier);
 
+    // Performansa göre maksimum obje sayısını da ayarla
+    if (recent3.length >= 2) {
+      const baseMaxObjects = {
+        'kolay': 2,
+        'orta': 3,
+        'zor': 5
+      };
+
+      let newMaxObjects = maxObjectsOnScreen;
+
+      // Mükemmel performans - daha fazla obje
+      if (avgAccuracy > 0.9) {
+        newMaxObjects = Math.min(baseMaxObjects[difficulty] + 2, difficulty === 'zor' ? 6 : 4);
+        console.log('⬆️ [MAX OBJECTS] Mükemmel performans - daha fazla obje!');
+      }
+      // İyi performans - biraz artır
+      else if (avgAccuracy > 0.8) {
+        newMaxObjects = Math.min(baseMaxObjects[difficulty] + 1, difficulty === 'zor' ? 6 : 4);
+        console.log('↗️ [MAX OBJECTS] İyi performans - obje sayısı artırıldı');
+      }
+      // Zayıf performans - azalt
+      else if (avgAccuracy < 0.5) {
+        newMaxObjects = Math.max(baseMaxObjects[difficulty] - 1, 2);
+        console.log('⬇️ [MAX OBJECTS] Zayıf performans - obje sayısı azaltıldı');
+      }
+      // Normal performans
+      else {
+        newMaxObjects = baseMaxObjects[difficulty];
+        console.log('➡️ [MAX OBJECTS] Normal performans - varsayılan obje sayısı');
+      }
+
+      if (newMaxObjects !== maxObjectsOnScreen) {
+        console.log('🎯 [MAX OBJECTS] Ayarlandı:', {
+          difficulty,
+          oldMax: maxObjectsOnScreen,
+          newMax: newMaxObjects,
+          avgAccuracy: avgAccuracy.toFixed(2)
+        });
+        setMaxObjectsOnScreen(newMaxObjects);
+      }
+    }
+
     console.log('🎯 [DURATION] Süre ayarlandı:', {
       baseDuration,
       multiplier: newMultiplier.toFixed(2),
@@ -302,6 +348,7 @@ export const AttentionCountGame: React.FC<AttentionCountGameProps> = ({
 
     return adjustedDuration;
   };
+
 
   // Zorluk seviyesine göre sayma parametreleri
   const getCountingParams = (difficulty: 'kolay' | 'orta' | 'zor', baseDurationSeconds: number) => {
@@ -453,13 +500,21 @@ export const AttentionCountGame: React.FC<AttentionCountGameProps> = ({
         return;
       }
 
-      // Kolay mod: yeni obje gelince bazı eski objeleri kaldır (%30 kalma şansı)
-      if (difficulty === 'kolay') {
-        setCountingObjects(prev => {
-          let removedTargetCount = 0;
+      // Maksimum obje sayısı kontrolü - eğer limit aşılırsa spawn yapma
+      if (countingObjects.length >= maxObjectsOnScreen) {
+        console.log('🚫 [MAX LIMIT] Maksimum obje sayısına ulaşıldı:', maxObjectsOnScreen, 'spawn bekliyor');
+        return;
+      }
 
-          const remainingObjects = prev.filter(obj => {
-            const shouldStay = Math.random() < 0.3; // %30 şans kalma
+      // Zorluk moduna göre eski objeleri kaldır
+      setCountingObjects(prev => {
+        let filteredPrev = prev;
+        let removedTargetCount = 0;
+
+        if (difficulty === 'kolay') {
+          // Kolay mod: %30 kalma şansı
+          filteredPrev = prev.filter(obj => {
+            const shouldStay = Math.random() < 0.3;
             if (!shouldStay && obj.isTarget) {
               removedTargetCount++;
             }
@@ -469,22 +524,23 @@ export const AttentionCountGame: React.FC<AttentionCountGameProps> = ({
           if (removedTargetCount > 0) {
             console.log('🔄 [KOLAY MOD] Bazı eski objeler kaldırılıyor:', removedTargetCount, '(sayım değişmiyor)');
           }
+        } else {
+          // Orta/zor mod: persistanceChance'e göre
+          filteredPrev = prev.filter(obj => {
+            const shouldStay = Math.random() < params.persistanceChance;
+            if (!shouldStay && obj.isTarget) {
+              removedTargetCount++;
+            }
+            return shouldStay;
+          });
 
-          return remainingObjects;
-        });
-      } else {
-        // Orta ve zor modlarda: bazı objeleri rastgele kaldır
-        setCountingObjects(prev => {
-          const remainingObjects = prev.filter(obj => Math.random() < params.persistanceChance);
-          const removedTargets = prev.filter(obj => obj.isTarget && Math.random() >= params.persistanceChance).length;
-
-          if (removedTargets > 0) {
-            console.log('🔄 [ORTA/ZOR MOD] Rastgele objeler kaldırılıyor:', removedTargets, '(sayım değişmiyor)');
+          if (removedTargetCount > 0) {
+            console.log(`🔄 [${difficulty.toUpperCase()} MOD] Rastgele objeler kaldırılıyor:`, removedTargetCount, '(sayım değişmiyor)');
           }
+        }
 
-          return remainingObjects;
-        });
-      }
+        return filteredPrev;
+      });
 
       // Hedef mi yoksa yanıltıcı mı spawn edeceğini karar ver
       const shouldSpawnTarget =
