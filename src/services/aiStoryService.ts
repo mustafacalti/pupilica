@@ -143,7 +143,7 @@ class AIStoryService {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'hf.co/umutkkgz/Kaira-Turkish-Gemma-9B-T1-GGUF:Q3_K_M', // Türkçe Gemma model
+        model: 'alibayram/turkish-gemma-9b-v0.1', // Türkçe Gemma model
         prompt: prompt,
         stream: false,
         options: {
