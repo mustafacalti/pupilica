@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { BookOpen, Target, Eye, Zap, ArrowLeft, Play, Pause, Sparkles } from 'lucide-react';
-import { aiStoryService, AIStoryRequest, StoryScene } from '../../services/aiStoryService';
+import { aiStoryService, AIStoryRequest, StoryScene, DynamicSceneRequest } from '../../services/aiStoryService';
 import { saveStoryAttentionGameData, StoryAttentionGameData } from '../../services/firestore';
 
 interface StoryAttentionGameProps {
@@ -26,10 +26,11 @@ export const StoryAttentionGame: React.FC<StoryAttentionGameProps> = ({
   studentAge,
   onGameComplete
 }) => {
-  const [scenes, setScenes] = useState<StoryScene[]>([]);
+  const [currentScene, setCurrentScene] = useState<StoryScene | null>(null);
   const [isLoadingStory, setIsLoadingStory] = useState(false);
   const [storyTheme, setStoryTheme] = useState<'adventure' | 'space' | 'underwater'>('adventure');
-  const [currentSceneIndex, setCurrentSceneIndex] = useState(0);
+  const [sceneNumber, setSceneNumber] = useState(1);
+  const [lastChoice, setLastChoice] = useState<string>('');
   const [gameStarted, setGameStarted] = useState(false);
   const [gameEnded, setGameEnded] = useState(false);
   const [attentionData, setAttentionData] = useState<AttentionData>({
@@ -47,30 +48,105 @@ export const StoryAttentionGame: React.FC<StoryAttentionGameProps> = ({
   const [emergencyActive, setEmergencyActive] = useState(false);
   const [showFinalReport, setShowFinalReport] = useState(false);
 
-  const currentScene = scenes[currentSceneIndex];
+  // Dinamik sahne oluşturma
+  const generateNextScene = useCallback(async () => {
+    if (isLoadingStory) {
+      console.log('Already loading story, skipping...');
+      return;
+    }
 
-  // Hikaye oluşturma fonksiyonu
-  const generateStory = async (theme: 'adventure' | 'space' | 'underwater') => {
     setIsLoadingStory(true);
     try {
-      const template = aiStoryService.generateTemplate(theme, studentAge);
-      const request: AIStoryRequest = {
-        studentAge,
-        attentionLevel: studentAge < 6 ? 'beginner' : studentAge < 9 ? 'intermediate' : 'advanced',
-        language: 'Turkish',
-        theme: template.theme,
-        sceneCount: template.sceneCount
+      const themeNames = {
+        'adventure': 'Orman Macerası',
+        'space': 'Uzay Keşfi',
+        'underwater': 'Deniz Altı Maceraları'
       };
 
-      const response = await aiStoryService.generateStory(request);
-      setScenes(response.scenes);
+      const request: DynamicSceneRequest = {
+        studentAge,
+        theme: themeNames[storyTheme],
+        previousStory: currentScene?.story || undefined,
+        userChoice: lastChoice,
+        sceneNumber
+      };
+
+      const newScene = await aiStoryService.generateNextScene(request);
+      setCurrentScene(newScene);
     } catch (error) {
-      console.error('Story generation failed:', error);
-      // Fallback hikayeler kullanılacak (aiStoryService'in kendi fallback'i)
+      console.error('Dynamic scene generation failed:', error);
     } finally {
       setIsLoadingStory(false);
     }
-  };
+  }, [studentAge, storyTheme, lastChoice, isLoadingStory]);
+
+  // SceneNumber değiştiğinde yeni sahne oluştur
+  useEffect(() => {
+    if (gameStarted && !gameEnded && sceneNumber > 1 && !isLoadingStory && currentScene?.id !== sceneNumber) {
+      console.log('Generating next scene for scene number:', sceneNumber);
+      generateNextScene();
+    }
+  }, [sceneNumber, gameStarted, gameEnded, generateNextScene, isLoadingStory, currentScene]);
+
+  // Oyun bittiğinde final verileri hesapla
+  useEffect(() => {
+    if (gameEnded && showFinalReport) {
+      const calculateFinalScores = (data: AttentionData) => {
+        const avgReactionTime = data.reactionTime.length > 0
+          ? data.reactionTime.reduce((a, b) => a + b, 0) / data.reactionTime.length
+          : 0;
+
+        const accuracy = data.totalChoices > 0 ? (data.correctChoices / data.totalChoices) * 100 : 0;
+        const selectiveAttention = Math.max(0, 100 - (data.distractorClicks * 20));
+        const sustainedAttention = Math.max(0, 100 - ((data.reactionTime.length - data.correctChoices) * 10));
+        const dividedAttention = Math.max(0, 100 - (data.distractorClicks * 15));
+        const impulseControl = Math.max(0, 100 - (data.impulseControl * 25));
+
+        return {
+          ...data,
+          selectiveAttention,
+          sustainedAttention,
+          dividedAttention,
+          impulseControl,
+          avgReactionTime,
+          accuracy
+        };
+      };
+
+      const finalData = calculateFinalScores(attentionData);
+      setAttentionData(finalData);
+
+      // Veri kaydetme işlemini burada yap
+      const overallScore = (finalData.accuracy + finalData.selectiveAttention +
+                           finalData.sustainedAttention + finalData.dividedAttention +
+                           finalData.impulseControl) / 5;
+
+      const gameData: StoryAttentionGameData = {
+        studentId,
+        studentAge,
+        gameType: 'story-attention',
+        score: Math.round(overallScore),
+        duration: Date.now() - sceneStartTime,
+        storyTheme: storyTheme,
+        attentionData: {
+          selectiveAttention: finalData.selectiveAttention,
+          sustainedAttention: finalData.sustainedAttention,
+          dividedAttention: finalData.dividedAttention,
+          impulseControl: finalData.impulseControl,
+          avgReactionTime: finalData.avgReactionTime || 0,
+          accuracy: finalData.accuracy || 0,
+          distractorClicks: finalData.distractorClicks,
+          correctChoices: finalData.correctChoices,
+          totalChoices: finalData.totalChoices
+        },
+        timestamp: new Date().toISOString()
+      };
+
+      saveStoryAttentionGameData(gameData).catch(error => {
+        console.error('Failed to save story attention game data:', error);
+      });
+    }
+  }, [gameEnded, showFinalReport, attentionData, studentId, studentAge, sceneStartTime, storyTheme]);
 
   useEffect(() => {
     if (gameStarted && !gameEnded && currentScene) {
@@ -100,15 +176,22 @@ export const StoryAttentionGame: React.FC<StoryAttentionGameProps> = ({
         return () => clearTimeout(timeout);
       }
     }
-  }, [currentSceneIndex, gameStarted, gameEnded, currentScene]);
+  }, [sceneNumber, gameStarted, gameEnded, currentScene]);
 
   const handleChoiceClick = useCallback((choiceId: string) => {
-    if (!currentScene || emergencyActive) return;
+    console.log('Choice clicked:', choiceId);
+
+    if (!currentScene || emergencyActive || isLoadingStory) return;
 
     const reactionTime = Date.now() - sceneStartTime;
     const choice = currentScene.choices.find(c => c.id === choiceId);
 
     if (!choice) return;
+
+    console.log('Selected choice:', choice.text);
+
+    // Seçim metnini kaydet
+    setLastChoice(choice.text);
 
     setAttentionData(prev => {
       const newData = {
@@ -156,88 +239,37 @@ export const StoryAttentionGame: React.FC<StoryAttentionGameProps> = ({
   }, [sceneStartTime]);
 
   const handleNextScene = useCallback(() => {
-    if (currentSceneIndex < scenes.length - 1) {
-      setCurrentSceneIndex(prev => prev + 1);
+    console.log('Handling next scene. Current scene number:', sceneNumber);
+
+    // Maksimum 10 sahne sonra oyunu bitir
+    if (sceneNumber >= 10) {
+      console.log('Game ending - reached max scenes');
+      setGameEnded(true);
+      setShowFinalReport(true);
     } else {
-      endGame();
+      console.log('Moving to next scene:', sceneNumber + 1);
+      setSceneNumber(prev => prev + 1);
+      // generateNextScene'i buradan çağırmıyoruz, useEffect ile tetiklenecek
     }
-  }, [currentSceneIndex, scenes.length]);
+  }, [sceneNumber]);
 
-  const calculateFinalScores = useCallback((data: AttentionData) => {
-    const avgReactionTime = data.reactionTime.length > 0
-      ? data.reactionTime.reduce((a, b) => a + b, 0) / data.reactionTime.length
-      : 0;
 
-    const accuracy = data.totalChoices > 0 ? (data.correctChoices / data.totalChoices) * 100 : 0;
-    const selectiveAttention = Math.max(0, 100 - (data.distractorClicks * 20));
-    const sustainedAttention = Math.max(0, 100 - ((data.reactionTime.length - data.correctChoices) * 10));
-    const dividedAttention = Math.max(0, 100 - (data.distractorClicks * 15));
-    const impulseControl = Math.max(0, 100 - (data.impulseControl * 25));
-
-    return {
-      ...data,
-      selectiveAttention,
-      sustainedAttention,
-      dividedAttention,
-      impulseControl,
-      avgReactionTime,
-      accuracy
-    };
-  }, []);
-
-  const endGame = useCallback(async () => {
-    const finalData = calculateFinalScores(attentionData);
-    const overallScore = (finalData.accuracy + finalData.selectiveAttention +
-                         finalData.sustainedAttention + finalData.dividedAttention +
-                         finalData.impulseControl) / 5;
-
-    setAttentionData(finalData);
-    setGameEnded(true);
-    setShowFinalReport(true);
-
-    // Save game data
-    const gameData: StoryAttentionGameData = {
-      studentId,
-      studentAge,
-      gameType: 'story-attention',
-      score: Math.round(overallScore),
-      duration: Date.now() - sceneStartTime,
-      storyTheme: storyTheme,
-      attentionData: {
-        selectiveAttention: finalData.selectiveAttention,
-        sustainedAttention: finalData.sustainedAttention,
-        dividedAttention: finalData.dividedAttention,
-        impulseControl: finalData.impulseControl,
-        avgReactionTime: finalData.avgReactionTime || 0,
-        accuracy: finalData.accuracy || 0,
-        distractorClicks: finalData.distractorClicks,
-        correctChoices: finalData.correctChoices,
-        totalChoices: finalData.totalChoices
-      },
-      timestamp: new Date().toISOString()
-    };
-
-    try {
-      await saveStoryAttentionGameData(gameData);
-      console.log('Story Attention Game Results saved successfully:', gameData);
-    } catch (error) {
-      console.error('Failed to save story attention game data:', error);
-    }
-  }, [attentionData, calculateFinalScores, studentId, studentAge, sceneStartTime, storyTheme]);
 
   const startGame = async (theme: 'adventure' | 'space' | 'underwater' = 'adventure') => {
     setStoryTheme(theme);
-    await generateStory(theme);
     setGameStarted(true);
-    setSceneStartTime(Date.now());
+    setSceneNumber(1);
+    setLastChoice('');
+    await generateNextScene();
   };
 
   const resetGame = () => {
     setGameStarted(false);
     setGameEnded(false);
-    setCurrentSceneIndex(0);
+    setSceneNumber(1);
+    setCurrentScene(null);
     setShowFinalReport(false);
-    setScenes([]);
+    setLastChoice('');
     setIsLoadingStory(false);
     setAttentionData({
       selectiveAttention: 0,
@@ -453,16 +485,16 @@ export const StoryAttentionGame: React.FC<StoryAttentionGameProps> = ({
         <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
           <div className="flex justify-between items-center mb-2">
             <span className="text-sm font-medium text-gray-700">
-              Sahne {currentSceneIndex + 1} / {scenes.length}
+              Sahne {sceneNumber} / 10
             </span>
             <span className="text-sm text-gray-500">
-              {Math.round(((currentSceneIndex + 1) / scenes.length) * 100)}%
+              {Math.round((sceneNumber / 10) * 100)}%
             </span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-3">
             <div
               className="bg-purple-600 h-3 rounded-full transition-all duration-500"
-              style={{ width: `${((currentSceneIndex + 1) / scenes.length) * 100}%` }}
+              style={{ width: `${(sceneNumber / 10) * 100}%` }}
             />
           </div>
         </div>
@@ -479,34 +511,59 @@ export const StoryAttentionGame: React.FC<StoryAttentionGameProps> = ({
             </p>
           </div>
 
+          {/* Loading durumu */}
+          {isLoadingStory && (
+            <div className="text-center py-8">
+              <div className="text-4xl mb-4">✨</div>
+              <h3 className="text-xl font-bold text-purple-600 mb-2">Hikaye devam ediyor...</h3>
+              <p className="text-gray-600">Seçiminize göre yeni macera hazırlanıyor!</p>
+              <div className="w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mt-4"></div>
+            </div>
+          )}
+
+          {/* Seçim sonrası feedback */}
+          {lastChoice && !isLoadingStory && sceneNumber > 1 && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+              <div className="flex items-center gap-2">
+                <div className="text-2xl">✅</div>
+                <div>
+                  <h4 className="font-bold text-green-800">Seçimin: {lastChoice}</h4>
+                  <p className="text-green-700 text-sm">Hikaye bu seçiminle devam ediyor...</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Choices */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {currentScene?.choices.map((choice) => (
-              <button
-                key={choice.id}
-                onClick={() => handleChoiceClick(choice.id)}
-                className={`p-6 rounded-lg border-2 transition-all duration-200 hover:shadow-lg ${
-                  choice.isDistractor
-                    ? 'border-yellow-300 bg-yellow-50 hover:bg-yellow-100'
-                    : choice.stroopConflict
-                    ? 'border-red-300 bg-red-50 hover:bg-red-100'
-                    : 'border-purple-300 bg-purple-50 hover:bg-purple-100'
-                }`}
-                style={choice.color ? {
-                  borderColor: choice.color,
-                  backgroundColor: choice.color + '20'
-                } : {}}
-                disabled={emergencyActive}
-              >
-                <span
-                  className="text-lg font-bold"
-                  style={choice.color && choice.stroopConflict ? { color: choice.color } : {}}
+          {!isLoadingStory && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {currentScene?.choices.map((choice) => (
+                <button
+                  key={choice.id}
+                  onClick={() => handleChoiceClick(choice.id)}
+                  className={`p-6 rounded-lg border-2 transition-all duration-200 hover:shadow-lg ${
+                    choice.isDistractor
+                      ? 'border-yellow-300 bg-yellow-50 hover:bg-yellow-100'
+                      : choice.stroopConflict
+                      ? 'border-red-300 bg-red-50 hover:bg-red-100'
+                      : 'border-purple-300 bg-purple-50 hover:bg-purple-100'
+                  } ${isLoadingStory ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  style={choice.color ? {
+                    borderColor: choice.color,
+                    backgroundColor: choice.color + '20'
+                  } : {}}
+                  disabled={emergencyActive || isLoadingStory}
                 >
-                  {choice.text}
-                </span>
-              </button>
-            ))}
-          </div>
+                  <span
+                    className="text-lg font-bold"
+                    style={choice.color && choice.stroopConflict ? { color: choice.color } : {}}
+                  >
+                    {choice.text}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Background task instruction */}
           {currentScene?.backgroundTask && (

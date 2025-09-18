@@ -29,6 +29,14 @@ interface AIStoryRequest {
   sceneCount?: number;
 }
 
+interface DynamicSceneRequest {
+  studentAge: number;
+  theme: string;
+  previousStory?: string;
+  userChoice?: string;
+  sceneNumber: number;
+}
+
 interface AIStoryResponse {
   scenes: StoryScene[];
   difficulty: string;
@@ -133,6 +141,17 @@ class AIStoryService {
     }
   }
 
+  // Dinamik sahne oluşturma - her seçimden sonra çağrılır
+  async generateNextScene(request: DynamicSceneRequest): Promise<StoryScene> {
+    try {
+      const response = await this.callDynamicSceneService(request);
+      return response;
+    } catch (error) {
+      console.warn('Dynamic scene generation failed, using fallback:', error);
+      return this.generateFallbackScene(request);
+    }
+  }
+
   private async callAIService(request: AIStoryRequest): Promise<AIStoryResponse> {
     const prompt = this.constructPrompt(request);
 
@@ -165,6 +184,161 @@ class AIStoryService {
     const data = await response.json();
     console.log('Ollama response:', data);
     return this.parseOllamaResponse(data, request);
+  }
+
+  private async callDynamicSceneService(request: DynamicSceneRequest): Promise<StoryScene> {
+    const prompt = this.constructDynamicPrompt(request);
+
+    const response = await fetch(this.apiEndpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'alibayram/turkish-gemma-9b-v0.1:latest',
+        prompt: prompt,
+        stream: false,
+        options: {
+          num_ctx: 1024,
+          num_batch: 256,
+          temperature: 0.8, // Biraz daha yaratıcı olsun
+          top_p: 0.9,
+          repeat_penalty: 1.1
+        }
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Dynamic scene error:', errorText);
+      throw new Error(`Dynamic Scene Service error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('Dynamic scene response:', data);
+    return this.parseDynamicSceneResponse(data, request);
+  }
+
+  private constructDynamicPrompt(request: DynamicSceneRequest): string {
+    let prompt = `${request.studentAge} yaşındaki çocuk için ${request.theme} temalı hikaye devamı oluştur.
+
+Sahne ${request.sceneNumber}:`;
+
+    if (request.previousStory && request.userChoice) {
+      prompt += `
+Önceki durum: ${request.previousStory}
+Çocuğun seçimi: ${request.userChoice}
+
+Bu seçime göre hikayeyi devam ettir.`;
+    } else {
+      prompt += `
+Bu hikayenin başlangıç sahnesi. Çocuk için ilginç bir durumla başla.`;
+    }
+
+    prompt += `
+
+Tek bir sahne JSON'ı döndür:
+{
+  "id": ${request.sceneNumber},
+  "story": "Kısa hikaye (1-2 cümle)",
+  "question": "Çocuğa soru?",
+  "choices": [
+    {"id": "a", "text": "🟢 Seçenek 1", "isCorrect": true},
+    {"id": "b", "text": "🔴 Seçenek 2", "isCorrect": false},
+    {"id": "c", "text": "💎 Çeldirici seçenek", "isCorrect": false, "isDistractor": true}
+  ]
+}
+
+Sadece JSON döndür.`;
+
+    return prompt;
+  }
+
+  private parseDynamicSceneResponse(data: any, request: DynamicSceneRequest): StoryScene {
+    try {
+      const responseText = data.response || '';
+      console.log('Dynamic scene response text:', responseText);
+
+      // JSON temizleme
+      let cleanedText = responseText;
+      if (cleanedText.includes('```json')) {
+        cleanedText = cleanedText.replace(/```json\s*/, '');
+      }
+      if (cleanedText.includes('```')) {
+        cleanedText = cleanedText.replace(/```\s*$/, '');
+      }
+
+      const jsonMatch = cleanedText.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error('No JSON found in dynamic scene response');
+      }
+
+      let jsonText = jsonMatch[0];
+      jsonText = jsonText.replace(/,(\s*[}\]])/g, '$1');
+      jsonText = jsonText.trim();
+
+      console.log('Parsed dynamic scene JSON:', jsonText);
+
+      const scene = JSON.parse(jsonText);
+
+      return {
+        id: scene.id || request.sceneNumber,
+        story: scene.story || `Sahne ${request.sceneNumber}`,
+        question: scene.question || 'Ne yapmalı?',
+        choices: scene.choices?.map((choice: any, index: number) => ({
+          id: choice.id || String.fromCharCode(97 + index),
+          text: choice.text || `Seçenek ${index + 1}`,
+          color: choice.color,
+          isCorrect: choice.isCorrect || false,
+          isDistractor: choice.isDistractor || false,
+          stroopConflict: choice.stroopConflict || false
+        })) || [
+          { id: 'a', text: '🟢 Devam et', isCorrect: true, isDistractor: false, stroopConflict: false },
+          { id: 'b', text: '🔴 Dur', isCorrect: false, isDistractor: false, stroopConflict: false }
+        ],
+        emergencyTask: scene.emergencyTask,
+        backgroundTask: scene.backgroundTask
+      };
+    } catch (error) {
+      console.error('Dynamic scene parse error:', error);
+      throw error;
+    }
+  }
+
+  private generateFallbackScene(request: DynamicSceneRequest): StoryScene {
+    const fallbackScenes = [
+      {
+        story: `Ali yeni bir yola çıktı. (Sahne ${request.sceneNumber})`,
+        question: 'Hangi yönde gitmeli?',
+        choices: [
+          { id: 'a', text: '🟢 Sağa git', isCorrect: true },
+          { id: 'b', text: '🔴 Sola git', isCorrect: false },
+          { id: 'c', text: '💎 Parlak taş', isCorrect: false, isDistractor: true }
+        ]
+      },
+      {
+        story: `Ali ilginç bir yaratıkla karşılaştı. (Sahne ${request.sceneNumber})`,
+        question: 'Ne yapmalı?',
+        choices: [
+          { id: 'a', text: '🟢 Dostça yaklaş', isCorrect: true },
+          { id: 'b', text: '🔴 Kaç', isCorrect: false },
+          { id: 'c', text: '🎁 Hediye ver', isCorrect: false, isDistractor: true }
+        ]
+      }
+    ];
+
+    const scene = fallbackScenes[request.sceneNumber % 2];
+
+    return {
+      id: request.sceneNumber,
+      story: scene.story,
+      question: scene.question,
+      choices: scene.choices.map((choice, index) => ({
+        ...choice,
+        isDistractor: choice.isDistractor || false,
+        stroopConflict: false
+      }))
+    };
   }
 
   private constructPrompt(request: AIStoryRequest): string {
@@ -350,4 +524,4 @@ Sadece JSON döndür, başka açıklama yazma.`;
 }
 
 export const aiStoryService = new AIStoryService();
-export type { StoryScene, AIStoryRequest, AIStoryResponse };
+export type { StoryScene, AIStoryRequest, AIStoryResponse, DynamicSceneRequest };
