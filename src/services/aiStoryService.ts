@@ -143,14 +143,12 @@ class AIStoryService {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'turkish-gemma-local', // Türkçe Gemma Local model
+        model: 'alibayram/turkish-gemma-9b-v0.1:latest', // Colab'daki model
         prompt: prompt,
         stream: false,
         options: {
-          num_ctx: 1024,
-          num_batch: 128,
-          gpu_layers: 16,
-          num_threads: 8,
+          num_ctx: 2048,
+          num_batch: 256,
           temperature: 0.7,
           top_p: 0.9,
           repeat_penalty: 1.1
