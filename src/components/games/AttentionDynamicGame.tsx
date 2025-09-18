@@ -19,10 +19,11 @@ interface DynamicRound {
   startTime: number;
   endTime?: number;
   success: boolean;
-  reactionTime: number;
+  reactionTime: number; // Tur tamamlama süresi
   correctClicks: number;
   wrongClicks: number;
   totalSpawned: number;
+  avgReactionTimeMs?: number; // Gerçek ortalama reaksiyon süresi (ms)
 }
 
 export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
@@ -59,6 +60,9 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
   const correctClicksRef = useRef(0);
   const wrongClicksRef = useRef(0);
   const [totalSpawned, setTotalSpawned] = useState(0);
+  // Sadece tıklanan kutucukların reaksiyon süreleri
+  const [reactionTimes, setReactionTimes] = useState<number[]>([]);
+  const reactionTimesRef = useRef<number[]>([]);
 
   const roundStartTimeRef = useRef<number>(0);
   const hasGeneratedFirstTask = useRef(false);
@@ -99,9 +103,37 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
     const currentWrong = totalWrongFromRounds + currentWrongClicks;
     const totalClicks = currentCorrect + currentWrong;
     const currentAccuracy = totalClicks > 0 ? currentCorrect / totalClicks : 0.5; // Default %50
-    const avgReactionTime = rounds.length > 0
-      ? rounds.reduce((sum, r) => sum + r.reactionTime, 0) / rounds.length / 1000
+    // Gerçek reaksiyon süresi ortalaması (sadece tıklanan kutucuklar)
+    const allReactionTimes = [...reactionTimesRef.current]; // Mevcut tur
+    // Önceki turlardan reaksiyon sürelerini de ekle (eğer rounds'da varsa)
+    rounds.forEach(round => {
+      if (round.avgReactionTimeMs) {
+        allReactionTimes.push(round.avgReactionTimeMs);
+      }
+    });
+
+    const avgReactionTime = allReactionTimes.length > 0
+      ? allReactionTimes.reduce((sum, time) => sum + time, 0) / allReactionTimes.length / 1000 // saniyeye çevir
       : 2.5; // Default 2.5s
+
+    // Mevcut tur için ortalama reaksiyon süresi
+    const currentTurAvgReactionTime = reactionTimesRef.current.length > 0
+      ? reactionTimesRef.current.reduce((sum, time) => sum + time, 0) / reactionTimesRef.current.length
+      : 0;
+
+    // Rounds'u AttentionSprintPerformance formatına çevir
+    const formattedRounds = rounds.slice(-3).map(round => ({
+      basari: round.success,
+      sure: round.reactionTime,
+      zorluk: difficulty as 'kolay' | 'orta' | 'zor',
+      hedefTipi: 'renk' as const, // Dinamik tıklama renk hedefli
+      hizliCozum: round.reactionTime < 2.0, // 2 saniyenin altı hızlı
+      zamanlamaSapmasi: Math.abs(round.reactionTime - (currentTask?.sure_saniye || 30)),
+      hedefZaman: currentTask?.sure_saniye || 30
+    }));
+
+    // Hızlı çözüm sayısını hesapla
+    const hizliCozumSayisi = formattedRounds.filter(r => r.hizliCozum).length;
 
     // Debug: Performans verilerini logla
     console.log('🔍 [PERFORMANCE CALC]', {
@@ -110,14 +142,25 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
       currentCorrect, currentWrong, totalClicks, // Toplam
       currentAccuracy,
       rounds: rounds.length,
-      avgReactionTime
+      avgReactionTime: avgReactionTime.toFixed(3) + 's', // Saniye cinsinden
+      currentTurAvgReactionTime: currentTurAvgReactionTime.toFixed(0) + 'ms', // Milisaniye
+      totalReactionTimes: allReactionTimes.length,
+      hizliCozumSayisi,
+      formattedRoundsCount: formattedRounds.length
     });
 
     const initialPerformance: AttentionSprintPerformance = {
-      son3Tur: rounds.slice(-3), // Son 3 tur
+      son3Tur: formattedRounds,
       ortalamaReaksiyonSuresi: avgReactionTime,
       basariOrani: currentAccuracy,
-      odaklanmaDurumu: currentAccuracy > 0.7 ? 'iyi' : currentAccuracy > 0.5 ? 'orta' : 'zayif'
+      odaklanmaDurumu: currentAccuracy > 0.7 ? 'yuksek' : currentAccuracy > 0.5 ? 'orta' : 'dusuk',
+      // Dinamik tıklama performansı olarak sayiGorevPerformansi ekle
+      sayiGorevPerformansi: {
+        ortalamaSayiZorlugu: difficulty === 'kolay' ? 3 : difficulty === 'orta' ? 5 : 7,
+        sayiBasariOrani: currentAccuracy,
+        ortalamaReaksiyonSuresiSayi: avgReactionTime,
+        hizliCozumSayisi
+      }
     };
 
     try {
@@ -415,6 +458,18 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
 
   // Dinamik tıklama objesine tıklama
   const handleClickingObjectClick = (objectId: string, isTargetObject: boolean) => {
+    const clickTime = Date.now();
+
+    // Tıklanan objeyi bul ve reaksiyon süresini hesapla
+    const clickedObject = clickingObjects.find(obj => obj.id === objectId);
+    if (clickedObject) {
+      const reactionTime = clickTime - clickedObject.createdAt; // milisaniye
+      reactionTimesRef.current.push(reactionTime);
+      setReactionTimes(prev => [...prev, reactionTime]);
+
+      console.log(`⚡ [REACTION TIME] ${reactionTime}ms (${isTargetObject ? 'Doğru' : 'Yanlış'})`);
+    }
+
     // Objeyi hemen kaldır
     setClickingObjects(prev => prev.filter(obj => obj.id !== objectId));
 
@@ -477,10 +532,11 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
       startTime: roundStartTimeRef.current,
       endTime: Date.now(),
       success: finalSuccess,
-      reactionTime: finalReactionTime,
+      reactionTime: finalReactionTime, // Tur tamamlama süresi
       correctClicks: capturedCorrect,
       wrongClicks: capturedWrong,
-      totalSpawned
+      totalSpawned,
+      avgReactionTimeMs: currentTurAvgReactionTime // Gerçek ortalama reaksiyon süresi
     };
 
     setRounds(prev => [...prev, round]);
@@ -526,6 +582,8 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
           setWrongClicks(0);
           correctClicksRef.current = 0;
           wrongClicksRef.current = 0;
+          setReactionTimes([]);
+          reactionTimesRef.current = [];
           setTotalSpawned(0);
         });
         setGameState('ready');

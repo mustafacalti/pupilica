@@ -73,6 +73,19 @@ class AttentionSprintGenerator {
       zamanlamaPerformansi
     });
 
+    // Zorluk kararı debug
+    console.log('🔍 [DIFFICULTY DEBUG]', {
+      'Test 1 (Süper)': basariOrani >= 0.8 && (hizliCozumSayisi >= 2 || ortalamaReaksiyonSuresi < 2.5),
+      'Test 2 (İyi)': basariOrani >= 0.7 && (hizliCozumSayisi >= 1 || ortalamaReaksiyonSuresi < 4),
+      'Test 3 (Yavaş)': basariOrani >= 0.8 && ortalamaReaksiyonSuresi < 6,
+      'Test 4 (Zayıf)': basariOrani < 0.5 || ortalamaReaksiyonSuresi > 8,
+      conditions: {
+        'basariOrani >= 0.8': basariOrani >= 0.8,
+        'hizliCozumSayisi >= 2': hizliCozumSayisi >= 2,
+        'ortalamaReaksiyonSuresi < 2.5': ortalamaReaksiyonSuresi < 2.5
+      }
+    });
+
     // Süper hızlı performans - 2x zorluk atlama
     if (hizliCozumSayisi >= 2 && basariOrani >= 0.8 && ortalamaReaksiyonSuresi < 2) {
       console.log('🚀 [DIFFICULTY] Süper hızlı - 2x atlama!');
