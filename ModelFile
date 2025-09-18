@@ -1,0 +1,9 @@
+FROM alibayram/turkish-gemma-9b-v0.1
+
+# 4GB VRAM için context boyutu
+parameter num_ctx 2048
+
+# Sampling ayarları (opsiyonel)
+parameter temperature 0.7
+parameter top_p 0.9
+parameter repeat_penalty 1.1

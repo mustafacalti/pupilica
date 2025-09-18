@@ -143,12 +143,17 @@ class AIStoryService {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'alibayram/turkish-gemma-9b-v0.1', // Türkçe Gemma model
+        model: 'turkish-gemma-local', // Türkçe Gemma Local model
         prompt: prompt,
         stream: false,
         options: {
+          num_ctx: 1024,
+          num_batch: 128,
+          gpu_layers: 16,
+          num_threads: 8,
           temperature: 0.7,
-          num_predict: 2000 // Token limitini artırdık
+          top_p: 0.9,
+          repeat_penalty: 1.1
         }
       })
     });
@@ -199,16 +204,17 @@ Sadece JSON döndür, başka açıklama yazma.`;
       const responseText = ollamaData.response || '';
       console.log('Full Ollama response text:', responseText);
 
-      // JSON formatındaki hikaye verisini bul - daha esnek regex
-      let jsonMatch = responseText.match(/\{[\s\S]*?"scenes"[\s\S]*?\]/);
-
-      if (!jsonMatch) {
-        // İkinci deneme: sadece scenes array'ini bul
-        jsonMatch = responseText.match(/"scenes":\s*\[[\s\S]*?\]/);
-        if (jsonMatch) {
-          jsonMatch[0] = `{${jsonMatch[0]}}`;
-        }
+      // ```json ve ``` etiketlerini temizle
+      let cleanedText = responseText;
+      if (cleanedText.includes('```json')) {
+        cleanedText = cleanedText.replace(/```json\s*/, '');
       }
+      if (cleanedText.includes('```')) {
+        cleanedText = cleanedText.replace(/```\s*$/, '');
+      }
+
+      // JSON formatındaki hikaye verisini bul
+      let jsonMatch = cleanedText.match(/\{[\s\S]*\}/);
 
       if (!jsonMatch) {
         console.error('No valid JSON found in response');
@@ -217,17 +223,13 @@ Sadece JSON döndür, başka açıklama yazma.`;
 
       let jsonText = jsonMatch[0];
 
-      // Eksik kapatma parantezlerini düzelt
-      if (!jsonText.endsWith('}')) {
-        // Son sahnenin kapanmamış olma durumu
-        const lastSceneIndex = jsonText.lastIndexOf('{');
-        if (lastSceneIndex > -1) {
-          // Son sahneyi kapa
-          jsonText = jsonText.substring(0, lastSceneIndex) + ']}';
-        }
-      }
+      // Trailing comma'ları temizle
+      jsonText = jsonText.replace(/,(\s*[}\]])/g, '$1');
 
-      console.log('Parsed JSON text:', jsonText);
+      // JSON'ı düzelt ve temizle
+      jsonText = jsonText.trim();
+
+      console.log('Cleaned JSON text:', jsonText);
 
       const parsedData = JSON.parse(jsonText);
       const scenes = parsedData.scenes || [];
