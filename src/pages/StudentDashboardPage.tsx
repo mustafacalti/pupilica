@@ -4,9 +4,10 @@ import { WordImageGame } from '../components/games/WordImageGame';
 import { NumberGame } from '../components/games/NumberGame';
 import { ColorGame } from '../components/games/ColorGame';
 import { AttentionGameSelector } from '../components/games/AttentionGameSelector';
-import { Brain, BookOpen, Hash, Palette, Target, LogOut, User, Trophy, Clock } from 'lucide-react';
+import { StoryAttentionGame } from '../components/games/StoryAttentionGame';
+import { Brain, BookOpen, Hash, Palette, Target, LogOut, User, Trophy, Clock, Sparkles } from 'lucide-react';
 
-type GameType = 'word-image' | 'number' | 'color' | 'attention-sprint' | null;
+type GameType = 'word-image' | 'number' | 'color' | 'attention-sprint' | 'story-attention' | null;
 
 export const StudentDashboardPage: React.FC = () => {
   const { currentUser, logout } = useAuth();
@@ -60,6 +61,12 @@ export const StudentDashboardPage: React.FC = () => {
         return <AttentionGameSelector
           studentId={currentUser.id}
           studentAge={currentUser.age || 12}
+          onGameComplete={handleGameComplete}
+        />;
+      case 'story-attention':
+        return <StoryAttentionGame
+          studentId={currentUser.id}
+          studentAge={currentUser.age || 8}
           onGameComplete={handleGameComplete}
         />;
       default:
@@ -171,7 +178,7 @@ export const StudentDashboardPage: React.FC = () => {
         </div>
 
         {/* Games Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
           {/* Word-Image Game */}
           <div className="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
             <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-6 text-white">
@@ -283,6 +290,37 @@ export const StudentDashboardPage: React.FC = () => {
                 className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 px-4 rounded-lg font-medium transition-colors"
               >
                 Oyunları Keşfet
+              </button>
+            </div>
+          </div>
+
+          {/* Story Attention Game */}
+          <div className="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
+            <div className="bg-gradient-to-r from-pink-500 to-purple-600 p-6 text-white">
+              <Sparkles className="h-12 w-12 mb-4" />
+              <h3 className="text-xl font-bold mb-2">Hikaye Dikkat Oyunu</h3>
+              <p className="text-pink-100">
+                Ali'nin macerasında dikkat becerilerini test et
+              </p>
+            </div>
+            <div className="p-6">
+              <div className="mb-4">
+                <div className="flex justify-between text-sm text-gray-600 mb-1">
+                  <span>Dikkat Türü</span>
+                  <span>4 Boyut</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div className="bg-pink-500 h-2 rounded-full" style={{ width: '100%' }}></div>
+                </div>
+                <div className="mt-2 text-xs text-gray-600">
+                  Seçici • Sürekli • Bölünmüş • Dürtü Kontrolü
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedGame('story-attention')}
+                className="w-full bg-pink-500 hover:bg-pink-600 text-white py-3 px-4 rounded-lg font-medium transition-colors"
+              >
+                Hikayeyi Başlat
               </button>
             </div>
           </div>

@@ -17,6 +17,27 @@ import {
 import { db } from './firebase';
 import { User, Student, Activity, AIInsight } from '../types';
 
+interface StoryAttentionGameData {
+  studentId: string;
+  studentAge: number;
+  gameType: 'story-attention';
+  score: number;
+  duration: number;
+  storyTheme: string;
+  attentionData: {
+    selectiveAttention: number;
+    sustainedAttention: number;
+    dividedAttention: number;
+    impulseControl: number;
+    avgReactionTime: number;
+    accuracy: number;
+    distractorClicks: number;
+    correctChoices: number;
+    totalChoices: number;
+  };
+  timestamp: string;
+}
+
 // User operations
 export const createUser = async (uid: string, data: { email: string; name: string; role: 'teacher' | 'student'; age?: number; teacherId?: string }) => {
   if (!uid) throw new Error("UID boş geldi");
@@ -138,3 +159,58 @@ export const subscribeToStudents = (teacherId: string, callback: (students: Stud
     callback(students);
   });
 };
+
+// Story Attention Game operations
+export const saveStoryAttentionGameData = async (gameData: StoryAttentionGameData) => {
+  try {
+    const docRef = await addDoc(collection(db, 'story_attention_games'), {
+      ...gameData,
+      createdAt: Timestamp.now()
+    });
+
+    // Aynı zamanda genel aktivite koleksiyonuna da kaydet
+    await createActivity({
+      studentId: gameData.studentId,
+      type: 'story-attention',
+      score: gameData.score,
+      duration: gameData.duration,
+      metadata: {
+        theme: gameData.storyTheme,
+        attentionScores: {
+          selective: gameData.attentionData.selectiveAttention,
+          sustained: gameData.attentionData.sustainedAttention,
+          divided: gameData.attentionData.dividedAttention,
+          impulseControl: gameData.attentionData.impulseControl
+        },
+        performance: {
+          accuracy: gameData.attentionData.accuracy,
+          avgReactionTime: gameData.attentionData.avgReactionTime,
+          distractorClicks: gameData.attentionData.distractorClicks
+        }
+      }
+    });
+
+    console.log('Story attention game data saved successfully:', docRef.id);
+    return docRef.id;
+  } catch (error) {
+    console.error('Error saving story attention game data:', error);
+    throw error;
+  }
+};
+
+export const getStoryAttentionGamesByStudent = async (studentId: string): Promise<StoryAttentionGameData[]> => {
+  const q = query(
+    collection(db, 'story_attention_games'),
+    where('studentId', '==', studentId),
+    orderBy('createdAt', 'desc')
+  );
+
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data(),
+    createdAt: doc.data().createdAt?.toDate()
+  })) as StoryAttentionGameData[];
+};
+
+export type { StoryAttentionGameData };
