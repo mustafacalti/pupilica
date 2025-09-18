@@ -5,6 +5,7 @@ import { EmotionResult } from '../../types';
 import { AttentionClickGame } from './AttentionClickGame';
 import { AttentionCountGame } from './AttentionCountGame';
 import { AttentionDynamicGame } from './AttentionDynamicGame';
+import { ConflictGame } from './ConflictGame';
 import {
   Target,
   Hash,
@@ -13,7 +14,8 @@ import {
   ArrowLeft,
   Star,
   Clock,
-  MousePointer
+  MousePointer,
+  Palette
 } from 'lucide-react';
 
 interface AttentionGameSelectorProps {
@@ -23,7 +25,7 @@ interface AttentionGameSelectorProps {
   onEmotionDetected?: (emotion: EmotionResult) => void;
 }
 
-type GameType = 'click' | 'count' | 'dynamic';
+type GameType = 'click' | 'count' | 'dynamic' | 'conflict';
 type DifficultyLevel = 'kolay' | 'orta' | 'zor';
 
 interface GameInfo {
@@ -116,6 +118,20 @@ export const AttentionGameSelector: React.FC<AttentionGameSelectorProps> = ({
         'Reflexleri geliştirme',
         'Sürekli dikkat'
       ]
+    },
+    {
+      id: 'conflict',
+      name: 'Çatışma Oyunu',
+      description: 'Stroop etkisi ile dikkat geliştirme',
+      icon: <Palette className="h-8 w-8" />,
+      color: 'red',
+      bgGradient: 'from-red-500 to-orange-500',
+      features: [
+        'Stroop etkisi deneyimi',
+        'Renk-kelime çatışması',
+        'Dikkat odaklanma',
+        'Bilişsel esneklik'
+      ]
     }
   ];
 
@@ -197,6 +213,9 @@ export const AttentionGameSelector: React.FC<AttentionGameSelectorProps> = ({
         case 'dynamic':
           console.log('⚡ [DEBUG] Loading AttentionDynamicGame');
           return <AttentionDynamicGame {...commonProps} />;
+        case 'conflict':
+          console.log('🎨 [DEBUG] Loading ConflictGame');
+          return <ConflictGame {...commonProps} />;
         default:
           console.error('❌ [DEBUG] Unknown game type:', selectedGame);
           return null;
@@ -366,7 +385,7 @@ export const AttentionGameSelector: React.FC<AttentionGameSelectorProps> = ({
       </Card>
 
       {/* Oyun Türleri */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {gameTypes.map((game) => (
           <Card
             key={game.id}
@@ -389,7 +408,8 @@ export const AttentionGameSelector: React.FC<AttentionGameSelectorProps> = ({
                     <div className={`w-2 h-2 rounded-full ${
                       game.color === 'blue' ? 'bg-blue-400' :
                       game.color === 'green' ? 'bg-green-400' :
-                      'bg-purple-400'
+                      game.color === 'purple' ? 'bg-purple-400' :
+                      'bg-red-400'
                     }`}></div>
                     <span>{feature}</span>
                   </div>
@@ -402,7 +422,8 @@ export const AttentionGameSelector: React.FC<AttentionGameSelectorProps> = ({
                   className={`w-full ${
                     game.color === 'blue' ? 'bg-blue-500 hover:bg-blue-600' :
                     game.color === 'green' ? 'bg-green-500 hover:bg-green-600' :
-                    'bg-purple-500 hover:bg-purple-600'
+                    game.color === 'purple' ? 'bg-purple-500 hover:bg-purple-600' :
+                    'bg-red-500 hover:bg-red-600'
                   } text-white`}
                 >
                   Oyna
