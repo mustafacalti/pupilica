@@ -26,7 +26,7 @@ interface AIRecommendation {
 }
 
 class ConflictGameAI {
-  private modelName: string = 'hf.co/umutkkgz/Kaira-Turkish-Gemma-9B-T1-GGUF:Q3_K_M';
+  private modelName: string = 'llama3.2:1b'; // Daha hızlı küçük model
 
   /**
    * Performans metriklerine göre AI'dan zorluk önerisi al
@@ -55,76 +55,23 @@ class ConflictGameAI {
     const accuracy = metrics.totalAttempts > 0 ? (metrics.correctAttempts / metrics.totalAttempts * 100) : 0;
     const recentErrorPatterns = this.analyzeErrorPatterns(metrics.recentErrors);
 
-    return `Sen ADHD çocukları için uzmanlaşmış bir eğitim oyunu AI'ısın. Çatışma (Stroop) oyununda bir öğrencinin performansını analiz edip, ona en uygun zorluk seviyesini belirlemen gerekiyor.
+    return `Adjust difficulty for ADHD child Stroop game.
 
-ÖĞRENCİ PERFORMANS VERİLERİ:
-- Doğruluk oranı: %${accuracy.toFixed(1)}
-- Toplam deneme: ${metrics.totalAttempts}
-- Doğru cevap: ${metrics.correctAttempts}
-- Ortalama reaksiyon süresi: ${metrics.averageReactionTime}ms
-- Güncel seri: ${metrics.streakCounter} doğru
-- En iyi seri: ${metrics.bestStreak} doğru
-- Oyun süresi: ${Math.floor(metrics.timeSpent / 1000)} saniye
-- Mevcut zorluk seviyesi: ${metrics.difficultyLevel}/10
-- Son hata pattern'leri: ${recentErrorPatterns}
+DATA: ${accuracy.toFixed(1)}% accuracy, ${metrics.averageReactionTime}ms reaction
 
-PERFORMANS ANALİZ KURALLARI (ADHD ÇOCUKLARİ İÇİN OPTİMİZE):
-1. REAKSİYON SÜRESİ ANALİZİ (ADHD'li çocuklar için):
-   • 0-700ms: Çok hızlı - İMPULSİF DAVRANIS RİSKİ (muhtemelen rastgele tıklama)
-   • 700-1200ms: Hızlı - İyi kontrol ve hızlı karar verme (çok iyi performans)
-   • 1200-1800ms: Normal - ADHD için ideal reaksiyon süresi (dikkatli ve kontrollü)
-   • 1800-2800ms: Yavaş - Çok dikkatli yaklaşım (iyi şey, acele etmiyor)
-   • 2800ms+: Çok yavaş - Zorlanıyor olabilir VEYA çok dikkatli
+RULES:
+- If accuracy >80% AND reaction <2000ms: increase difficulty
+- If accuracy <50% OR reaction >2500ms: decrease difficulty
+- If reaction <700ms: slow down (impulsive)
+- If reaction >2800ms: motivate (struggling)
 
-2. DOĞRULUK + REAKSİYON KOMBİNASYONU ANALİZİ (ADHD için):
-   • Yüksek doğruluk (70%+) + 1200-2800ms reaksiyon = MÜKEMMEL ADHD PERFORMANSI (dikkatli ve başarılı)
-   • Yüksek doğruluk (70%+) + 700-1200ms reaksiyon = ÇOK İYİ PERFORMANS (kontrollü hız)
-   • Orta doğruluk (50-70%) + 1200-1800ms reaksiyon = NORMAL ADHD PERFORMANSI (iyi gidiyor)
-   • Düşük doğruluk (50%-) + 0-700ms reaksiyon = İMPULSİF DAVRANIS (yavaşlatılmalı, dikkat çekilmeli)
-   • Düşük doğruluk (50%-) + 2800ms+ reaksiyon = AŞIRI ZORLANIYOR (kolaylaştırılmalı)
-
-3. SEN KARAR VER: Bu veriler ışığında çocuğun durumunu analiz et ve uygun zorluk ayarı yap.
-   • Eğer dikkatli ve başarılıysa → Mevcut seviyeyi koru veya hafif artır
-   • Eğer aceleciysε → Sakinleştirici ayarlar (daha fazla zaman, daha az kutu)
-   • Eğer zorlanıyorsa → Kolaylaştırıcı ayarlar (daha az çatışma, daha basit)
-   • Eğer çok başarılıysa → Zorluk artırıcı ayarlar
-
-4. MOTİVASYONEL YAKLAŞIM:
-   • Başarılı performans için övgü ve teşvik
-   • Zorlanıyorsa sabırlı ve destekleyici
-   • Aceleci davranıyorsa yönlendirici ve sakinleştirici
-
-ADHD ÖZEL KONSIDERASYON KURALLARI:
-1. Dikkat süresi kısıtlı - çok fazla kutu dikkat dağıtır
-2. Görsel karmaşıklık stres yaratır - minimalist yaklaşım
-3. Başarı hissi motivasyonu artırır - küçük kazanımlar önemli
-4. Çok hızlı değişiklik konfüze eder - kademeli geçişler
-5. Pozitif reinforcement esastır
-
-ZORLUK PARAMETRELERİ (1-10 arası değerler):
-- boxCount: Ekrandaki kutu sayısı (2-10)
-- commandVisibilityDuration: Komut görme süresi ms (1500-4000)
-- conflictRate: Çatışma oranı 0-1 (0.2-0.9)
-- distractorCount: Dikkat dağıtıcı sayısı (0-3)
-- distractorTypes: Hangi tip dikkat dağıtıcılar ["emoji", "text", "shape", "none"]
-- pauseTime: Turlar arası mola ms (200-1200)
-
-ÇIKTI FORMATI (sadece JSON döndür):
+OUTPUT JSON:
 {
-  "newSettings": {
-    "boxCount": sayı,
-    "commandVisibilityDuration": sayı,
-    "conflictRate": ondalık,
-    "distractorCount": sayı,
-    "distractorTypes": string array,
-    "pauseTime": sayı
-  },
-  "reasoning": "Neden bu ayarları seçtiğin kısa açıklama",
-  "encouragement": "Öğrenciyi motive edecek pozitif mesaj",
-  "tips": ["ipucu1", "ipucu2", "ipucu3"]
-}
-
-ÖNEMLI: Sadece JSON döndür, başka açıklama yazma. ADHD'li çocuklar için optimize et.`;
+  "newSettings": {"boxCount": ${accuracy > 80 && metrics.averageReactionTime < 2000 ? 6 : accuracy < 50 ? 4 : 5}, "commandVisibilityDuration": ${metrics.averageReactionTime < 700 ? 3500 : metrics.averageReactionTime > 2800 ? 2000 : 2500}, "conflictRate": ${accuracy > 80 ? 0.6 : accuracy < 50 ? 0.3 : 0.5}, "distractorCount": ${accuracy > 80 ? 1 : 0}, "distractorTypes": ["${accuracy > 80 ? 'text' : 'none'}"], "pauseTime": ${metrics.averageReactionTime < 700 ? 800 : 400}},
+  "reasoning": "Based on ${accuracy.toFixed(1)}% accuracy and ${metrics.averageReactionTime}ms reaction",
+  "encouragement": "Keep going!",
+  "tips": ["Focus", "Read carefully"]
+}`;
   }
 
 
@@ -165,7 +112,7 @@ ZORLUK PARAMETRELERİ (1-10 arası değerler):
    * Ollama API çağrısı
    */
   private async callOllama(prompt: string): Promise<string> {
-    const ollamaApiUrl = 'http://localhost:11434/api/generate';
+    const ollamaApiUrl = import.meta.env.VITE_AI_STORY_API || 'http://localhost:11434/api/generate';
 
     const requestBody = {
       model: this.modelName,
@@ -173,9 +120,9 @@ ZORLUK PARAMETRELERİ (1-10 arası değerler):
       format: "json",
       stream: false,
       options: {
-        temperature: 0.4, // Daha tutarlı öneriler için düşük
-        top_p: 0.85,
-        num_predict: 400
+        temperature: 0.1, // Çok deterministik
+        top_p: 0.7,
+        num_predict: 100 // Minimum token
       }
     };
 

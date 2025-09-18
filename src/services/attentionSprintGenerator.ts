@@ -672,8 +672,8 @@ Genel Durum:
       corrected.hedefRenk = detectedColors;
       corrected.hedefSekil = detectedShapes;
       corrected.hedefSayi = undefined; // Sayı temizle
-      // Görev metnindeki sayıları da temizle
-      corrected.gorev = corrected.gorev.replace(/\d+/g, '').replace(/\s+/g, ' ').trim();
+      // Hedef sayıları temizle ama süre sayılarını koru ("30 saniye" gibi)
+      corrected.gorev = corrected.gorev.replace(/(\d+)\s*(tane|adet)/g, '').replace(/\s+/g, ' ').trim();
     }
     // Sadece renk
     else if (detectedColors && !detectedShapes) {
@@ -682,7 +682,7 @@ Genel Durum:
       corrected.hedefSekil = undefined;
       corrected.hedefSayi = undefined;
       // Görev metnindeki sayıları da temizle
-      corrected.gorev = corrected.gorev.replace(/\d+/g, '').replace(/\s+/g, ' ').trim();
+      corrected.gorev = corrected.gorev.replace(/(\d+)\s*(tane|adet)/g, '').replace(/\s+/g, ' ').trim();
     }
     // Sadece şekil
     else if (detectedShapes && !detectedColors) {
@@ -691,7 +691,7 @@ Genel Durum:
       corrected.hedefRenk = undefined;
       corrected.hedefSayi = undefined;
       // Görev metnindeki sayıları da temizle
-      corrected.gorev = corrected.gorev.replace(/\d+/g, '').replace(/\s+/g, ' ').trim();
+      corrected.gorev = corrected.gorev.replace(/(\d+)\s*(tane|adet)/g, '').replace(/\s+/g, ' ').trim();
     }
 
     // Sayı düzeltmesi (sadece gerçek hedef sayı görevleri için)
@@ -706,7 +706,7 @@ Genel Durum:
       console.log(`🔧 [TASK FIX] Yanlış sayı temizleme: hedefSayi ${task.hedefSayi} silindi`);
       corrected.hedefSayi = undefined;
       // Görev metnindeki sayıları da temizle
-      corrected.gorev = corrected.gorev.replace(/\d+/g, '').replace(/\s+/g, ' ').trim();
+      corrected.gorev = corrected.gorev.replace(/(\d+)\s*(tane|adet)/g, '').replace(/\s+/g, ' ').trim();
     }
 
     return corrected;

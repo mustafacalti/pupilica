@@ -55,6 +55,9 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
   }[]>([]);
   const [correctClicks, setCorrectClicks] = useState(0);
   const [wrongClicks, setWrongClicks] = useState(0);
+  // Ref ile de takip et - state async olduğu için
+  const correctClicksRef = useRef(0);
+  const wrongClicksRef = useRef(0);
   const [totalSpawned, setTotalSpawned] = useState(0);
 
   const roundStartTimeRef = useRef<number>(0);
@@ -79,17 +82,42 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
     };
   }, []);
 
-  const generateFirstTask = useCallback(async () => {
+  const generateFirstTask = useCallback(async (currentCorrectParam?: number, currentWrongParam?: number) => {
     if (isGeneratingRef.current) return;
 
     isGeneratingRef.current = true;
     setIsGenerating(true);
 
+    // Parametre varsa kullan, yoksa state'den al
+    const currentCorrectClicks = currentCorrectParam ?? correctClicks;
+    const currentWrongClicks = currentWrongParam ?? wrongClicks;
+
+    // Gerçek performans verilerini hesapla - rounds array'den topla
+    const totalCorrectFromRounds = rounds.reduce((sum, r) => sum + r.correctClicks, 0);
+    const totalWrongFromRounds = rounds.reduce((sum, r) => sum + r.wrongClicks, 0);
+    const currentCorrect = totalCorrectFromRounds + currentCorrectClicks; // Mevcut tur + geçmiş turlar
+    const currentWrong = totalWrongFromRounds + currentWrongClicks;
+    const totalClicks = currentCorrect + currentWrong;
+    const currentAccuracy = totalClicks > 0 ? currentCorrect / totalClicks : 0.5; // Default %50
+    const avgReactionTime = rounds.length > 0
+      ? rounds.reduce((sum, r) => sum + r.reactionTime, 0) / rounds.length / 1000
+      : 2.5; // Default 2.5s
+
+    // Debug: Performans verilerini logla
+    console.log('🔍 [PERFORMANCE CALC]', {
+      correctClicks: currentCorrectClicks, wrongClicks: currentWrongClicks, // Mevcut tur
+      totalCorrectFromRounds, totalWrongFromRounds, // Geçmiş turlar
+      currentCorrect, currentWrong, totalClicks, // Toplam
+      currentAccuracy,
+      rounds: rounds.length,
+      avgReactionTime
+    });
+
     const initialPerformance: AttentionSprintPerformance = {
-      son3Tur: [],
-      ortalamaReaksiyonSuresi: 2.5,
-      basariOrani: 0.7,
-      odaklanmaDurumu: 'orta'
+      son3Tur: rounds.slice(-3), // Son 3 tur
+      ortalamaReaksiyonSuresi: avgReactionTime,
+      basariOrani: currentAccuracy,
+      odaklanmaDurumu: currentAccuracy > 0.7 ? 'iyi' : currentAccuracy > 0.5 ? 'orta' : 'zayif'
     };
 
     try {
@@ -100,12 +128,26 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
       });
 
       // Sadece dinamik tıklama görevlerini filtrele veya dinamik göreve çevir
+      const newDuration = difficulty === 'kolay' ? 20 : difficulty === 'orta' ? 30 : 40;
+      // Görev metnindeki süreyi de düzelt - daha güçlü regex
+      const correctedTaskText = filterDynamicTaskOnly(task.gorev)
+        .replace(/\d+\s*saniye\s*içinde/g, `${newDuration} saniye içinde`)
+        .replace(/(\d+)\s*saniye/g, `${newDuration} saniye`);
+
       const filteredTask = {
         ...task,
         difficulty,
-        gorev: filterDynamicTaskOnly(task.gorev),
-        sure_saniye: difficulty === 'kolay' ? 20 : difficulty === 'orta' ? 30 : 40
+        gorev: correctedTaskText,
+        sure_saniye: newDuration
       };
+
+      console.log('🔧 [TASK OVERRIDE]', {
+        originalDuration: task.sure_saniye,
+        newDuration,
+        difficulty,
+        originalTask: task.gorev,
+        filteredTask: filteredTask.gorev
+      });
 
       setCurrentTask(filteredTask);
       setTimeLeft(filteredTask.sure_saniye);
@@ -123,9 +165,8 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
     const text = gorev.toLowerCase();
 
     // Eğer zaten dinamik tıklama görevi ise olduğu gibi döndür
-    if ((text.includes('tüm') && text.includes('tıkla')) ||
-        (text.includes('hepsi') && text.includes('tıkla')) ||
-        (text.includes('içinde') && text.includes('tıkla') && text.includes('saniye'))) {
+    if (text.includes('tıkla') && text.includes('saniye')) {
+      console.log('✅ [FILTER] Görev zaten dinamik tıklama, değiştirmiyor');
       return gorev;
     }
 
@@ -364,8 +405,7 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
 
     setGameState('active');
     setTimeLeft(currentTask.sure_saniye);
-    setCorrectClicks(0);
-    setWrongClicks(0);
+    // NOT: Skorları burada sıfırlamıyoruz, endRound'da yapıyoruz
     setTotalSpawned(0);
 
     // Dinamik tıklama modunu başlat
@@ -379,19 +419,46 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
     setClickingObjects(prev => prev.filter(obj => obj.id !== objectId));
 
     if (isTargetObject) {
-      setCorrectClicks(prev => prev + 1);
-      console.log('✅ [CLICKING] Doğru tıklama!');
+      correctClicksRef.current += 1;
+      setCorrectClicks(prev => {
+        const newValue = prev + 1;
+        console.log('✅ [CLICKING] Doğru tıklama!', {prev, newValue, ref: correctClicksRef.current});
+        return newValue;
+      });
     } else {
-      setWrongClicks(prev => prev + 1);
-      console.log('❌ [CLICKING] Yanlış tıklama!');
+      wrongClicksRef.current += 1;
+      setWrongClicks(prev => {
+        const newValue = prev + 1;
+        console.log('❌ [CLICKING] Yanlış tıklama!', {prev, newValue, ref: wrongClicksRef.current});
+        return newValue;
+      });
     }
   };
 
   // Turu bitir
   const endRound = (success: boolean, reactionTime?: number) => {
+    console.log('🚨 [END ROUND CALLED]', {
+      success,
+      reactionTime,
+      currentTask: !!currentTask,
+      isEndingRound: isEndingRound.current,
+      callStack: new Error().stack?.split('\n')[1]?.trim()
+    });
+
     if (!currentTask || isEndingRound.current) return;
 
     isEndingRound.current = true;
+
+    // HEMEN skorları yakala - ref değerlerini kullan (state async olduğu için)
+    const capturedCorrect = correctClicksRef.current;
+    const capturedWrong = wrongClicksRef.current;
+
+    console.log('⚡ [IMMEDIATE CAPTURE]', {
+      capturedCorrect,
+      capturedWrong,
+      totalClicks: capturedCorrect + capturedWrong,
+      stateValues: {correctClicks, wrongClicks}  // State ile karşılaştır
+    });
 
     if (timerRef.current) {
       clearInterval(timerRef.current);
@@ -401,8 +468,8 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
     const finalReactionTime = reactionTime || (Date.now() - roundStartTimeRef.current) / 1000;
 
     // Başarı ölçütü: En az %50 doğruluk oranı ve toplam 3+ tıklama
-    const totalClicks = correctClicks + wrongClicks;
-    const accuracy = totalClicks > 0 ? correctClicks / totalClicks : 0;
+    const totalClicks = capturedCorrect + capturedWrong;
+    const accuracy = totalClicks > 0 ? capturedCorrect / totalClicks : 0;
     const finalSuccess = accuracy >= 0.5 && totalClicks >= 3;
 
     const round: DynamicRound = {
@@ -411,8 +478,8 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
       endTime: Date.now(),
       success: finalSuccess,
       reactionTime: finalReactionTime,
-      correctClicks,
-      wrongClicks,
+      correctClicks: capturedCorrect,
+      wrongClicks: capturedWrong,
       totalSpawned
     };
 
@@ -445,10 +512,22 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
       } else {
         setCurrentRound(prev => prev + 1);
         setClickingObjects([]);
-        setCorrectClicks(0);
-        setWrongClicks(0);
-        setTotalSpawned(0);
-        generateFirstTask();
+        // Yakalanan değerleri kullan (çünkü bu setTimeout 2 saniye sonra çalışıyor)
+        console.log('📊 [END ROUND PERFORMANCE]', {
+          capturedCorrect,
+          capturedWrong,
+          totalFromRounds: rounds.length > 0 ? rounds.reduce((sum, r) => sum + r.correctClicks, 0) : 0
+        });
+
+        // Yeni görev üret, sonra sıfırla
+        generateFirstTask(capturedCorrect, capturedWrong).then(() => {
+          console.log('🔄 [RESET SCORES]', {beforeReset: {capturedCorrect, capturedWrong}});
+          setCorrectClicks(0);
+          setWrongClicks(0);
+          correctClicksRef.current = 0;
+          wrongClicksRef.current = 0;
+          setTotalSpawned(0);
+        });
         setGameState('ready');
       }
       isEndingRound.current = false;
