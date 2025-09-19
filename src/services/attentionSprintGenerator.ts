@@ -366,19 +366,19 @@ class AttentionSprintGenerator {
       },
       'dinamik-tıklama': {
         'kolay': [
-          '"20 saniye içinde tüm mavi daireleri tıkla"',
-          '"25 saniye boyunca çıkan yıldızları yakala"',
-          '"15 saniye içinde beliren hedefleri tıkla"'
+          '"20 saniye içinde tüm 🔵 mavi daireleri tıkla"',
+          '"25 saniye içinde tüm 🟡 sarı yıldızları tıkla"',
+          '"15 saniye içinde tüm 🟢 yeşil kareleri tıkla"'
         ],
         'orta': [
-          '"35 saniye içinde tüm kırmızı üçgenleri tıkla"',
-          '"40 saniye boyunca gelen mavi kareleri yakala"',
-          '"30 saniye içinde çıkan yeşil daireleri tıkla"'
+          '"35 saniye içinde tüm 🔺 kırmızı üçgenleri tıkla"',
+          '"40 saniye içinde tüm 🟦 mavi kareleri tıkla"',
+          '"30 saniye içinde tüm 🟢 yeşil daireleri tıkla"'
         ],
         'zor': [
-          '"50 saniye içinde tüm hızlı hedefleri yakala"',
-          '"60 saniye boyunca değişken objeleri tıkla"',
-          '"45 saniye içinde karışık hedefleri yakala"'
+          '"50 saniye içinde tüm 🔺 kırmızı üçgenleri tıkla"',
+          '"60 saniye içinde tüm 🟡 sarı yıldızları tıkla"',
+          '"45 saniye içinde tüm 💜 mor kalpleri tıkla"'
         ]
       },
       'sayı-tıklama': {
@@ -469,7 +469,14 @@ YAPMA:
 - Uzun açıklamalar
 - Karmaşık çoklu adımlar
 - Olumsuz kelimeler
-- Soyut kavramlar`;
+- Soyut kavramlar
+
+ZORUNLU KURALLAR DİNAMİK TIKLAMA İÇİN:
+- Süre MUTLAKA belirt: "30 saniye içinde" formatında
+- Renk MUTLAKA emoji ile: 🔴 kırmızı, 🔵 mavi, 🟢 yeşil, 🟡 sarı
+- Şekil MUTLAKA spesifik: daire, kare, üçgen, yıldız, kalp, elmas
+- Örnek: "45 saniye içinde tüm 🔵 mavi daireleri tıkla"
+- "hedefRenk" ve "hedefSekil" alanları MUTLAKA doldur`;
   }
 
   /**

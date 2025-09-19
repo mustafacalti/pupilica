@@ -64,6 +64,105 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
   const [reactionTimes, setReactionTimes] = useState<number[]>([]);
   const reactionTimesRef = useRef<number[]>([]);
 
+  // Şekil renkleri için CSS color mapping
+  const getShapeColor = (colorName: string): string => {
+    const colorMap: Record<string, string> = {
+      'kırmızı': '#dc2626',
+      'mavi': '#2563eb',
+      'yeşil': '#16a34a',
+      'sarı': '#eab308',
+      'mor': '#9333ea',
+      'turuncu': '#ea580c'
+    };
+    return colorMap[colorName] || '#dc2626';
+  };
+
+  // Şekil render fonksiyonu
+  const renderShape = (value: string) => {
+    if (value.includes('-')) {
+      const [shape, color] = value.split('-');
+      const shapeColor = getShapeColor(color);
+
+      switch (shape) {
+        case 'triangle':
+          return (
+            <div
+              className="w-0 h-0"
+              style={{
+                borderLeft: '15px solid transparent',
+                borderRight: '15px solid transparent',
+                borderBottom: `30px solid ${shapeColor}`,
+              }}
+            />
+          );
+
+        case 'circle':
+          return (
+            <div
+              className="w-8 h-8 rounded-full"
+              style={{ backgroundColor: shapeColor }}
+            />
+          );
+
+        case 'square':
+          return (
+            <div
+              className="w-8 h-8"
+              style={{ backgroundColor: shapeColor }}
+            />
+          );
+
+        case 'star':
+          return (
+            <div
+              className="relative w-8 h-8"
+              style={{
+                clipPath: 'polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)',
+                backgroundColor: shapeColor
+              }}
+            />
+          );
+
+        case 'heart':
+          return (
+            <div
+              className="relative w-8 h-8"
+              style={{
+                transform: 'rotate(-45deg)',
+              }}
+            >
+              <div
+                className="w-6 h-6 rounded-full absolute top-0 left-1"
+                style={{ backgroundColor: shapeColor }}
+              />
+              <div
+                className="w-6 h-6 rounded-full absolute top-1 left-0"
+                style={{ backgroundColor: shapeColor }}
+              />
+              <div
+                className="w-4 h-4 absolute top-3 left-2"
+                style={{ backgroundColor: shapeColor }}
+              />
+            </div>
+          );
+
+        case 'diamond':
+          return (
+            <div
+              className="w-8 h-8 transform rotate-45"
+              style={{ backgroundColor: shapeColor }}
+            />
+          );
+
+        default:
+          return value;
+      }
+    }
+
+    // Normal emoji değerleri için
+    return value;
+  };
+
   const roundStartTimeRef = useRef<number>(0);
   const hasGeneratedFirstTask = useRef(false);
   const isGeneratingRef = useRef(false);
@@ -170,23 +269,19 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
         sonGorevler: ['dinamik-tıklama'] // Dinamik tıklama oyunu iste
       });
 
-      // Sadece dinamik tıklama görevlerini filtrele veya dinamik göreve çevir
-      const newDuration = difficulty === 'kolay' ? 20 : difficulty === 'orta' ? 30 : 40;
-      // Görev metnindeki süreyi de düzelt - daha güçlü regex
-      const correctedTaskText = filterDynamicTaskOnly(task.gorev)
-        .replace(/\d+\s*saniye\s*içinde/g, `${newDuration} saniye içinde`)
-        .replace(/(\d+)\s*saniye/g, `${newDuration} saniye`);
+      // Sadece dinamik tıklama görevlerini filtrele - orijinal süreyi koru
+      const correctedTaskText = filterDynamicTaskOnly(task.gorev);
 
       const filteredTask = {
         ...task,
         difficulty,
         gorev: correctedTaskText,
-        sure_saniye: newDuration
+        sure_saniye: task.sure_saniye // Orijinal süreyi koru
       };
 
       console.log('🔧 [TASK OVERRIDE]', {
         originalDuration: task.sure_saniye,
-        newDuration,
+        finalDuration: task.sure_saniye,
         difficulty,
         originalTask: task.gorev,
         filteredTask: filteredTask.gorev
@@ -208,7 +303,7 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
     const text = gorev.toLowerCase();
 
     // Eğer zaten dinamik tıklama görevi ise olduğu gibi döndür
-    if (text.includes('tıkla') && text.includes('saniye')) {
+    if (text.includes('tıkla') || text.includes('yakala')) {
       console.log('✅ [FILTER] Görev zaten dinamik tıklama, değiştirmiyor');
       return gorev;
     }
@@ -365,89 +460,30 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
       if (currentTask?.hedefRenk && currentTask?.hedefSekil) {
         if (shouldSpawnTarget) {
           // Karma hedefler - renk + şekil kombinasyonları
-          // DAİRE kombinasyonları
-          if (currentTask.hedefRenk === 'kırmızı' && currentTask.hedefSekil === 'daire') {
-            value = '🔴';
-          } else if (currentTask.hedefRenk === 'mavi' && currentTask.hedefSekil === 'daire') {
-            value = '🔵';
-          } else if (currentTask.hedefRenk === 'yeşil' && currentTask.hedefSekil === 'daire') {
-            value = '🟢';
-          } else if (currentTask.hedefRenk === 'sarı' && currentTask.hedefSekil === 'daire') {
-            value = '🟡';
-          } else if (currentTask.hedefRenk === 'mor' && currentTask.hedefSekil === 'daire') {
-            value = '🟣';
-          } else if (currentTask.hedefRenk === 'turuncu' && currentTask.hedefSekil === 'daire') {
-            value = '🟠';
+          // DAİRE kombinasyonları - CSS ile renkli daire
+          if (currentTask.hedefSekil === 'daire') {
+            value = `circle-${currentTask.hedefRenk}`;
           }
-          // KARE kombinasyonları
-          else if (currentTask.hedefRenk === 'kırmızı' && currentTask.hedefSekil === 'kare') {
-            value = '🟥';
-          } else if (currentTask.hedefRenk === 'mavi' && currentTask.hedefSekil === 'kare') {
-            value = '🟦';
-          } else if (currentTask.hedefRenk === 'yeşil' && currentTask.hedefSekil === 'kare') {
-            value = '🟩';
-          } else if (currentTask.hedefRenk === 'sarı' && currentTask.hedefSekil === 'kare') {
-            value = '🟨';
-          } else if (currentTask.hedefRenk === 'mor' && currentTask.hedefSekil === 'kare') {
-            value = '🟪';
-          } else if (currentTask.hedefRenk === 'turuncu' && currentTask.hedefSekil === 'kare') {
-            value = '🟧';
+          // KARE kombinasyonları - CSS ile renkli kare
+          else if (currentTask.hedefSekil === 'kare') {
+            value = `square-${currentTask.hedefRenk}`;
           }
-          // ÜÇGEN kombinasyonları
-          else if (currentTask.hedefRenk === 'kırmızı' && currentTask.hedefSekil === 'üçgen') {
-            value = '🔺';
-          } else if (currentTask.hedefRenk === 'mavi' && currentTask.hedefSekil === 'üçgen') {
-            value = '🔹';
-          } else if (currentTask.hedefRenk === 'yeşil' && currentTask.hedefSekil === 'üçgen') {
-            value = '🔺'; // Yeşil üçgen için kırmızı üçgen kullan (emoji sınırlaması)
-          } else if (currentTask.hedefRenk === 'sarı' && currentTask.hedefSekil === 'üçgen') {
-            value = '🔺'; // Sarı üçgen için kırmızı üçgen kullan (emoji sınırlaması)
-          } else if (currentTask.hedefRenk === 'mor' && currentTask.hedefSekil === 'üçgen') {
-            value = '🔺'; // Mor üçgen için kırmızı üçgen kullan
-          } else if (currentTask.hedefRenk === 'turuncu' && currentTask.hedefSekil === 'üçgen') {
-            value = '🔺'; // Turuncu üçgen için kırmızı üçgen kullan
+          // ÜÇGEN kombinasyonları - CSS ile renkli üçgen oluştur
+          else if (currentTask.hedefSekil === 'üçgen') {
+            // Tüm üçgenler için özel CSS style ile renkli üçgen yapacağız
+            value = `triangle-${currentTask.hedefRenk}`; // Özel işaretleyici
           }
-          // YILDIZ kombinasyonları
-          else if (currentTask.hedefRenk === 'sarı' && currentTask.hedefSekil === 'yıldız') {
-            value = '⭐';
-          } else if (currentTask.hedefRenk === 'kırmızı' && currentTask.hedefSekil === 'yıldız') {
-            value = '⭐'; // Yıldız genelde sarı olarak görülür
-          } else if (currentTask.hedefRenk === 'mavi' && currentTask.hedefSekil === 'yıldız') {
-            value = '⭐';
-          } else if (currentTask.hedefRenk === 'yeşil' && currentTask.hedefSekil === 'yıldız') {
-            value = '⭐';
-          } else if (currentTask.hedefRenk === 'mor' && currentTask.hedefSekil === 'yıldız') {
-            value = '⭐';
-          } else if (currentTask.hedefRenk === 'turuncu' && currentTask.hedefSekil === 'yıldız') {
-            value = '⭐';
+          // YILDIZ kombinasyonları - CSS ile renkli yıldız
+          else if (currentTask.hedefSekil === 'yıldız') {
+            value = `star-${currentTask.hedefRenk}`;
           }
-          // KALP kombinasyonları
-          else if (currentTask.hedefRenk === 'kırmızı' && currentTask.hedefSekil === 'kalp') {
-            value = '❤️';
-          } else if (currentTask.hedefRenk === 'mavi' && currentTask.hedefSekil === 'kalp') {
-            value = '💙';
-          } else if (currentTask.hedefRenk === 'yeşil' && currentTask.hedefSekil === 'kalp') {
-            value = '💚';
-          } else if (currentTask.hedefRenk === 'sarı' && currentTask.hedefSekil === 'kalp') {
-            value = '💛';
-          } else if (currentTask.hedefRenk === 'mor' && currentTask.hedefSekil === 'kalp') {
-            value = '💜';
-          } else if (currentTask.hedefRenk === 'turuncu' && currentTask.hedefSekil === 'kalp') {
-            value = '🧡';
+          // KALP kombinasyonları - CSS ile renkli kalp
+          else if (currentTask.hedefSekil === 'kalp') {
+            value = `heart-${currentTask.hedefRenk}`;
           }
-          // ELMAS kombinasyonları
-          else if (currentTask.hedefRenk === 'mavi' && currentTask.hedefSekil === 'elmas') {
-            value = '💎';
-          } else if (currentTask.hedefRenk === 'kırmızı' && currentTask.hedefSekil === 'elmas') {
-            value = '💎';
-          } else if (currentTask.hedefRenk === 'yeşil' && currentTask.hedefSekil === 'elmas') {
-            value = '💎';
-          } else if (currentTask.hedefRenk === 'sarı' && currentTask.hedefSekil === 'elmas') {
-            value = '💎';
-          } else if (currentTask.hedefRenk === 'mor' && currentTask.hedefSekil === 'elmas') {
-            value = '💎';
-          } else if (currentTask.hedefRenk === 'turuncu' && currentTask.hedefSekil === 'elmas') {
-            value = '💎';
+          // ELMAS kombinasyonları - CSS ile renkli elmas
+          else if (currentTask.hedefSekil === 'elmas') {
+            value = `diamond-${currentTask.hedefRenk}`;
           }
           // Fallback
           else {
@@ -467,11 +503,20 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
           value = wrongColors[Math.floor(Math.random() * wrongColors.length)];
         }
       } else if (currentTask?.hedefSekil) {
-        const shapeMap = { 'yıldız': '⭐', 'daire': '⭕', 'kare': '⬜', 'üçgen': '🔺', 'kalp': '❤️', 'elmas': '💎' };
+        // Tüm şekiller için CSS kullan - renksiz olduğu için kırmızı default
+        const shapeMap: Record<string, string> = {
+          'yıldız': 'star-kırmızı',
+          'daire': 'circle-kırmızı',
+          'kare': 'square-kırmızı',
+          'üçgen': 'triangle-kırmızı',
+          'kalp': 'heart-kırmızı',
+          'elmas': 'diamond-kırmızı'
+        };
+
         if (shouldSpawnTarget) {
-          value = shapeMap[currentTask.hedefSekil as keyof typeof shapeMap] || '🔺';
+          value = shapeMap[currentTask.hedefSekil] || 'triangle-kırmızı';
         } else {
-          const wrongShapes = Object.values(shapeMap).filter(s => s !== shapeMap[currentTask.hedefSekil as keyof typeof shapeMap]);
+          const wrongShapes = Object.values(shapeMap).filter(s => s !== shapeMap[currentTask.hedefSekil]);
           value = wrongShapes[Math.floor(Math.random() * wrongShapes.length)];
         }
       }
@@ -591,6 +636,11 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
     const totalClicks = capturedCorrect + capturedWrong;
     const accuracy = totalClicks > 0 ? capturedCorrect / totalClicks : 0;
     const finalSuccess = accuracy >= 0.5 && totalClicks >= 3;
+
+    // Mevcut tur için ortalama reaksiyon süresi hesapla
+    const currentTurAvgReactionTime = reactionTimesRef.current.length > 0
+      ? reactionTimesRef.current.reduce((sum, time) => sum + time, 0) / reactionTimesRef.current.length
+      : 0;
 
     const round: DynamicRound = {
       task: currentTask,
@@ -821,7 +871,7 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
                       animationDuration: `${0.8 + Math.random() * 0.4}s`
                     }}
                   >
-                    {obj.value}
+                    {renderShape(obj.value)}
                   </button>
                 ))}
               </div>
