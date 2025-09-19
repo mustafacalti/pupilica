@@ -364,28 +364,93 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
       let value = '';
       if (currentTask?.hedefRenk && currentTask?.hedefSekil) {
         if (shouldSpawnTarget) {
-          // Karma hedefler - renk + şekil
-          if (currentTask.hedefRenk === 'mavi' && currentTask.hedefSekil === 'üçgen') {
-            value = '🔹';
-          } else if (currentTask.hedefRenk === 'yeşil' && currentTask.hedefSekil === 'daire') {
-            value = '🟢';
-          } else if (currentTask.hedefRenk === 'kırmızı' && currentTask.hedefSekil === 'daire') {
+          // Karma hedefler - renk + şekil kombinasyonları
+          // DAİRE kombinasyonları
+          if (currentTask.hedefRenk === 'kırmızı' && currentTask.hedefSekil === 'daire') {
             value = '🔴';
           } else if (currentTask.hedefRenk === 'mavi' && currentTask.hedefSekil === 'daire') {
             value = '🔵';
+          } else if (currentTask.hedefRenk === 'yeşil' && currentTask.hedefSekil === 'daire') {
+            value = '🟢';
           } else if (currentTask.hedefRenk === 'sarı' && currentTask.hedefSekil === 'daire') {
             value = '🟡';
-          } else if (currentTask.hedefRenk === 'kırmızı' && currentTask.hedefSekil === 'üçgen') {
-            value = '🔺';
-          } else if (currentTask.hedefRenk === 'kırmızı' && currentTask.hedefSekil === 'kare') {
+          } else if (currentTask.hedefRenk === 'mor' && currentTask.hedefSekil === 'daire') {
+            value = '🟣';
+          } else if (currentTask.hedefRenk === 'turuncu' && currentTask.hedefSekil === 'daire') {
+            value = '🟠';
+          }
+          // KARE kombinasyonları
+          else if (currentTask.hedefRenk === 'kırmızı' && currentTask.hedefSekil === 'kare') {
             value = '🟥';
           } else if (currentTask.hedefRenk === 'mavi' && currentTask.hedefSekil === 'kare') {
             value = '🟦';
           } else if (currentTask.hedefRenk === 'yeşil' && currentTask.hedefSekil === 'kare') {
             value = '🟩';
-          } else if (currentTask.hedefRenk === 'sarı' && currentTask.hedefSekil === 'yıldız') {
+          } else if (currentTask.hedefRenk === 'sarı' && currentTask.hedefSekil === 'kare') {
+            value = '🟨';
+          } else if (currentTask.hedefRenk === 'mor' && currentTask.hedefSekil === 'kare') {
+            value = '🟪';
+          } else if (currentTask.hedefRenk === 'turuncu' && currentTask.hedefSekil === 'kare') {
+            value = '🟧';
+          }
+          // ÜÇGEN kombinasyonları
+          else if (currentTask.hedefRenk === 'kırmızı' && currentTask.hedefSekil === 'üçgen') {
+            value = '🔺';
+          } else if (currentTask.hedefRenk === 'mavi' && currentTask.hedefSekil === 'üçgen') {
+            value = '🔹';
+          } else if (currentTask.hedefRenk === 'yeşil' && currentTask.hedefSekil === 'üçgen') {
+            value = '🔺'; // Yeşil üçgen için kırmızı üçgen kullan (emoji sınırlaması)
+          } else if (currentTask.hedefRenk === 'sarı' && currentTask.hedefSekil === 'üçgen') {
+            value = '🔺'; // Sarı üçgen için kırmızı üçgen kullan (emoji sınırlaması)
+          } else if (currentTask.hedefRenk === 'mor' && currentTask.hedefSekil === 'üçgen') {
+            value = '🔺'; // Mor üçgen için kırmızı üçgen kullan
+          } else if (currentTask.hedefRenk === 'turuncu' && currentTask.hedefSekil === 'üçgen') {
+            value = '🔺'; // Turuncu üçgen için kırmızı üçgen kullan
+          }
+          // YILDIZ kombinasyonları
+          else if (currentTask.hedefRenk === 'sarı' && currentTask.hedefSekil === 'yıldız') {
             value = '⭐';
-          } else {
+          } else if (currentTask.hedefRenk === 'kırmızı' && currentTask.hedefSekil === 'yıldız') {
+            value = '⭐'; // Yıldız genelde sarı olarak görülür
+          } else if (currentTask.hedefRenk === 'mavi' && currentTask.hedefSekil === 'yıldız') {
+            value = '⭐';
+          } else if (currentTask.hedefRenk === 'yeşil' && currentTask.hedefSekil === 'yıldız') {
+            value = '⭐';
+          } else if (currentTask.hedefRenk === 'mor' && currentTask.hedefSekil === 'yıldız') {
+            value = '⭐';
+          } else if (currentTask.hedefRenk === 'turuncu' && currentTask.hedefSekil === 'yıldız') {
+            value = '⭐';
+          }
+          // KALP kombinasyonları
+          else if (currentTask.hedefRenk === 'kırmızı' && currentTask.hedefSekil === 'kalp') {
+            value = '❤️';
+          } else if (currentTask.hedefRenk === 'mavi' && currentTask.hedefSekil === 'kalp') {
+            value = '💙';
+          } else if (currentTask.hedefRenk === 'yeşil' && currentTask.hedefSekil === 'kalp') {
+            value = '💚';
+          } else if (currentTask.hedefRenk === 'sarı' && currentTask.hedefSekil === 'kalp') {
+            value = '💛';
+          } else if (currentTask.hedefRenk === 'mor' && currentTask.hedefSekil === 'kalp') {
+            value = '💜';
+          } else if (currentTask.hedefRenk === 'turuncu' && currentTask.hedefSekil === 'kalp') {
+            value = '🧡';
+          }
+          // ELMAS kombinasyonları
+          else if (currentTask.hedefRenk === 'mavi' && currentTask.hedefSekil === 'elmas') {
+            value = '💎';
+          } else if (currentTask.hedefRenk === 'kırmızı' && currentTask.hedefSekil === 'elmas') {
+            value = '💎';
+          } else if (currentTask.hedefRenk === 'yeşil' && currentTask.hedefSekil === 'elmas') {
+            value = '💎';
+          } else if (currentTask.hedefRenk === 'sarı' && currentTask.hedefSekil === 'elmas') {
+            value = '💎';
+          } else if (currentTask.hedefRenk === 'mor' && currentTask.hedefSekil === 'elmas') {
+            value = '💎';
+          } else if (currentTask.hedefRenk === 'turuncu' && currentTask.hedefSekil === 'elmas') {
+            value = '💎';
+          }
+          // Fallback
+          else {
             value = '🔴';
           }
         } else {
