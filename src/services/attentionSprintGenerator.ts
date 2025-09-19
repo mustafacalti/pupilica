@@ -431,7 +431,8 @@ class AttentionSprintGenerator {
   ): string {
     const performansMetni = this.formatPerformanceForPrompt(performans);
     const tipOrnekleri = this.getTaskExamplesForType(onerilenTip, difficulty);
-    return `ADHD'li 12 yaş çocuk için Dikkat Sprintleri görevi üret. SADECE JSON döndür.
+
+    const fullPrompt = `ADHD'li 12 yaş çocuk için Dikkat Sprintleri görevi üret. SADECE JSON döndür.
 
 ÖNERİLEN GÖREV TİPİ: ${onerilenTip} (çeşitlilik için)
 
@@ -551,17 +552,43 @@ ZORUNLU KURALLAR DİNAMİK TIKLAMA İÇİN:
 - Şekil MUTLAKA spesifik: daire, kare, üçgen, yıldız, kalp, elmas
 - Örnek: "45 saniye içinde tüm 🔵 mavi daireleri tıkla"
 - "hedefRenk" ve "hedefSekil" alanları MUTLAKA doldur`;
+
+    // AI'A GİDEN GERÇEK PROMPT'U CONSOLE'A YAZDIR
+    console.log('🤖 [AI PROMPT] =============================================================================');
+    console.log(fullPrompt);
+    console.log('🤖 [AI PROMPT END] ========================================================================');
+
+    return fullPrompt;
   }
 
   /**
    * Performans verisini prompt için formatla
    */
   private formatPerformanceForPrompt(performans: AttentionSprintPerformance): string {
-    const { son3Tur, basariOrani, ortalamaReaksiyonSuresi, odaklanmaDurumu } = performans;
+    const { son3Tur, basariOrani, ortalamaReaksiyonSuresi, odaklanmaDurumu, sayiGorevPerformansi } = performans;
 
     const turlar = son3Tur.map((tur, i) =>
       `Tur ${i+1}: ${tur.basari ? 'Başarılı' : 'Başarısız'} - ${tur.sure}s - ${tur.zorluk}`
     ).join('\n');
+
+    // Hedef yakalama metriklerini ekle
+    let hedefMetrikleri = '';
+    if (sayiGorevPerformansi &&
+        sayiGorevPerformansi.hedefYakalamaOrani !== undefined &&
+        sayiGorevPerformansi.toplamHedefSayisi !== undefined) {
+      hedefMetrikleri = `
+
+HEDEF YAKALAMA METRİKLERİ:
+- Hedef Yakalama Oranı: ${Math.round((sayiGorevPerformansi.hedefYakalamaOrani || 0) * 100)}%
+- Yakalanan Hedefler: ${sayiGorevPerformansi.yakalinanHedefSayisi || 0}/${sayiGorevPerformansi.toplamHedefSayisi || 0}
+- Yanlış Tıklamalar: ${sayiGorevPerformansi.yanlisTiklamaSayisi || 0}
+
+HIZLI TIKLAMA ANALİZİ (ADHD İÇİN ÖNEMLİ):
+- Hızlı Tıklama Oranı: ${sayiGorevPerformansi.hizliTiklamaOrani ? Math.round(sayiGorevPerformansi.hizliTiklamaOrani * 100) : 0}% (3 saniye altı)
+- Hızlı Tıklamalar: ${sayiGorevPerformansi.hizliTiklamaSayisi || 0}/${sayiGorevPerformansi.toplamTiklamaSayisi || 0}
+- Hızlı+Doğru Tıklamalar: ${sayiGorevPerformansi.hizliVeDogruTiklamalar || 0}
+- Hızlı Tıklamalarda Doğruluk: ${sayiGorevPerformansi.hizliTiklamaDogrulukOrani ? Math.round(sayiGorevPerformansi.hizliTiklamaDogrulukOrani * 100) : 0}%`;
+    }
 
     return `Son 3 Tur:
 ${turlar}
@@ -569,7 +596,7 @@ ${turlar}
 Genel Durum:
 - Başarı Oranı: ${Math.round(basariOrani * 100)}%
 - Ortalama Reaksiyon: ${ortalamaReaksiyonSuresi.toFixed(1)}s
-- Odaklanma: ${odaklanmaDurumu}`;
+- Odaklanma: ${odaklanmaDurumu}${hedefMetrikleri}`;
   }
 
   /**

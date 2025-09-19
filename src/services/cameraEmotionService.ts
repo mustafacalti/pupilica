@@ -1,4 +1,4 @@
-import { EmotionAnalysisResult } from './emotionAnalysisService';
+import { EmotionAnalysisResult, emotionAnalysisService } from './emotionAnalysisService';
 
 export interface CameraEmotionData {
   emotion: string;
@@ -13,10 +13,13 @@ export interface CameraEmotionData {
 
 class CameraEmotionService {
   private isActive = false;
+  private isAnalysisActive = false; // Frame analizi aktif mi?
   private pythonServerUrl = 'http://localhost:5000'; // Python server
   private pollInterval: NodeJS.Timeout | null = null;
   private onEmotionCallback?: (result: EmotionAnalysisResult) => void;
   private videoRef: React.RefObject<HTMLVideoElement> | null = null;
+  private lastAnalysisTime = 0; // Son analiz zamanı (strict timing için)
+  private readonly ANALYSIS_INTERVAL = 5000; // 5 saniye strict interval
 
   /**
    * Kamera erişimini kontrol et
@@ -90,9 +93,10 @@ class CameraEmotionService {
       // });
 
       // Video frame'ini düzenli olarak capture et ve analiz et
+      // Interval 1 saniye ama strict timing kontrolü ile gerçekten 5 saniyede bir analiz
       this.pollInterval = setInterval(() => {
         this.captureAndAnalyzeFrame(videoElement);
-      }, 5000); // 5 saniyede bir analiz - daha az spam
+      }, 1000); // 1 saniyede bir kontrol, ama analiz 5 saniyede bir
 
       console.log('✅ [EMOTION] Real-time kamera tracking aktif');
       return true;
@@ -107,7 +111,25 @@ class CameraEmotionService {
    * Video frame'ini capture et ve Python'a gönder
    */
   private async captureAndAnalyzeFrame(videoElement: HTMLVideoElement): Promise<void> {
-    if (!this.isActive) return;
+    if (!this.isActive || !this.isAnalysisActive) return;
+
+    // Oyun aktif değilse frame analiz etme (double check)
+    if (!emotionAnalysisService.isGameActiveStatus()) {
+      console.log('⏸️ [CAMERA FRAME] Oyun aktif değil, frame analizi atlanıyor');
+      return;
+    }
+
+    // STRICT TIMING KONTROLÜ - 5 saniyede bir kesin analiz
+    const now = Date.now();
+    if (this.lastAnalysisTime > 0 && (now - this.lastAnalysisTime) < this.ANALYSIS_INTERVAL) {
+      console.log('⏱️ [TIMING] Analiz çok erken, atlanıyor', {
+        timeSinceLastAnalysis: `${now - this.lastAnalysisTime}ms`,
+        required: `${this.ANALYSIS_INTERVAL}ms`
+      });
+      return;
+    }
+
+    this.lastAnalysisTime = now;
 
     try {
       // Video frame'ini canvas'a çiz
@@ -135,6 +157,13 @@ class CameraEmotionService {
       if (response.ok) {
         const data: CameraEmotionData = await response.json();
         const emotionResult = this.convertToEmotionResult(data);
+
+        console.log('✅ [FRAME ANALYSIS] Analiz tamamlandı', {
+          emotion: emotionResult.emotion,
+          confidence: `${(emotionResult.confidence * 100).toFixed(1)}%`,
+          gaze: emotionResult.gazeStatus,
+          timeSinceLastAnalysis: `${Date.now() - this.lastAnalysisTime}ms`
+        });
 
         if (this.onEmotionCallback) {
           this.onEmotionCallback(emotionResult);
@@ -222,6 +251,7 @@ class CameraEmotionService {
     console.log('⏹️ [EMOTION] Real-time tracking durduruluyor...');
 
     this.isActive = false;
+    this.isAnalysisActive = false; // Frame analysis'i de durdur
 
     if (this.pollInterval) {
       clearInterval(this.pollInterval);
@@ -304,10 +334,39 @@ class CameraEmotionService {
   }
 
   /**
+   * Frame analizi başlat (sadece aktif oyun sırasında)
+   */
+  startFrameAnalysis(): void {
+    if (!this.isActive) {
+      console.log('⚠️ [CAMERA] Kamera bağlantısı yok, frame analizi başlatılamıyor');
+      return;
+    }
+
+    this.isAnalysisActive = true;
+    this.lastAnalysisTime = 0; // Timing'i sıfırla - ilk analiz hemen yapılabilsin
+    console.log('🎥 [CAMERA] Frame analizi başlatıldı, strict 5s timing aktif');
+  }
+
+  /**
+   * Frame analizi durdur (oyun bittiğinde)
+   */
+  stopFrameAnalysis(): void {
+    this.isAnalysisActive = false;
+    console.log('⏸️ [CAMERA] Frame analizi durduruldu');
+  }
+
+  /**
    * Service aktif mi?
    */
   isTrackingActive(): boolean {
     return this.isActive;
+  }
+
+  /**
+   * Frame analizi aktif mi?
+   */
+  isFrameAnalysisActive(): boolean {
+    return this.isAnalysisActive;
   }
 }
 

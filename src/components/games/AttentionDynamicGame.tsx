@@ -3,11 +3,15 @@ import { Card, CardContent } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { AttentionSprintTask, AttentionSprintPerformance, EmotionResult } from '../../types';
 import { attentionSprintGenerator } from '../../services/attentionSprintGenerator';
-import { emotionAnalysisService, EmotionAnalysisResult, AttentionMetrics } from '../../services/emotionAnalysisService';
-import { adaptiveDifficultyService, DifficultyAdjustment, GamePerformanceData } from '../../services/adaptiveDifficultyService';
+import { emotionAnalysisService } from '../../services/emotionAnalysisService';
+import { adaptiveDifficultyService } from '../../services/adaptiveDifficultyService';
 import { cameraEmotionService } from '../../services/cameraEmotionService';
 import { Clock, Target, Zap, RotateCcw, Star, Brain, Play, Camera, Eye } from 'lucide-react';
-const X = () => <span>❌</span>; // Fallback icon
+
+// Basit X ikonu – className kabul etsin (TS hatasını önlemek için)
+const X: React.FC<React.HTMLAttributes<HTMLSpanElement>> = ({ className }) => (
+  <span className={className}>❌</span>
+);
 
 interface AttentionDynamicGameProps {
   studentId: string;
@@ -22,11 +26,26 @@ interface DynamicRound {
   startTime: number;
   endTime?: number;
   success: boolean;
-  reactionTime: number; // Tur tamamlama süresi
+  reactionTime: number; // Tur tamamlama süresi (s)
   correctClicks: number;
   wrongClicks: number;
   totalSpawned: number;
+  targetSpawned: number; // Kaç hedef kutucuk çıktı
+  targetHitRate: number; // Hedef kutucuk yakalama oranı (0-1)
   avgReactionTimeMs?: number; // Gerçek ortalama reaksiyon süresi (ms)
+  // Yeni detaylı metrikler
+  fastClicks: number; // Hızlı tıklama sayısı (ADHD kriterine göre)
+  totalClicksAnalyzed: number; // Toplam analiz edilen tıklama sayısı
+  fastClickRate: number; // Hızlı tıklama oranı (0-1)
+  correctFastClicks: number; // Hem doğru hem hızlı tıklamalar
+  fastAccuracyRate: number; // Hızlı tıklamalardaki doğruluk oranı (0-1)
+}
+
+interface ClickAnalytic {
+  timestamp: number;
+  reactionTime: number;
+  isCorrect: boolean;
+  isFast: boolean; // 3 saniye altında mı?
 }
 
 export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
@@ -34,7 +53,7 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
   studentAge = 12,
   difficulty,
   onGameComplete,
-  onEmotionDetected
+  onEmotionDetected,
 }) => {
   const [currentTask, setCurrentTask] = useState<AttentionSprintTask | null>(null);
   const [gameState, setGameState] = useState<'ready' | 'countdown' | 'active' | 'waiting' | 'completed'>('ready');
@@ -50,20 +69,20 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
 
   // Emotion analysis states
   const [emotionAnalysisActive, setEmotionAnalysisActive] = useState(false);
-  const [currentEmotion, setCurrentEmotion] = useState<EmotionAnalysisResult | null>(null);
-  const [attentionMetrics, setAttentionMetrics] = useState<AttentionMetrics | null>(null);
-  const [difficultyAdjustment, setDifficultyAdjustment] = useState<DifficultyAdjustment | null>(null);
+  const [currentEmotion, setCurrentEmotion] = useState<any | null>(null);
+  const [attentionMetrics, setAttentionMetrics] = useState<any | null>(null);
+  const [difficultyAdjustment, setDifficultyAdjustment] = useState<any | null>(null);
   const [realtimeFeedback, setRealtimeFeedback] = useState<string>('');
 
   // Dinamik tıklama modu için state'ler
   const [clickingObjects, setClickingObjects] = useState<{
-    id: string,
-    x: number,
-    y: number,
-    value: string,
-    isTarget: boolean,
-    createdAt: number,
-    lifespan: number
+    id: string;
+    x: number;
+    y: number;
+    value: string;
+    isTarget: boolean;
+    createdAt: number;
+    lifespan: number;
   }[]>([]);
   const [correctClicks, setCorrectClicks] = useState(0);
   const [wrongClicks, setWrongClicks] = useState(0);
@@ -71,9 +90,15 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
   const correctClicksRef = useRef(0);
   const wrongClicksRef = useRef(0);
   const [totalSpawned, setTotalSpawned] = useState(0);
+  const [targetSpawned, setTargetSpawned] = useState(0); // Hedef kutucuk sayısı
+  const targetSpawnedRef = useRef(0);
   // Sadece tıklanan kutucukların reaksiyon süreleri
   const [reactionTimes, setReactionTimes] = useState<number[]>([]);
   const reactionTimesRef = useRef<number[]>([]);
+
+  // Detaylı tıklama analizi için
+  const [clickAnalytics, setClickAnalytics] = useState<ClickAnalytic[]>([]);
+  const clickAnalyticsRef = useRef<ClickAnalytic[]>([]);
 
   // Şekil renkleri için CSS color mapping
   const getShapeColor = (colorName: string): string => {
@@ -83,7 +108,7 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
       'yeşil': '#16a34a',
       'sarı': '#eab308',
       'mor': '#9333ea',
-      'turuncu': '#ea580c'
+      'turuncu': '#ea580c',
     };
     return colorMap[colorName] || '#dc2626';
   };
@@ -108,62 +133,34 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
           );
 
         case 'circle':
-          return (
-            <div
-              className="w-8 h-8 rounded-full"
-              style={{ backgroundColor: shapeColor }}
-            />
-          );
+          return <div className="w-8 h-8 rounded-full" style={{ backgroundColor: shapeColor }} />;
 
         case 'square':
-          return (
-            <div
-              className="w-8 h-8"
-              style={{ backgroundColor: shapeColor }}
-            />
-          );
+          return <div className="w-8 h-8" style={{ backgroundColor: shapeColor }} />;
 
         case 'star':
           return (
             <div
               className="relative w-8 h-8"
               style={{
-                clipPath: 'polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)',
-                backgroundColor: shapeColor
+                clipPath:
+                  'polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)',
+                backgroundColor: shapeColor,
               }}
             />
           );
 
         case 'heart':
           return (
-            <div
-              className="relative w-8 h-8"
-              style={{
-                transform: 'rotate(-45deg)',
-              }}
-            >
-              <div
-                className="w-6 h-6 rounded-full absolute top-0 left-1"
-                style={{ backgroundColor: shapeColor }}
-              />
-              <div
-                className="w-6 h-6 rounded-full absolute top-1 left-0"
-                style={{ backgroundColor: shapeColor }}
-              />
-              <div
-                className="w-4 h-4 absolute top-3 left-2"
-                style={{ backgroundColor: shapeColor }}
-              />
+            <div className="relative w-8 h-8" style={{ transform: 'rotate(-45deg)' }}>
+              <div className="w-6 h-6 rounded-full absolute top-0 left-1" style={{ backgroundColor: shapeColor }} />
+              <div className="w-6 h-6 rounded-full absolute top-1 left-0" style={{ backgroundColor: shapeColor }} />
+              <div className="w-4 h-4 absolute top-3 left-2" style={{ backgroundColor: shapeColor }} />
             </div>
           );
 
         case 'diamond':
-          return (
-            <div
-              className="w-8 h-8 transform rotate-45"
-              style={{ backgroundColor: shapeColor }}
-            />
-          );
+          return <div className="w-8 h-8 transform rotate-45" style={{ backgroundColor: shapeColor }} />;
 
         default:
           return value;
@@ -178,69 +175,50 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
   const hasGeneratedFirstTask = useRef(false);
   const isGeneratingRef = useRef(false);
   const isEndingRound = useRef(false);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const emotionSimulationRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const totalRounds = 5;
+
+  // ADHD'li çocuklar için hızlı tıklama kriteri (milisaniye)
+  const FAST_CLICK_THRESHOLD_MS = 3000; // 3 saniye altı "hızlı" sayılır
 
   // Emotion tracking fonksiyonları
   const startEmotionTracking = useCallback(async () => {
     console.log('🎭 [EMOTION] Emotion tracking başlatılıyor...');
 
-    emotionAnalysisService.startGameSession();
     setEmotionAnalysisActive(true);
 
-    const onEmotionDetected = (result: EmotionAnalysisResult) => {
-      // Console spam'i azalt
-      // console.log('🎭 [EMOTION DETECTED]', {
-      //   emotion: result.emotion,
-      //   confidence: `${Math.round(result.confidence * 100)}%`,
-      //   timestamp: new Date(result.timestamp).toLocaleTimeString(),
-      //   gameState,
-      //   currentRound: currentRound + 1
-      // });
+    // Prop ile çakışmayı önlemek için isim değiştirildi
+    const handleDetectedEmotion = (result: any) => {
+      if (!emotionAnalysisService.isGameActiveStatus()) {
+        // Oyun aktif değilse emotion callback'i işleme
+        return;
+      }
 
       setCurrentEmotion(result);
       emotionAnalysisService.addEmotionResult(result);
 
-      // Real-time feedback güncelle
       const metrics = emotionAnalysisService.getCurrentGameMetrics();
       setAttentionMetrics(metrics);
-
-      // Console spam'i azalt
-      // console.log('📊 [ATTENTION METRICS]', {
-      //   totalGameTime: `${metrics.totalGameTime?.toFixed(1)}s`,
-      //   screenLooking: `${metrics.screenLookingPercentage?.toFixed(1)}%`,
-      //   dominantEmotion: metrics.dominantEmotion,
-      //   attentionScore: metrics.attentionScore?.toFixed(1),
-      //   distractionEvents: metrics.distractionEvents
-      // });
 
       const feedback = adaptiveDifficultyService.getRealtimeFeedback(metrics);
       setRealtimeFeedback(feedback.message);
 
-      // Legacy emotion sistem için de ekle
+      // Legacy emotion sistem için de ekle - SADECE OYUN AKTİFKEN
       const legacyEmotion: EmotionResult = {
         emotion: result.emotion,
         confidence: result.confidence,
-        timestamp: result.timestamp
+        timestamp: result.timestamp,
       };
 
-      setEmotions(prev => {
+      setEmotions((prev) => {
         const newEmotions = [...prev.slice(-10), legacyEmotion];
         emotionsRef.current = newEmotions; // Ref'i de güncelle - real-time erişim için
-        console.log('🎯 [EMOTION ADDED TO ARRAY]', {
-          emotion: legacyEmotion.emotion,
-          totalEmotions: newEmotions.length,
-          arraySize: newEmotions.length,
-          refSize: emotionsRef.current.length,
-          willSendToAI: newEmotions.length > 0 ? 'Yes' : 'No'
-        });
         return newEmotions;
       });
 
-      // Recursive call kaldırıldı - infinite loop'u önlemek için
-      // onEmotionDetected?.(legacyEmotion);
+      // Dışarı bildirim (prop)
+      onEmotionDetected?.(legacyEmotion);
     };
 
     // Önce gerçek kamera dene
@@ -248,18 +226,17 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
     if (videoRef.current) {
       cameraSuccess = await cameraEmotionService.startEmotionTracking(
         videoRef.current,
-        onEmotionDetected
+        handleDetectedEmotion
       );
     }
 
-    // Kamera başarısız olursa uyarı ver
     if (!cameraSuccess) {
       console.log('📱 [EMOTION] Gerçek kamera bulunamadı - Python server çalışıyor mu?');
-      console.log('💡 [TIP] Terminal\'de çalıştır: python emotion_server.py');
+      console.log("💡 [TIP] Terminal'de çalıştır: python emotion_server.py");
     }
 
     console.log('✅ [EMOTION] Emotion tracking aktif');
-  }, [gameState, timeLeft, onEmotionDetected]);
+  }, [onEmotionDetected]);
 
   const stopEmotionTracking = useCallback(() => {
     console.log('⏹️ [EMOTION] Emotion tracking durduruluyor...');
@@ -276,7 +253,7 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
   // İlk görevi AI'dan yükle
   useEffect(() => {
     if (!hasGeneratedFirstTask.current && !isGenerating) {
-      console.log('🤖 [TASK] İlk görev AI\'dan yükleniyor (emotion data olmadan)');
+      console.log("🤖 [TASK] İlk görev AI'dan yükleniyor (emotion data olmadan)");
       hasGeneratedFirstTask.current = true;
       generateFirstTask();
     }
@@ -287,186 +264,294 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
         timerRef.current = null;
       }
     };
-  }, []);
+  }, []); // yalnızca mount/unmount
 
+  // Güncel rounds array'i ile task generate et
+  const generateFirstTaskWithRounds = useCallback(
+    async (roundsArray: DynamicRound[], currentCorrectParam?: number, currentWrongParam?: number) => {
+      if (isGeneratingRef.current) return;
 
-  const generateFirstTask = useCallback(async (currentCorrectParam?: number, currentWrongParam?: number) => {
-    if (isGeneratingRef.current) return;
+      isGeneratingRef.current = true;
+      setIsGenerating(true);
 
-    isGeneratingRef.current = true;
-    setIsGenerating(true);
+      // Parametre varsa kullan, yoksa state'den al
+      const currentCorrectClicks = currentCorrectParam ?? correctClicks;
+      const currentWrongClicks = currentWrongParam ?? wrongClicks;
 
-    // Parametre varsa kullan, yoksa state'den al
-    const currentCorrectClicks = currentCorrectParam ?? correctClicks;
-    const currentWrongClicks = currentWrongParam ?? wrongClicks;
+      // Gerçek performans verilerini hesapla - roundsArray'den topla
+      const totalCorrectFromRounds = roundsArray.reduce((sum, r) => sum + r.correctClicks, 0);
+      const totalWrongFromRounds = roundsArray.reduce((sum, r) => sum + r.wrongClicks, 0);
+      const totalTargetSpawnedFromRounds = roundsArray.reduce((sum, r) => sum + r.targetSpawned, 0);
+      const currentCorrect = totalCorrectFromRounds + currentCorrectClicks; // Mevcut tur + geçmiş turlar
+      const currentWrong = totalWrongFromRounds + currentWrongClicks;
+      const currentTargetSpawned = totalTargetSpawnedFromRounds + (targetSpawnedRef.current || 0);
+      const totalClicks = currentCorrect + currentWrong;
+      const currentAccuracy = totalClicks > 0 ? currentCorrect / totalClicks : 0.5; // Default %50
+      const targetHitRate = currentTargetSpawned > 0 ? currentCorrect / currentTargetSpawned : 0.5; // Hedef yakalama oranı
 
-    // Gerçek performans verilerini hesapla - rounds array'den topla
-    const totalCorrectFromRounds = rounds.reduce((sum, r) => sum + r.correctClicks, 0);
-    const totalWrongFromRounds = rounds.reduce((sum, r) => sum + r.wrongClicks, 0);
-    const currentCorrect = totalCorrectFromRounds + currentCorrectClicks; // Mevcut tur + geçmiş turlar
-    const currentWrong = totalWrongFromRounds + currentWrongClicks;
-    const totalClicks = currentCorrect + currentWrong;
-    const currentAccuracy = totalClicks > 0 ? currentCorrect / totalClicks : 0.5; // Default %50
-    // Gerçek reaksiyon süresi ortalaması (sadece tıklanan kutucuklar)
-    const allReactionTimes = [...reactionTimesRef.current]; // Mevcut tur
-    // Önceki turlardan reaksiyon sürelerini de ekle (eğer rounds'da varsa)
-    rounds.forEach(round => {
-      if (round.avgReactionTimeMs) {
-        allReactionTimes.push(round.avgReactionTimeMs);
-      }
-    });
-
-    const avgReactionTime = allReactionTimes.length > 0
-      ? allReactionTimes.reduce((sum, time) => sum + time, 0) / allReactionTimes.length / 1000 // saniyeye çevir
-      : 2.5; // Default 2.5s
-
-    // Mevcut tur için ortalama reaksiyon süresi
-    const currentTurAvgReactionTime = reactionTimesRef.current.length > 0
-      ? reactionTimesRef.current.reduce((sum, time) => sum + time, 0) / reactionTimesRef.current.length
-      : 0;
-
-    // Rounds'u AttentionSprintPerformance formatına çevir
-    const formattedRounds = rounds.slice(-3).map(round => ({
-      basari: round.success,
-      sure: round.reactionTime,
-      zorluk: difficulty as 'kolay' | 'orta' | 'zor',
-      hedefTipi: 'renk' as const, // Dinamik tıklama renk hedefli
-      hizliCozum: round.reactionTime < 2.0, // 2 saniyenin altı hızlı
-      zamanlamaSapmasi: Math.abs(round.reactionTime - (currentTask?.sure_saniye || 30)),
-      hedefZaman: currentTask?.sure_saniye || 30
-    }));
-
-    // Hızlı çözüm sayısını hesapla
-    const hizliCozumSayisi = formattedRounds.filter(r => r.hizliCozum).length;
-
-    // Debug: Performans verilerini logla
-    console.log('🔍 [PERFORMANCE CALC]', {
-      correctClicks: currentCorrectClicks, wrongClicks: currentWrongClicks, // Mevcut tur
-      totalCorrectFromRounds, totalWrongFromRounds, // Geçmiş turlar
-      currentCorrect, currentWrong, totalClicks, // Toplam
-      currentAccuracy,
-      rounds: rounds.length,
-      avgReactionTime: avgReactionTime.toFixed(3) + 's', // Saniye cinsinden
-      currentTurAvgReactionTime: currentTurAvgReactionTime.toFixed(0) + 'ms', // Milisaniye
-      totalReactionTimes: allReactionTimes.length,
-      hizliCozumSayisi,
-      formattedRoundsCount: formattedRounds.length
-    });
-
-    // AI'ın kendi odaklanma analizini yapması için raw data gönder
-    const currentMetrics = emotionAnalysisService.getCurrentGameMetrics();
-
-    const initialPerformance: AttentionSprintPerformance = {
-      son3Tur: formattedRounds,
-      ortalamaReaksiyonSuresi: avgReactionTime,
-      basariOrani: currentAccuracy,
-      odaklanmaDurumu: 'ai-analiz', // AI'ın analiz etmesi için placeholder
-      // AI için attention metrics ekle
-      attentionMetrics: currentMetrics,
-      // Dinamik tıklama performansı olarak sayiGorevPerformansi ekle
-      sayiGorevPerformansi: {
-        ortalamaSayiZorlugu: difficulty === 'kolay' ? 3 : difficulty === 'orta' ? 5 : 7,
-        sayiBasariOrani: currentAccuracy,
-        ortalamaReaksiyonSuresiSayi: avgReactionTime,
-        hizliCozumSayisi
-      }
-    };
-
-    try {
-      // State yerine ref kullan - real-time emotion data için
-      const currentEmotions = emotionsRef.current;
-      const emotionDataForAI = currentEmotions.length > 0 ? JSON.stringify(currentEmotions) : undefined;
-
-      console.log('🤖 [AI PROMPT DATA]', {
-        hasEmotionData: !!emotionDataForAI,
-        emotionCountFromState: emotions.length,
-        emotionCountFromRef: currentEmotions.length,
-        emotionSummary: currentEmotions.slice(-3).map(e => `${e.emotion}(${Math.round(e.confidence * 100)}%)`),
-        isFirstTask: !rounds.length,
-        timingInfo: {
-          gameStartTime: gameStartTime,
-          emotionTrackingActive: emotionAnalysisActive,
-          currentTime: Date.now()
-        },
-        performanceData: {
-          successRate: `${Math.round(initialPerformance.basariOrani * 100)}%`,
-          avgReaction: `${initialPerformance.ortalamaReaksiyonSuresi.toFixed(1)}s`,
-          focusState: initialPerformance.odaklanmaDurumu
+      // Gerçek reaksiyon süresi ortalaması (sadece tıklanan kutucuklar)
+      const allReactionTimes = [...reactionTimesRef.current];
+      roundsArray.forEach((round) => {
+        if (round.avgReactionTimeMs) {
+          allReactionTimes.push(round.avgReactionTimeMs);
         }
       });
 
-      const task = await attentionSprintGenerator.generateAttentionSprint({
-        performansOzeti: initialPerformance,
-        studentAge,
-        sonGorevler: ['dinamik-tıklama'], // Dinamik tıklama oyunu iste
-        emotionData: emotionDataForAI
+      const avgReactionTime =
+        allReactionTimes.length > 0
+          ? allReactionTimes.reduce((sum, time) => sum + time, 0) / allReactionTimes.length / 1000 // saniyeye çevir
+          : 2.5; // Default 2.5s
+
+      // Mevcut tur için ortalama reaksiyon süresi
+      const currentTurAvgReactionTime =
+        reactionTimesRef.current.length > 0
+          ? reactionTimesRef.current.reduce((sum, time) => sum + time, 0) /
+            reactionTimesRef.current.length
+          : 0;
+
+      // Rounds'u AttentionSprintPerformance formatına çevir
+      const formattedRounds = roundsArray.slice(-3).map((round) => ({
+        basari: round.success,
+        sure: round.reactionTime,
+        zorluk: difficulty as 'kolay' | 'orta' | 'zor',
+        hedefTipi: 'renk' as const, // Dinamik tıklama renk hedefli
+        hizliCozum: round.reactionTime < 2.0, // 2 saniyenin altı hızlı
+        zamanlamaSapmasi: Math.abs(round.reactionTime - (currentTask?.sure_saniye || 30)),
+        hedefZaman: currentTask?.sure_saniye || 30,
+      }));
+
+      const hizliCozumSayisi = formattedRounds.filter((r) => r.hizliCozum).length;
+
+      const currentMetrics = emotionAnalysisService.getCurrentGameMetrics();
+
+      const initialPerformance: AttentionSprintPerformance = {
+        son3Tur: formattedRounds as any,
+        ortalamaReaksiyonSuresi: avgReactionTime,
+        basariOrani: currentAccuracy,
+        odaklanmaDurumu: 'ai-analiz' as any, // AI'ın analiz etmesi için placeholder
+        attentionMetrics: currentMetrics as any,
+        sayiGorevPerformansi: {
+          ortalamaSayiZorlugu: difficulty === 'kolay' ? 3 : difficulty === 'orta' ? 5 : 7,
+          sayiBasariOrani: currentAccuracy,
+          ortalamaReaksiyonSuresiSayi: avgReactionTime,
+          hizliCozumSayisi,
+          hedefYakalamaOrani: targetHitRate,
+          toplamHedefSayisi: currentTargetSpawned,
+          yakalinanHedefSayisi: currentCorrect,
+          yanlisTiklamaSayisi: currentWrong,
+          // GÜNCEL ROUNDS VERİLERİ KULLAN
+          hizliTiklamaOrani:
+            roundsArray.length > 0 ? roundsArray.reduce((sum, r) => sum + r.fastClickRate, 0) / roundsArray.length : 0,
+          hizliTiklamaSayisi: roundsArray.reduce((sum, r) => sum + r.fastClicks, 0),
+          toplamTiklamaSayisi: roundsArray.reduce((sum, r) => sum + r.totalClicksAnalyzed, 0),
+          hizliVeDogruTiklamalar: roundsArray.reduce((sum, r) => sum + r.correctFastClicks, 0),
+          hizliTiklamaDogrulukOrani:
+            roundsArray.length > 0 ? roundsArray.reduce((sum, r) => sum + r.fastAccuracyRate, 0) / roundsArray.length : 0,
+          odaklanmaSayisi: roundsArray.length,
+        } as any,
+      } as any;
+
+      try {
+        const currentRoundEmotions = emotionAnalysisService.getCurrentRoundEmotions();
+        const fullGameEmotions = emotionAnalysisService.getFullGameEmotions();
+
+        const emotionDataForAI = currentRoundEmotions.length > 0 ? JSON.stringify(currentRoundEmotions) : undefined;
+
+        console.log('🤖 [AI PROMPT DATA WITH UPDATED ROUNDS]', {
+          hasEmotionData: !!emotionDataForAI,
+          roundEmotionCount: currentRoundEmotions.length,
+          fullGameEmotionCount: fullGameEmotions.length,
+          legacyEmotionCount: emotions.length,
+          roundsCount: roundsArray.length,
+          fastClickData: {
+            hizliTiklamaOrani: initialPerformance.sayiGorevPerformansi?.hizliTiklamaOrani,
+            hizliTiklamaSayisi: initialPerformance.sayiGorevPerformansi?.hizliTiklamaSayisi,
+            toplamTiklamaSayisi: initialPerformance.sayiGorevPerformansi?.toplamTiklamaSayisi,
+          }
+        });
+
+        const task = await attentionSprintGenerator.generateAttentionSprint({
+          performansOzeti: initialPerformance,
+          studentAge,
+          sonGorevler: ['dinamik-tıklama'],
+          emotionData: emotionDataForAI,
+        });
+
+        const correctedTaskText = filterDynamicTaskOnly(task.gorev);
+
+        const filteredTask: AttentionSprintTask = {
+          ...task,
+          difficulty,
+          gorev: correctedTaskText,
+          sure_saniye: task.sure_saniye,
+        } as AttentionSprintTask;
+
+        setCurrentTask(filteredTask);
+        setTimeLeft(filteredTask.sure_saniye);
+      } catch (error) {
+        console.error('İlk görev üretme hatası:', error);
+        setCurrentTask(getFallbackDynamicTask());
+      } finally {
+        isGeneratingRef.current = false;
+        setIsGenerating(false);
+      }
+    },
+    [studentAge, difficulty, correctClicks, wrongClicks]
+  );
+
+  const generateFirstTask = useCallback(
+    async (currentCorrectParam?: number, currentWrongParam?: number) => {
+      if (isGeneratingRef.current) return;
+
+      isGeneratingRef.current = true;
+      setIsGenerating(true);
+
+      // Parametre varsa kullan, yoksa state'den al
+      const currentCorrectClicks = currentCorrectParam ?? correctClicks;
+      const currentWrongClicks = currentWrongParam ?? wrongClicks;
+
+      // Gerçek performans verilerini hesapla - rounds array'den topla
+      const totalCorrectFromRounds = rounds.reduce((sum, r) => sum + r.correctClicks, 0);
+      const totalWrongFromRounds = rounds.reduce((sum, r) => sum + r.wrongClicks, 0);
+      const totalTargetSpawnedFromRounds = rounds.reduce((sum, r) => sum + r.targetSpawned, 0);
+      const currentCorrect = totalCorrectFromRounds + currentCorrectClicks; // Mevcut tur + geçmiş turlar
+      const currentWrong = totalWrongFromRounds + currentWrongClicks;
+      const currentTargetSpawned = totalTargetSpawnedFromRounds + (targetSpawnedRef.current || 0);
+      const totalClicks = currentCorrect + currentWrong;
+      const currentAccuracy = totalClicks > 0 ? currentCorrect / totalClicks : 0.5; // Default %50
+      const targetHitRate = currentTargetSpawned > 0 ? currentCorrect / currentTargetSpawned : 0.5; // Hedef yakalama oranı
+
+      // Gerçek reaksiyon süresi ortalaması (sadece tıklanan kutucuklar)
+      const allReactionTimes = [...reactionTimesRef.current];
+      rounds.forEach((round) => {
+        if (round.avgReactionTimeMs) {
+          allReactionTimes.push(round.avgReactionTimeMs);
+        }
       });
 
-      console.log('✨ [AI GENERATED TASK]', {
-        task: task.gorev,
-        duration: `${task.sure_saniye}s`,
-        difficulty: task.difficulty,
-        tips: task.ipuclari,
-        distractors: task.dikkatDagitici
-      });
+      const avgReactionTime =
+        allReactionTimes.length > 0
+          ? allReactionTimes.reduce((sum, time) => sum + time, 0) / allReactionTimes.length / 1000 // saniyeye çevir
+          : 2.5; // Default 2.5s
 
-      // Sadece dinamik tıklama görevlerini filtrele - orijinal süreyi koru
-      const correctedTaskText = filterDynamicTaskOnly(task.gorev);
+      // Mevcut tur için ortalama reaksiyon süresi
+      const currentTurAvgReactionTime =
+        reactionTimesRef.current.length > 0
+          ? reactionTimesRef.current.reduce((sum, time) => sum + time, 0) /
+            reactionTimesRef.current.length
+          : 0;
 
-      const filteredTask = {
-        ...task,
-        difficulty,
-        gorev: correctedTaskText,
-        sure_saniye: task.sure_saniye // Orijinal süreyi koru
-      };
+      // Rounds'u AttentionSprintPerformance formatına çevir
+      const formattedRounds = rounds.slice(-3).map((round) => ({
+        basari: round.success,
+        sure: round.reactionTime,
+        zorluk: difficulty as 'kolay' | 'orta' | 'zor',
+        hedefTipi: 'renk' as const, // Dinamik tıklama renk hedefli
+        hizliCozum: round.reactionTime < 2.0, // 2 saniyenin altı hızlı
+        zamanlamaSapmasi: Math.abs(round.reactionTime - (currentTask?.sure_saniye || 30)),
+        hedefZaman: currentTask?.sure_saniye || 30,
+      }));
 
-      console.log('🔧 [TASK OVERRIDE]', {
-        originalDuration: task.sure_saniye,
-        finalDuration: task.sure_saniye,
-        difficulty,
-        originalTask: task.gorev,
-        filteredTask: filteredTask.gorev
-      });
+      const hizliCozumSayisi = formattedRounds.filter((r) => r.hizliCozum).length;
 
-      setCurrentTask(filteredTask);
-      setTimeLeft(filteredTask.sure_saniye);
-    } catch (error) {
-      console.error('İlk görev üretme hatası:', error);
-      setCurrentTask(getFallbackDynamicTask());
-    } finally {
-      isGeneratingRef.current = false;
-      setIsGenerating(false);
-    }
-  }, [studentAge, difficulty]);
+      const currentMetrics = emotionAnalysisService.getCurrentGameMetrics();
+
+      const initialPerformance: AttentionSprintPerformance = {
+        son3Tur: formattedRounds as any,
+        ortalamaReaksiyonSuresi: avgReactionTime,
+        basariOrani: currentAccuracy,
+        odaklanmaDurumu: 'ai-analiz' as any, // AI'ın analiz etmesi için placeholder
+        attentionMetrics: currentMetrics as any,
+        sayiGorevPerformansi: {
+          ortalamaSayiZorlugu: difficulty === 'kolay' ? 3 : difficulty === 'orta' ? 5 : 7,
+          sayiBasariOrani: currentAccuracy,
+          ortalamaReaksiyonSuresiSayi: avgReactionTime,
+          hizliCozumSayisi,
+          hedefYakalamaOrani: targetHitRate,
+          toplamHedefSayisi: currentTargetSpawned,
+          yakalinanHedefSayisi: currentCorrect,
+          yanlisTiklamaSayisi: currentWrong,
+          hizliTiklamaOrani:
+            rounds.length > 0 ? rounds.reduce((sum, r) => sum + r.fastClickRate, 0) / rounds.length : 0,
+          hizliTiklamaSayisi: rounds.reduce((sum, r) => sum + r.fastClicks, 0),
+          toplamTiklamaSayisi: rounds.reduce((sum, r) => sum + r.totalClicksAnalyzed, 0),
+          hizliVeDogruTiklamalar: rounds.reduce((sum, r) => sum + r.correctFastClicks, 0),
+          hizliTiklamaDogrulukOrani:
+            rounds.length > 0 ? rounds.reduce((sum, r) => sum + r.fastAccuracyRate, 0) / rounds.length : 0,
+          odaklanmaSayisi: rounds.length,
+        } as any,
+      } as any;
+
+      try {
+        const currentRoundEmotions = emotionAnalysisService.getCurrentRoundEmotions();
+        const fullGameEmotions = emotionAnalysisService.getFullGameEmotions();
+
+        const emotionDataForAI = currentRoundEmotions.length > 0 ? JSON.stringify(currentRoundEmotions) : undefined;
+
+        console.log('🤖 [AI PROMPT DATA]', {
+          hasEmotionData: !!emotionDataForAI,
+          roundEmotionCount: currentRoundEmotions.length,
+          fullGameEmotionCount: fullGameEmotions.length,
+          legacyEmotionCount: emotions.length,
+          isFirstTask: !rounds.length,
+        });
+
+        const task = await attentionSprintGenerator.generateAttentionSprint({
+          performansOzeti: initialPerformance,
+          studentAge,
+          sonGorevler: ['dinamik-tıklama'],
+          emotionData: emotionDataForAI,
+        });
+
+        const correctedTaskText = filterDynamicTaskOnly(task.gorev);
+
+        const filteredTask: AttentionSprintTask = {
+          ...task,
+          difficulty,
+          gorev: correctedTaskText,
+          sure_saniye: task.sure_saniye,
+        } as AttentionSprintTask;
+
+        setCurrentTask(filteredTask);
+        setTimeLeft(filteredTask.sure_saniye);
+      } catch (error) {
+        console.error('İlk görev üretme hatası:', error);
+        setCurrentTask(getFallbackDynamicTask());
+      } finally {
+        isGeneratingRef.current = false;
+        setIsGenerating(false);
+      }
+    },
+    // Bu fonksiyon, pek çok state okuyor ama yalnızca dış parametrelere bağımlı bırakmak daha güvenli
+    [studentAge, difficulty, rounds, correctClicks, wrongClicks]
+  );
 
   // Sadece dinamik tıklama görevlerini filtrele veya dinamik göreve çevir
   const filterDynamicTaskOnly = (gorev: string): string => {
     const text = gorev.toLowerCase();
 
     // Eğer zaten dinamik tıklama görevi ise olduğu gibi döndür
-    if (text.includes('tıkla') || text.includes('yakala')) {
-      console.log('✅ [FILTER] Görev zaten dinamik tıklama, değiştirmiyor');
-      return gorev;
-    }
+    if (text.includes('tıkla') || text.includes('yakala')) return gorev;
 
     // Değilse dinamik tıklama görevine çevir
     const colors = [
       { turkish: 'mavi', emoji: '🔵' },
       { turkish: 'kırmızı', emoji: '🔴' },
       { turkish: 'yeşil', emoji: '🟢' },
-      { turkish: 'sarı', emoji: '🟡' }
+      { turkish: 'sarı', emoji: '🟡' },
     ];
     const shapes = [
       { turkish: 'daire', emoji: '⭕' },
       { turkish: 'kare', emoji: '⬜' },
       { turkish: 'üçgen', emoji: '🔺' },
-      { turkish: 'yıldız', emoji: '⭐' }
+      { turkish: 'yıldız', emoji: '⭐' },
     ];
 
     const randomColor = colors[Math.floor(Math.random() * colors.length)];
     const randomShape = shapes[Math.floor(Math.random() * shapes.length)];
 
-    const timeText = difficulty === 'kolay' ? '20 saniye' : difficulty === 'orta' ? '30 saniye' : '40 saniye';
+    const timeText =
+      difficulty === 'kolay' ? '20 saniye' : difficulty === 'orta' ? '30 saniye' : '40 saniye';
 
     return `${timeText} içinde tüm ${randomColor.emoji} ${randomColor.turkish} ${randomShape.turkish}leri tıkla`;
   };
@@ -474,21 +559,21 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
   const getFallbackDynamicTask = (): AttentionSprintTask => {
     const tasks = {
       kolay: [
-        { gorev: "20 saniye içinde tüm mavi daireleri tıkla", hedefRenk: "mavi", hedefSekil: "daire", sure: 20 },
-        { gorev: "20 saniye içinde tüm yeşil kareleri yakala", hedefRenk: "yeşil", hedefSekil: "kare", sure: 20 },
-        { gorev: "20 saniye içinde tüm sarı yıldızları tıkla", hedefRenk: "sarı", hedefSekil: "yıldız", sure: 20 }
+        { gorev: '20 saniye içinde tüm mavi daireleri tıkla', hedefRenk: 'mavi', hedefSekil: 'daire', sure: 20 },
+        { gorev: '20 saniye içinde tüm yeşil kareleri yakala', hedefRenk: 'yeşil', hedefSekil: 'kare', sure: 20 },
+        { gorev: '20 saniye içinde tüm sarı yıldızları tıkla', hedefRenk: 'sarı', hedefSekil: 'yıldız', sure: 20 },
       ],
       orta: [
-        { gorev: "30 saniye içinde tüm kırmızı üçgenleri tıkla", hedefRenk: "kırmızı", hedefSekil: "üçgen", sure: 30 },
-        { gorev: "30 saniye içinde tüm mavi kareleri yakala", hedefRenk: "mavi", hedefSekil: "kare", sure: 30 },
-        { gorev: "30 saniye içinde tüm yeşil daireleri tıkla", hedefRenk: "yeşil", hedefSekil: "daire", sure: 30 }
+        { gorev: '30 saniye içinde tüm kırmızı üçgenleri tıkla', hedefRenk: 'kırmızı', hedefSekil: 'üçgen', sure: 30 },
+        { gorev: '30 saniye içinde tüm mavi kareleri yakala', hedefRenk: 'mavi', hedefSekil: 'kare', sure: 30 },
+        { gorev: '30 saniye içinde tüm yeşil daireleri tıkla', hedefRenk: 'yeşil', hedefSekil: 'daire', sure: 30 },
       ],
       zor: [
-        { gorev: "40 saniye içinde tüm hızlı hedefleri yakala", hedefRenk: "kırmızı", hedefSekil: "yıldız", sure: 40 },
-        { gorev: "40 saniye içinde tüm mavi üçgenleri tıkla", hedefRenk: "mavi", hedefSekil: "üçgen", sure: 40 },
-        { gorev: "40 saniye içinde tüm karışık hedefleri yakala", hedefRenk: "yeşil", hedefSekil: "kare", sure: 40 }
-      ]
-    };
+        { gorev: '40 saniye içinde tüm hızlı hedefleri yakala', hedefRenk: 'kırmızı', hedefSekil: 'yıldız', sure: 40 },
+        { gorev: '40 saniye içinde tüm mavi üçgenleri tıkla', hedefRenk: 'mavi', hedefSekil: 'üçgen', sure: 40 },
+        { gorev: '40 saniye içinde tüm karışık hedefleri yakala', hedefRenk: 'yeşil', hedefSekil: 'kare', sure: 40 },
+      ],
+    } as const;
 
     const levelTasks = tasks[difficulty];
     const selectedTask = levelTasks[Math.floor(Math.random() * levelTasks.length)];
@@ -497,40 +582,24 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
       id: `dynamic_fallback_${Date.now()}`,
       ...selectedTask,
       sure_saniye: selectedTask.sure,
-      ipuclari: ["Hızlı ol", "Doğru hedefleri seç"],
+      ipuclari: ['Hızlı ol', 'Doğru hedefleri seç'],
       dikkatDagitici: difficulty === 'kolay' ? 0.3 : difficulty === 'orta' ? 0.5 : 0.7,
       difficulty,
-      hedefTipi: 'renk'
-    };
+      hedefTipi: 'renk' as any,
+    } as unknown as AttentionSprintTask;
   };
 
-  // Zorluk seviyesine göre tıklama parametreleri
-  const getClickingParams = (difficulty: 'kolay' | 'orta' | 'zor') => {
-    switch (difficulty) {
+  // Zorluk seviyesine göre tıklama parametreleri (default)
+  const getClickingParams = (d: 'kolay' | 'orta' | 'zor') => {
+    switch (d) {
       case 'kolay':
-        return {
-          spawnInterval: 3000,    // 3 saniyede bir spawn
-          objectLifespan: 6000,   // 6 saniye yaşam süresi
-          targetRatio: 0.7,       // %70 hedef, %30 yanıltıcı
-        };
+        return { spawnInterval: 3000, objectLifespan: 6000, targetRatio: 0.7 };
       case 'orta':
-        return {
-          spawnInterval: 2500,    // 2.5 saniyede bir spawn
-          objectLifespan: 5000,   // 5 saniye yaşam süresi
-          targetRatio: 0.6,       // %60 hedef, %40 yanıltıcı
-        };
+        return { spawnInterval: 2500, objectLifespan: 5000, targetRatio: 0.6 };
       case 'zor':
-        return {
-          spawnInterval: 2000,    // 2 saniyede bir spawn
-          objectLifespan: 4000,   // 4 saniye yaşam süresi
-          targetRatio: 0.5,       // %50 hedef, %50 yanıltıcı
-        };
+        return { spawnInterval: 2000, objectLifespan: 4000, targetRatio: 0.5 };
       default:
-        return {
-          spawnInterval: 2500,
-          objectLifespan: 5000,
-          targetRatio: 0.6,
-        };
+        return { spawnInterval: 2500, objectLifespan: 5000, targetRatio: 0.6 };
     }
   };
 
@@ -541,11 +610,11 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
     setGameState('countdown');
     setCountdown(2); // Daha kısa countdown
 
-    // Emotion tracking başlat
+    // Emotion tracking başlat - oyun başlamadan önce kamera hazırla
     await startEmotionTracking();
 
     const countdownInterval = setInterval(() => {
-      setCountdown(prev => {
+      setCountdown((prev) => {
         if (prev <= 1) {
           clearInterval(countdownInterval);
           startTask();
@@ -566,7 +635,7 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
     roundStartTimeRef.current = Date.now();
 
     timerRef.current = setInterval(() => {
-      setTimeLeft(prev => {
+      setTimeLeft((prev) => {
         if (prev <= 1) {
           if (timerRef.current) {
             clearInterval(timerRef.current);
@@ -583,99 +652,88 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
   // Rastgele pozisyon üret
   const generateRandomPosition = () => ({
     x: Math.random() * 70 + 15,
-    y: Math.random() * 60 + 20
+    y: Math.random() * 60 + 20,
   });
 
-  // Dinamik tıklama objeler spawn et
+  // Dinamik tıklama objeleri spawn et
   const startClickingSpawn = () => {
-    // AI'dan gelen emotion-based parametreleri kullan, yoksa default
-    const params = currentTask?.gameParams ? {
-      spawnInterval: currentTask.gameParams.spawnInterval,
-      objectLifespan: currentTask.gameParams.objectLifespan,
-      targetRatio: currentTask.gameParams.targetRatio,
-    } : getClickingParams(difficulty);
+    const params = currentTask?.gameParams
+      ? {
+          spawnInterval: currentTask.gameParams.spawnInterval,
+          objectLifespan: currentTask.gameParams.objectLifespan,
+          targetRatio: currentTask.gameParams.targetRatio,
+        }
+      : getClickingParams(difficulty);
 
     console.log('🎮 [GAME PARAMS]', {
       source: currentTask?.gameParams ? 'AI-emotion-based' : 'default-difficulty',
       spawnInterval: `${params.spawnInterval}ms`,
       objectLifespan: `${params.objectLifespan}ms`,
       targetRatio: `${(params.targetRatio * 100).toFixed(1)}%`,
-      aiParams: currentTask?.gameParams
+      aiParams: currentTask?.gameParams,
     });
-    let spawnIntervalId: NodeJS.Timeout;
 
     setCorrectClicks(0);
     setWrongClicks(0);
     setTotalSpawned(0);
+    setTargetSpawned(0);
+    targetSpawnedRef.current = 0;
 
     const spawnObject = () => {
       const shouldSpawnTarget = Math.random() < params.targetRatio;
       const position = generateRandomPosition();
 
-      // Hedef ve yanıltıcı değerler
       let value = '';
       if (currentTask?.hedefRenk && currentTask?.hedefSekil) {
         if (shouldSpawnTarget) {
-          // Karma hedefler - renk + şekil kombinasyonları
-          // DAİRE kombinasyonları - CSS ile renkli daire
-          if (currentTask.hedefSekil === 'daire') {
-            value = `circle-${currentTask.hedefRenk}`;
-          }
-          // KARE kombinasyonları - CSS ile renkli kare
-          else if (currentTask.hedefSekil === 'kare') {
-            value = `square-${currentTask.hedefRenk}`;
-          }
-          // ÜÇGEN kombinasyonları - CSS ile renkli üçgen oluştur
-          else if (currentTask.hedefSekil === 'üçgen') {
-            // Tüm üçgenler için özel CSS style ile renkli üçgen yapacağız
-            value = `triangle-${currentTask.hedefRenk}`; // Özel işaretleyici
-          }
-          // YILDIZ kombinasyonları - CSS ile renkli yıldız
-          else if (currentTask.hedefSekil === 'yıldız') {
-            value = `star-${currentTask.hedefRenk}`;
-          }
-          // KALP kombinasyonları - CSS ile renkli kalp
-          else if (currentTask.hedefSekil === 'kalp') {
-            value = `heart-${currentTask.hedefRenk}`;
-          }
-          // ELMAS kombinasyonları - CSS ile renkli elmas
-          else if (currentTask.hedefSekil === 'elmas') {
-            value = `diamond-${currentTask.hedefRenk}`;
-          }
-          // Fallback
-          else {
-            value = '🔴';
-          }
+          if (currentTask.hedefSekil === 'daire') value = `circle-${currentTask.hedefRenk}`;
+          else if (currentTask.hedefSekil === 'kare') value = `square-${currentTask.hedefRenk}`;
+          else if (currentTask.hedefSekil === 'üçgen') value = `triangle-${currentTask.hedefRenk}`;
+          else if (currentTask.hedefSekil === 'yıldız') value = `star-${currentTask.hedefRenk}`;
+          else if (currentTask.hedefSekil === 'kalp') value = `heart-${currentTask.hedefRenk}`;
+          else if (currentTask.hedefSekil === 'elmas') value = `diamond-${currentTask.hedefRenk}`;
+          else value = '🔴';
         } else {
-          // Yanıltıcılar
           const wrongValues = ['🔴', '🔵', '🟢', '🟡', '🟣', '🟠', '⭐', '⭕', '⬜', '🔺', '💎'];
           value = wrongValues[Math.floor(Math.random() * wrongValues.length)];
         }
       } else if (currentTask?.hedefRenk) {
-        const colorMap = { 'kırmızı': '🔴', 'mavi': '🔵', 'yeşil': '🟢', 'sarı': '🟡', 'mor': '🟣', 'turuncu': '🟠' };
+        const colorMap: Record<string, string> = {
+          kırmızı: '🔴',
+          mavi: '🔵',
+          yeşil: '🟢',
+          sarı: '🟡',
+          mor: '🟣',
+          turuncu: '🟠',
+        };
         if (shouldSpawnTarget) {
-          value = colorMap[currentTask.hedefRenk as keyof typeof colorMap] || '🔵';
+          value = colorMap[currentTask.hedefRenk] || '🔵';
         } else {
-          const wrongColors = Object.values(colorMap).filter(c => c !== colorMap[currentTask.hedefRenk as keyof typeof colorMap]);
-          value = wrongColors[Math.floor(Math.random() * wrongColors.length)];
-        }
+  const hr = currentTask?.hedefRenk as keyof typeof colorMap | undefined;
+  const targetEmoji = hr ? colorMap[hr] : undefined;
+  const pool = Object.values(colorMap).filter(c => c !== targetEmoji);
+  const fallback = Object.values(colorMap)[0];
+  value = (pool[Math.floor(Math.random() * pool.length)] ?? fallback);
+}
       } else if (currentTask?.hedefSekil) {
-        // Tüm şekiller için CSS kullan - renksiz olduğu için kırmızı default
         const shapeMap: Record<string, string> = {
-          'yıldız': 'star-kırmızı',
-          'daire': 'circle-kırmızı',
-          'kare': 'square-kırmızı',
-          'üçgen': 'triangle-kırmızı',
-          'kalp': 'heart-kırmızı',
-          'elmas': 'diamond-kırmızı'
+          yıldız: 'star-kırmızı',
+          daire: 'circle-kırmızı',
+          kare: 'square-kırmızı',
+          üçgen: 'triangle-kırmızı',
+          kalp: 'heart-kırmızı',
+          elmas: 'diamond-kırmızı',
         };
 
-        if (shouldSpawnTarget) {
-          value = shapeMap[currentTask.hedefSekil] || 'triangle-kırmızı';
-        } else {
-          const wrongShapes = Object.values(shapeMap).filter(s => s !== shapeMap[currentTask.hedefSekil]);
-          value = wrongShapes[Math.floor(Math.random() * wrongShapes.length)];
-        }
+        if (shouldSpawnTarget) value = shapeMap[currentTask.hedefSekil] || 'triangle-kırmızı';
+        else {
+  const hs = currentTask?.hedefSekil;
+  const wrongShapes = hs
+    ? Object.values(shapeMap).filter((s) => s !== shapeMap[hs])
+    : Object.values(shapeMap); // Eğer hedef şekil yoksa tüm şekiller kullanılır
+  
+  value = wrongShapes[Math.floor(Math.random() * wrongShapes.length)];
+}
       }
 
       const newObject = {
@@ -685,23 +743,34 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
         value,
         isTarget: shouldSpawnTarget,
         createdAt: Date.now(),
-        lifespan: params.objectLifespan
+        lifespan: params.objectLifespan,
       };
 
-      setClickingObjects(prev => [...prev, newObject]);
-      setTotalSpawned(prev => prev + 1);
+      setClickingObjects((prev) => [...prev, newObject]);
+      setTotalSpawned((prev) => prev + 1);
+
+      if (shouldSpawnTarget) {
+        setTargetSpawned((prev) => prev + 1);
+        targetSpawnedRef.current += 1;
+      }
 
       // Objeyi yaşam süresinden sonra kaldır
       setTimeout(() => {
-        setClickingObjects(prev => prev.filter(obj => obj.id !== newObject.id));
+        setClickingObjects((prev) => prev.filter((obj) => obj.id !== newObject.id));
       }, params.objectLifespan);
     };
 
     // İlk objeyi hemen spawn et
     spawnObject();
 
+    // İLK OBJE SPAWN OLDU - FRAME ANALİZİ BAŞLAT
+    cameraEmotionService.startFrameAnalysis?.();
+
     // Düzenli spawn
-    spawnIntervalId = setInterval(spawnObject, params.spawnInterval);
+    const spawnIntervalId: ReturnType<typeof setInterval> = setInterval(
+      spawnObject,
+      params.spawnInterval
+    );
 
     // Süre bitiminde spawn'ı durdur
     setTimeout(() => {
@@ -715,8 +784,12 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
 
     setGameState('active');
     setTimeLeft(currentTask.sure_saniye);
-    // NOT: Skorları burada sıfırlamıyoruz, endRound'da yapıyoruz
     setTotalSpawned(0);
+
+    // OYUN BAŞLADI - emotion kaydetmeyi başlat
+    emotionAnalysisService.startGameSession();
+    // İLK ROUND BAŞLADI - round emotion tracking başlat
+    emotionAnalysisService.startRoundSession();
 
     // Dinamik tıklama modunu başlat
     startClickingSpawn();
@@ -728,32 +801,37 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
     const clickTime = Date.now();
 
     // Tıklanan objeyi bul ve reaksiyon süresini hesapla
-    const clickedObject = clickingObjects.find(obj => obj.id === objectId);
-    if (clickedObject) {
-      const reactionTime = clickTime - clickedObject.createdAt; // milisaniye
-      reactionTimesRef.current.push(reactionTime);
-      setReactionTimes(prev => [...prev, reactionTime]);
+    const clickedObject = clickingObjects.find((obj) => obj.id === objectId);
+    if (!clickedObject) return;
 
-      console.log(`⚡ [REACTION TIME] ${reactionTime}ms (${isTargetObject ? 'Doğru' : 'Yanlış'})`);
-    }
+    const reactionTime = clickTime - clickedObject.createdAt; // milisaniye
+    const isFast = reactionTime < FAST_CLICK_THRESHOLD_MS;
+
+    console.log(`⚡ [FAST CLICK DEBUG] Reaction: ${reactionTime}ms, Threshold: ${FAST_CLICK_THRESHOLD_MS}ms, IsFast: ${isFast}`);
+
+    // Genel reaksiyon süresi listesi
+    reactionTimesRef.current.push(reactionTime);
+    setReactionTimes((prev) => [...prev, reactionTime]);
+
+    // Detaylı analiz için kaydet
+    const clickData: ClickAnalytic = {
+      timestamp: Date.now(),
+      reactionTime,
+      isCorrect: isTargetObject,
+      isFast,
+    };
+    clickAnalyticsRef.current.push(clickData);
+    setClickAnalytics((prev) => [...prev, clickData]);
 
     // Objeyi hemen kaldır
-    setClickingObjects(prev => prev.filter(obj => obj.id !== objectId));
+    setClickingObjects((prev) => prev.filter((obj) => obj.id !== objectId));
 
     if (isTargetObject) {
       correctClicksRef.current += 1;
-      setCorrectClicks(prev => {
-        const newValue = prev + 1;
-        console.log('✅ [CLICKING] Doğru tıklama!', {prev, newValue, ref: correctClicksRef.current});
-        return newValue;
-      });
+      setCorrectClicks((prev) => prev + 1);
     } else {
       wrongClicksRef.current += 1;
-      setWrongClicks(prev => {
-        const newValue = prev + 1;
-        console.log('❌ [CLICKING] Yanlış tıklama!', {prev, newValue, ref: wrongClicksRef.current});
-        return newValue;
-      });
+      setWrongClicks((prev) => prev + 1);
     }
   };
 
@@ -764,7 +842,6 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
       reactionTime,
       currentTask: !!currentTask,
       isEndingRound: isEndingRound.current,
-      callStack: new Error().stack?.split('\n')[1]?.trim()
     });
 
     if (!currentTask || isEndingRound.current) return;
@@ -774,13 +851,7 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
     // HEMEN skorları yakala - ref değerlerini kullan (state async olduğu için)
     const capturedCorrect = correctClicksRef.current;
     const capturedWrong = wrongClicksRef.current;
-
-    console.log('⚡ [IMMEDIATE CAPTURE]', {
-      capturedCorrect,
-      capturedWrong,
-      totalClicks: capturedCorrect + capturedWrong,
-      stateValues: {correctClicks, wrongClicks}  // State ile karşılaştır
-    });
+    const capturedTargetSpawned = targetSpawnedRef.current;
 
     if (timerRef.current) {
       clearInterval(timerRef.current);
@@ -795,50 +866,94 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
     const finalSuccess = accuracy >= 0.5 && totalClicks >= 3;
 
     // Mevcut tur için ortalama reaksiyon süresi hesapla
-    const currentTurAvgReactionTime = reactionTimesRef.current.length > 0
-      ? reactionTimesRef.current.reduce((sum, time) => sum + time, 0) / reactionTimesRef.current.length
-      : 0;
+    const currentTurAvgReactionTime =
+      reactionTimesRef.current.length > 0
+        ? reactionTimesRef.current.reduce((sum, time) => sum + time, 0) /
+          reactionTimesRef.current.length
+        : 0;
+
+    // Hedef yakalama oranını hesapla
+    const targetHitRate = capturedTargetSpawned > 0 ? capturedCorrect / capturedTargetSpawned : 0;
+
+    // Detaylı tıklama analizini hesapla
+    const details = clickAnalyticsRef.current;
+    const totalClicksAnalyzed = details.length;
+    const fastClicks = details.filter((c) => c.isFast).length;
+    const correctFastClicks = details.filter((c) => c.isFast && c.isCorrect).length;
+    const fastClickRate = totalClicksAnalyzed > 0 ? fastClicks / totalClicksAnalyzed : 0;
+    const fastAccuracyRate = fastClicks > 0 ? correctFastClicks / fastClicks : 0;
+
+    console.log('📊 [FAST CLICK DETAILS]', {
+      totalClicks: totalClicksAnalyzed,
+      fastClicks,
+      correctFastClicks,
+      fastClickRate: `${(fastClickRate * 100).toFixed(1)}%`,
+      fastAccuracyRate: `${(fastAccuracyRate * 100).toFixed(1)}%`,
+      allClicks: details.map(c => ({
+        reaction: `${c.reactionTime}ms`,
+        isFast: c.isFast,
+        isCorrect: c.isCorrect
+      }))
+    });
 
     const round: DynamicRound = {
       task: currentTask,
       startTime: roundStartTimeRef.current,
       endTime: Date.now(),
       success: finalSuccess,
-      reactionTime: finalReactionTime, // Tur tamamlama süresi
+      reactionTime: finalReactionTime,
       correctClicks: capturedCorrect,
       wrongClicks: capturedWrong,
       totalSpawned,
-      avgReactionTimeMs: currentTurAvgReactionTime // Gerçek ortalama reaksiyon süresi
+      targetSpawned: capturedTargetSpawned,
+      targetHitRate,
+      avgReactionTimeMs: currentTurAvgReactionTime,
+      fastClicks,
+      totalClicksAnalyzed,
+      fastClickRate,
+      correctFastClicks,
+      fastAccuracyRate,
     };
 
-    setRounds(prev => [...prev, round]);
+    // ROUND BİTTİ - o round'a ait emotion'ları al
+    const roundEmotions = emotionAnalysisService.endRoundSession();
+    console.log('🏁 [ROUND ENDED] Round emotion data:', roundEmotions.length);
 
-    if (finalSuccess) {
-      setScore(prev => prev + 1);
-      const emotion: EmotionResult = {
-        emotion: 'happy',
-        confidence: 0.9,
-        timestamp: new Date()
-      };
-      setEmotions(prev => {
-        const newEmotions = [...prev, emotion];
-        emotionsRef.current = newEmotions;
-        return newEmotions;
-      });
-      onEmotionDetected?.(emotion);
-    } else {
-      const emotion: EmotionResult = {
-        emotion: 'confused',
-        confidence: 0.7,
-        timestamp: new Date()
-      };
-      setEmotions(prev => {
-        const newEmotions = [...prev, emotion];
-        emotionsRef.current = newEmotions;
-        return newEmotions;
-      });
-      onEmotionDetected?.(emotion);
+    // FRAME ANALİZİ DURDUR - Python server'a frame göndermeyi durdur
+    cameraEmotionService.stopFrameAnalysis?.();
+
+    // Tüm oyun bitmemişse final metrics alma
+    if (currentRound + 1 >= totalRounds) {
+      const finalMetrics = emotionAnalysisService.endGameSession();
+      setAttentionMetrics(finalMetrics);
+      console.log('⏹️ [GAME ENDED] Emotion kaydetme durdu, final metrics:', finalMetrics);
     }
+
+    // Round'u ekle ve güncel rounds array'i ile task generate et
+    setRounds((prev) => {
+      const newRounds = [...prev, round];
+
+      // Task generation için güncel rounds array'i kullan
+      if (currentRound + 1 < totalRounds) {
+        setTimeout(() => {
+          generateFirstTaskWithRounds(newRounds, capturedCorrect, capturedWrong);
+        }, 100);
+      }
+
+      return newRounds;
+    });
+
+    // Mini duygusal geri bildirim
+    const feedbackEmotion: EmotionResult = finalSuccess
+      ? { emotion: 'happy', confidence: 0.9, timestamp: new Date() }
+      : { emotion: 'confused', confidence: 0.7, timestamp: new Date() };
+
+    setEmotions((prev) => {
+      const newEmotions = [...prev, feedbackEmotion];
+      emotionsRef.current = newEmotions;
+      return newEmotions;
+    });
+    onEmotionDetected?.(feedbackEmotion);
 
     setGameState('waiting');
 
@@ -846,26 +961,24 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
       if (currentRound + 1 >= totalRounds) {
         completeGame();
       } else {
-        setCurrentRound(prev => prev + 1);
+        setCurrentRound((prev) => prev + 1);
         setClickingObjects([]);
-        // Yakalanan değerleri kullan (çünkü bu setTimeout 2 saniye sonra çalışıyor)
-        console.log('📊 [END ROUND PERFORMANCE]', {
-          capturedCorrect,
-          capturedWrong,
-          totalFromRounds: rounds.length > 0 ? rounds.reduce((sum, r) => sum + r.correctClicks, 0) : 0
-        });
 
-        // Yeni görev üret, sonra sıfırla
-        generateFirstTask(capturedCorrect, capturedWrong).then(() => {
-          console.log('🔄 [RESET SCORES]', {beforeReset: {capturedCorrect, capturedWrong}});
-          setCorrectClicks(0);
-          setWrongClicks(0);
-          correctClicksRef.current = 0;
-          wrongClicksRef.current = 0;
-          setReactionTimes([]);
-          reactionTimesRef.current = [];
-          setTotalSpawned(0);
-        });
+        // Skorları ve metrikleri resetle
+        setCorrectClicks(0);
+        setWrongClicks(0);
+        correctClicksRef.current = 0;
+        wrongClicksRef.current = 0;
+        setReactionTimes([]);
+        reactionTimesRef.current = [];
+        setTotalSpawned(0);
+        setTargetSpawned(0);
+        targetSpawnedRef.current = 0;
+        setClickAnalytics([]);
+        clickAnalyticsRef.current = [];
+
+        // YENİ ROUND BAŞLADI - yeni round emotion tracking başlat
+        emotionAnalysisService.startRoundSession();
         setGameState('ready');
       }
       isEndingRound.current = false;
@@ -875,6 +988,10 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
   // Oyunu tamamla
   const completeGame = () => {
     setGameState('completed');
+
+    // Emotion tracking tamamen durdur
+    stopEmotionTracking();
+
     const gameDuration = Math.floor((Date.now() - gameStartTime) / 1000);
     onGameComplete(score, gameDuration, emotions);
   };
@@ -886,14 +1003,13 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
       timerRef.current = null;
     }
 
-    // Emotion tracking durdur
     stopEmotionTracking();
 
     setRounds([]);
     setCurrentRound(0);
     setScore(0);
     setEmotions([]);
-    emotionsRef.current = []; // Ref'i de temizle
+    emotionsRef.current = [];
     setGameState('ready');
 
     // Emotion states sıfırla
@@ -906,6 +1022,10 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
     setCorrectClicks(0);
     setWrongClicks(0);
     setTotalSpawned(0);
+    setTargetSpawned(0);
+    targetSpawnedRef.current = 0;
+    setClickAnalytics([]);
+    clickAnalyticsRef.current = [];
     hasGeneratedFirstTask.current = false;
     isGeneratingRef.current = false;
     isEndingRound.current = false;
@@ -931,17 +1051,12 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
                 <div className="text-sm text-gray-600">Başarılı Tur</div>
               </div>
               <div>
-                <div className="text-2xl font-bold text-green-600">
-                  {Math.round((score / totalRounds) * 100)}%
-                </div>
+                <div className="text-2xl font-bold text-green-600">{Math.round((score / totalRounds) * 100)}%</div>
                 <div className="text-sm text-gray-600">Başarı Oranı</div>
               </div>
               <div>
                 <div className="text-2xl font-bold text-purple-600">
-                  {rounds.length > 0 ?
-                    Math.round(rounds.reduce((sum, r) => sum + r.correctClicks, 0) / rounds.length) :
-                    0
-                  }
+                  {rounds.length > 0 ? Math.round(rounds.reduce((sum, r) => sum + r.correctClicks, 0) / rounds.length) : 0}
                 </div>
                 <div className="text-sm text-gray-600">Ort. Doğru Tıklama</div>
               </div>
@@ -960,25 +1075,15 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       {/* Hidden video element for emotion tracking */}
-      <video
-        ref={videoRef}
-        autoPlay
-        playsInline
-        muted
-        style={{ display: 'none' }}
-      />
+      <video ref={videoRef} autoPlay playsInline muted style={{ display: 'none' }} />
 
       {/* Header */}
       <Card>
         <CardContent>
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <div className="text-sm text-gray-600">
-                Tur {currentRound + 1}/{totalRounds}
-              </div>
-              <div className="text-sm font-medium text-gray-800">
-                Skor: {score}
-              </div>
+              <div className="text-sm text-gray-600">Tur {currentRound + 1}/{totalRounds}</div>
+              <div className="text-sm font-medium text-gray-800">Skor: {score}</div>
               <div className="flex items-center space-x-2">
                 <Brain className="h-4 w-4 text-purple-600" />
                 <span className="text-xs text-purple-600">Zorluk: {difficulty}</span>
@@ -987,10 +1092,22 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
               {/* Emotion tracking status */}
               {emotionAnalysisActive && (
                 <div className="flex items-center space-x-2">
-                  <div className={`w-2 h-2 rounded-full ${cameraEmotionService.isTrackingActive() ? 'bg-green-500' : 'bg-orange-500'}`}></div>
+                  <div
+                    className={`w-2 h-2 rounded-full ${
+                      cameraEmotionService.isTrackingActive() && cameraEmotionService.isFrameAnalysisActive?.()
+                        ? 'bg-green-500'
+                        : cameraEmotionService.isTrackingActive()
+                        ? 'bg-yellow-500'
+                        : 'bg-orange-500'
+                    }`}
+                  ></div>
                   <Camera className="h-4 w-4 text-green-600" />
                   <span className="text-xs text-green-600">
-                    {cameraEmotionService.isTrackingActive() ? 'Kamera Aktif' : 'Mock Mode'}
+                    {cameraEmotionService.isTrackingActive() && cameraEmotionService.isFrameAnalysisActive?.()
+                      ? 'Analiz Aktif'
+                      : cameraEmotionService.isTrackingActive()
+                      ? 'Kamera Bağlı'
+                      : 'Mock Mode'}
                   </span>
                 </div>
               )}
@@ -1023,14 +1140,12 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
                 <Play className="h-10 w-10 text-white" />
               </div>
               <h2 className="text-2xl font-bold text-gray-800 mb-4">Dinamik Dikkat</h2>
-              <p className="text-gray-600 mb-6">
-                Sürekli çıkan hedefleri hızlıca yakala ve reflexlerini geliştir!
-              </p>
+              <p className="text-gray-600 mb-6">Sürekli çıkan hedefleri hızlıca yakala ve reflexlerini geliştir!</p>
               {currentTask && (
                 <div className="bg-purple-50 rounded-lg p-4 mb-6">
                   <h3 className="font-medium text-purple-800 mb-2">Görevin:</h3>
                   <p className="text-purple-700">{currentTask.gorev}</p>
-                  {currentTask.ipuclari.length > 0 && (
+                  {currentTask.ipuclari?.length > 0 && (
                     <div className="mt-3">
                       <p className="text-xs text-purple-600 font-medium mb-1">İpuçları:</p>
                       {currentTask.ipuclari.map((ipucu, index) => (
@@ -1048,9 +1163,7 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
           ) : gameState === 'countdown' ? (
             <div className="space-y-6">
               <h2 className="text-4xl font-bold text-gray-800">Hazırlan!</h2>
-              <div className="text-6xl font-bold text-purple-600 animate-bounce">
-                {countdown}
-              </div>
+              <div className="text-6xl font-bold text-purple-600 animate-bounce">{countdown}</div>
             </div>
           ) : gameState === 'active' ? (
             <div className="space-y-6">
@@ -1062,19 +1175,16 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
                   <button
                     key={obj.id}
                     onClick={() => handleClickingObjectClick(obj.id, obj.isTarget)}
-                    className={`
-                      absolute w-12 h-12 rounded-full transition-all duration-300 flex items-center justify-center text-2xl shadow-lg border-2
-                      ${obj.isTarget
+                    className={`absolute w-12 h-12 rounded-full transition-all duration-300 flex items-center justify-center text-2xl shadow-lg border-2 ${
+                      obj.isTarget
                         ? 'bg-green-50 border-green-300 hover:bg-green-100 hover:scale-110'
                         : 'bg-red-50 border-red-300 hover:bg-red-100'
-                      }
-                      animate-bounce
-                    `}
+                    } animate-bounce`}
                     style={{
                       left: `${obj.x}%`,
                       top: `${obj.y}%`,
                       transform: 'translate(-50%, -50%)',
-                      animationDuration: `${0.8 + Math.random() * 0.4}s`
+                      animationDuration: `${0.8 + Math.random() * 0.4}s`,
                     }}
                   >
                     {renderShape(obj.value)}
@@ -1110,8 +1220,22 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
                 <div className="text-green-600">
                   <Star className="h-12 w-12 mx-auto mb-2" />
                   <h3 className="text-xl font-bold">Mükemmel!</h3>
-                  <p>Doğru: {rounds[rounds.length - 1].correctClicks}, Yanlış: {rounds[rounds.length - 1].wrongClicks}</p>
-                  <p>Doğruluk: {Math.round((rounds[rounds.length - 1].correctClicks / Math.max(1, rounds[rounds.length - 1].correctClicks + rounds[rounds.length - 1].wrongClicks)) * 100)}%</p>
+                  <p>
+                    Doğru: {rounds[rounds.length - 1].correctClicks}, Yanlış: {rounds[rounds.length - 1].wrongClicks}
+                  </p>
+                  <p>
+                    Hedef Yakalama: {rounds[rounds.length - 1].correctClicks}/{rounds[rounds.length - 1].targetSpawned} (
+                    {Math.round(rounds[rounds.length - 1].targetHitRate * 100)}%)
+                  </p>
+                  <p>
+                    Hızlı Tıklama: {rounds[rounds.length - 1].fastClicks}/
+                    {rounds[rounds.length - 1].totalClicksAnalyzed} (
+                    {Math.round(rounds[rounds.length - 1].fastClickRate * 100)}%)
+                  </p>
+                  <p>
+                    Hızlı+Doğru: {rounds[rounds.length - 1].correctFastClicks} (
+                    {Math.round(rounds[rounds.length - 1].fastAccuracyRate * 100)}%)
+                  </p>
                 </div>
               ) : (
                 <div className="text-orange-600">
@@ -1119,7 +1243,18 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
                   <h3 className="text-xl font-bold">Daha iyi yapabilirsin!</h3>
                   {rounds.length > 0 && (
                     <>
-                      <p>Doğru: {rounds[rounds.length - 1].correctClicks}, Yanlış: {rounds[rounds.length - 1].wrongClicks}</p>
+                      <p>
+                        Doğru: {rounds[rounds.length - 1].correctClicks}, Yanlış: {rounds[rounds.length - 1].wrongClicks}
+                      </p>
+                      <p>
+                        Hedef Yakalama: {rounds[rounds.length - 1].correctClicks}/{rounds[rounds.length - 1].targetSpawned} (
+                        {Math.round(rounds[rounds.length - 1].targetHitRate * 100)}%)
+                      </p>
+                      <p>
+                        Hızlı Tıklama: {rounds[rounds.length - 1].fastClicks}/
+                        {rounds[rounds.length - 1].totalClicksAnalyzed} (
+                        {Math.round(rounds[rounds.length - 1].fastClickRate * 100)}%)
+                      </p>
                       <p>Daha dikkatli olmaya çalış</p>
                     </>
                   )}

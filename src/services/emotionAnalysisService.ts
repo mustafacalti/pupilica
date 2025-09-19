@@ -26,27 +26,48 @@ export interface AttentionMetrics {
 }
 
 class EmotionAnalysisService {
-  private emotions: EmotionAnalysisResult[] = [];
+  private emotions: EmotionAnalysisResult[] = []; // Tüm emotion geçmişi
   private gameStartTime: number = 0;
   private lastAnalysisTime: number = 0;
-  private currentGameSession: EmotionAnalysisResult[] = [];
+  private currentGameSession: EmotionAnalysisResult[] = []; // Tüm oyun boyunca (tüm roundlar)
+  private currentRoundSession: EmotionAnalysisResult[] = []; // Sadece o anki round için
+  private isGameActive: boolean = false; // Oyun durumu kontrolü
+  private roundStartTime: number = 0; // Round başlangıç zamanı
 
   /**
-   * Oyun başladığında emotion tracking'i başlat
+   * Oyun başladığında emotion tracking'i başlat (tüm oyun için)
    */
   startGameSession(): void {
     this.gameStartTime = Date.now();
-    this.currentGameSession = [];
+    this.currentGameSession = []; // Tüm oyun için sıfırla
     this.lastAnalysisTime = this.gameStartTime;
+    this.isGameActive = true; // Oyun aktif duruma getir
     console.log('🎮 [EMOTION] Oyun seansı başladı, emotion tracking aktif');
   }
 
   /**
+   * Round başladığında round-specific emotion tracking başlat
+   */
+  startRoundSession(): void {
+    this.roundStartTime = Date.now();
+    this.currentRoundSession = []; // Round başında sıfırla
+    console.log('🔄 [EMOTION] Round seansı başladı, round emotion tracking aktif');
+  }
+
+  /**
    * Emotion result ekle (kameradan gelen analiz sonucu)
+   * Sadece oyun aktifken emotion kabul eder
    */
   addEmotionResult(result: EmotionAnalysisResult): void {
-    this.emotions.push(result);
-    this.currentGameSession.push(result);
+    // Sadece oyun aktifken emotion kabul et
+    if (!this.isGameActive) {
+      console.log('⏸️ [EMOTION] Oyun aktif değil, emotion kaydedilmiyor');
+      return;
+    }
+
+    this.emotions.push(result); // Genel emotion geçmişi
+    this.currentGameSession.push(result); // Tüm oyun için (tüm roundlar)
+    this.currentRoundSession.push(result); // Sadece o anki round için
 
     // DEBUG: lookingAtScreen değerini kontrol et
     console.log('📥 [EMOTION ADDED]', {
@@ -54,13 +75,16 @@ class EmotionAnalysisService {
       confidence: (result.confidence * 100).toFixed(1) + '%',
       gazeStatus: result.gazeStatus,
       lookingAtScreen: result.lookingAtScreen,
+      gameActive: this.isGameActive,
+      gameTotal: this.currentGameSession.length,
+      roundTotal: this.currentRoundSession.length,
       timestamp: new Date(result.timestamp).toLocaleTimeString()
     });
 
     // Console spam'i azalt - emotion değişikliklerinde log
-    const lastResult = this.currentGameSession[this.currentGameSession.length - 2];
+    const lastResult = this.currentRoundSession[this.currentRoundSession.length - 2];
     if (!lastResult || lastResult.emotion !== result.emotion) {
-      console.log(`😊 [EMOTION] ${result.emotion} (${(result.confidence * 100).toFixed(1)}%) - ${result.gazeStatus}`);
+      console.log(`😊 [EMOTION] ${result.emotion} (${(result.confidence * 100).toFixed(1)}%) - ${result.gazeStatus} [Round: ${this.currentRoundSession.length}]`);
     }
   }
 
@@ -134,12 +158,17 @@ class EmotionAnalysisService {
    */
   endGameSession(): AttentionMetrics {
     const finalMetrics = this.getCurrentGameMetrics();
+    this.isGameActive = false; // Oyunu pasif duruma getir
 
     console.log('🏁 [EMOTION] Oyun seansı bitti', {
       totalTime: `${finalMetrics.totalGameTime.toFixed(1)}s`,
       attentionScore: finalMetrics.attentionScore,
-      dominantEmotion: finalMetrics.dominantEmotion
+      dominantEmotion: finalMetrics.dominantEmotion,
+      totalEmotions: this.currentGameSession.length
     });
+
+    // Oyun bittiğinde currentGameSession'ı sıfırlama - bir sonraki oyun başında sıfırlanacak
+    // this.currentGameSession = []; // Bunu kaldırıyoruz, startGameSession'da sıfırlanacak
 
     return finalMetrics;
   }
@@ -270,6 +299,42 @@ class EmotionAnalysisService {
     this.emotions = [];
     this.currentGameSession = [];
     console.log('🗑️ [EMOTION] Emotion history temizlendi');
+  }
+
+  /**
+   * Oyun aktif mi kontrol et
+   */
+  isGameActiveStatus(): boolean {
+    return this.isGameActive;
+  }
+
+  /**
+   * Sadece o anki round'a ait emotion data'yı döndür (AI prompts için)
+   */
+  getCurrentRoundEmotions(): EmotionAnalysisResult[] {
+    return [...this.currentRoundSession]; // Copy array
+  }
+
+  /**
+   * Tüm oyun boyunca emotion data'yı döndür (analiz için)
+   */
+  getFullGameEmotions(): EmotionAnalysisResult[] {
+    return [...this.currentGameSession]; // Copy array
+  }
+
+  /**
+   * Round bitir ve o round'a ait emotion data'yı döndür
+   */
+  endRoundSession(): EmotionAnalysisResult[] {
+    const roundEmotions = [...this.currentRoundSession];
+    console.log('🏁 [EMOTION] Round seansı bitti', {
+      roundEmotions: roundEmotions.length,
+      totalGameEmotions: this.currentGameSession.length,
+      roundDuration: this.roundStartTime ? `${((Date.now() - this.roundStartTime) / 1000).toFixed(1)}s` : 'N/A'
+    });
+
+    // Round emotion data'yı döndür ama sıfırlama - bir sonraki round başında sıfırlanacak
+    return roundEmotions;
   }
 
   /**

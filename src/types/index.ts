@@ -125,6 +125,16 @@ export interface AttentionSprintPerformance {
     sayiBasariOrani: number;
     ortalamaReaksiyonSuresiSayi: number;
     hizliCozumSayisi: number; // Çok hızlı çözülen görev sayısı
+    hedefYakalamaOrani: number; // Hedef objeleri yakalama oranı
+    toplamHedefSayisi: number; // Toplam hedef sayısı
+    yakalinanHedefSayisi: number; // Yakalanan hedef sayısı
+    odaklanmaSayisi: number; // Odaklanma sayısı
+    yanlisTiklamaSayisi: number; // Yanlış tıklama sayısı
+    hizliTiklamaOrani: number; // Hızlı tıklama oranı
+    hizliTiklamaSayisi: number; // Hızlı tıklama sayısı
+    toplamTiklamaSayisi: number; // Toplam tıklama sayısı
+    hizliVeDogruTiklamalar: number; // Hem hızlı hem doğru tıklamalar
+    hizliTiklamaDogrulukOrani: number; // Hızlı tıklamalardaki doğruluk oranı
   };
   // AI için attention metrics
   attentionMetrics?: {
