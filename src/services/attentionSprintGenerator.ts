@@ -583,11 +583,17 @@ HEDEF YAKALAMA METRİKLERİ:
 - Yakalanan Hedefler: ${sayiGorevPerformansi.yakalinanHedefSayisi || 0}/${sayiGorevPerformansi.toplamHedefSayisi || 0}
 - Yanlış Tıklamalar: ${sayiGorevPerformansi.yanlisTiklamaSayisi || 0}
 
-HIZLI TIKLAMA ANALİZİ (ADHD İÇİN ÖNEMLİ):
-- Hızlı Tıklama Oranı: ${sayiGorevPerformansi.hizliTiklamaOrani ? Math.round(sayiGorevPerformansi.hizliTiklamaOrani * 100) : 0}% (3 saniye altı)
-- Hızlı Tıklamalar: ${sayiGorevPerformansi.hizliTiklamaSayisi || 0}/${sayiGorevPerformansi.toplamTiklamaSayisi || 0}
-- Hızlı+Doğru Tıklamalar: ${sayiGorevPerformansi.hizliVeDogruTiklamalar || 0}
-- Hızlı Tıklamalarda Doğruluk: ${sayiGorevPerformansi.hizliTiklamaDogrulukOrani ? Math.round(sayiGorevPerformansi.hizliTiklamaDogrulukOrani * 100) : 0}%`;
+HIZLI TIKLAMA ANALİZİ (ADHD İÇİN ÖNEMLİ) - KÜMÜLATIF PERFORMANS:
+- Genel Hızlı Tıklama Oranı: ${sayiGorevPerformansi.hizliTiklamaOrani ? Math.round(sayiGorevPerformansi.hizliTiklamaOrani * 100) : 0}% (3 saniye altı)
+- Toplam Hızlı Tıklamalar: ${sayiGorevPerformansi.hizliTiklamaSayisi || 0}/${sayiGorevPerformansi.toplamTiklamaSayisi || 0}
+- Toplam Hızlı+Doğru Tıklamalar: ${sayiGorevPerformansi.hizliVeDogruTiklamalar || 0}
+- Genel Hızlı Tıklama Doğruluğu: ${sayiGorevPerformansi.hizliTiklamaDogrulukOrani ? Math.round(sayiGorevPerformansi.hizliTiklamaDogrulukOrani * 100) : 0}%
+
+SON ROUND HIZLI TIKLAMA PERFORMANSI:
+- Son Round Hızlı Tıklama Oranı: ${sayiGorevPerformansi.sonRoundHizliTiklamaOrani ? Math.round(sayiGorevPerformansi.sonRoundHizliTiklamaOrani * 100) : 0}%
+- Son Round Hızlı Tıklamalar: ${sayiGorevPerformansi.sonRoundHizliTiklamaSayisi || 0}/${sayiGorevPerformansi.sonRoundToplamTiklamaSayisi || 0}
+- Son Round Hızlı+Doğru: ${sayiGorevPerformansi.sonRoundHizliVeDogruTiklamalar || 0}
+- Son Round Hızlı Tıklama Doğruluğu: ${sayiGorevPerformansi.sonRoundHizliTiklamaDogrulukOrani ? Math.round(sayiGorevPerformansi.sonRoundHizliTiklamaDogrulukOrani * 100) : 0}%`;
     }
 
     return `Son 3 Tur:

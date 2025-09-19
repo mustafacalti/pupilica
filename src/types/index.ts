@@ -130,11 +130,18 @@ export interface AttentionSprintPerformance {
     yakalinanHedefSayisi: number; // Yakalanan hedef sayısı
     odaklanmaSayisi: number; // Odaklanma sayısı
     yanlisTiklamaSayisi: number; // Yanlış tıklama sayısı
-    hizliTiklamaOrani: number; // Hızlı tıklama oranı
-    hizliTiklamaSayisi: number; // Hızlı tıklama sayısı
-    toplamTiklamaSayisi: number; // Toplam tıklama sayısı
-    hizliVeDogruTiklamalar: number; // Hem hızlı hem doğru tıklamalar
-    hizliTiklamaDogrulukOrani: number; // Hızlı tıklamalardaki doğruluk oranı
+    // KÜMÜLATIF PERFORMANS (TÜM TURLAR)
+    hizliTiklamaOrani: number; // Hızlı tıklama oranı (ortalama)
+    hizliTiklamaSayisi: number; // Hızlı tıklama sayısı (toplam)
+    toplamTiklamaSayisi: number; // Toplam tıklama sayısı (toplam)
+    hizliVeDogruTiklamalar: number; // Hem hızlı hem doğru tıklamalar (toplam)
+    hizliTiklamaDogrulukOrani: number; // Hızlı tıklamalardaki doğruluk oranı (ortalama)
+    // SON ROUND PERFORMANSI (SADECE O TUR)
+    sonRoundHizliTiklamaOrani: number; // Son round hızlı tıklama oranı
+    sonRoundHizliTiklamaSayisi: number; // Son round hızlı tıklama sayısı
+    sonRoundToplamTiklamaSayisi: number; // Son round toplam tıklama sayısı
+    sonRoundHizliVeDogruTiklamalar: number; // Son round hızlı+doğru tıklamalar
+    sonRoundHizliTiklamaDogrulukOrani: number; // Son round hızlı tıklama doğruluğu
   };
   // AI için attention metrics
   attentionMetrics?: {

@@ -339,7 +339,7 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
           toplamHedefSayisi: currentTargetSpawned,
           yakalinanHedefSayisi: currentCorrect,
           yanlisTiklamaSayisi: currentWrong,
-          // GÜNCEL ROUNDS VERİLERİ KULLAN
+          // KÜMÜLATIF PERFORMANS (TÜM TURLAR)
           hizliTiklamaOrani:
             roundsArray.length > 0 ? roundsArray.reduce((sum, r) => sum + r.fastClickRate, 0) / roundsArray.length : 0,
           hizliTiklamaSayisi: roundsArray.reduce((sum, r) => sum + r.fastClicks, 0),
@@ -347,6 +347,12 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
           hizliVeDogruTiklamalar: roundsArray.reduce((sum, r) => sum + r.correctFastClicks, 0),
           hizliTiklamaDogrulukOrani:
             roundsArray.length > 0 ? roundsArray.reduce((sum, r) => sum + r.fastAccuracyRate, 0) / roundsArray.length : 0,
+          // SON ROUND PERFORMANSI (SADECE O TUR)
+          sonRoundHizliTiklamaOrani: roundsArray.length > 0 ? roundsArray[roundsArray.length - 1].fastClickRate : 0,
+          sonRoundHizliTiklamaSayisi: roundsArray.length > 0 ? roundsArray[roundsArray.length - 1].fastClicks : 0,
+          sonRoundToplamTiklamaSayisi: roundsArray.length > 0 ? roundsArray[roundsArray.length - 1].totalClicksAnalyzed : 0,
+          sonRoundHizliVeDogruTiklamalar: roundsArray.length > 0 ? roundsArray[roundsArray.length - 1].correctFastClicks : 0,
+          sonRoundHizliTiklamaDogrulukOrani: roundsArray.length > 0 ? roundsArray[roundsArray.length - 1].fastAccuracyRate : 0,
           odaklanmaSayisi: roundsArray.length,
         } as any,
       } as any;
@@ -363,10 +369,15 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
           fullGameEmotionCount: fullGameEmotions.length,
           legacyEmotionCount: emotions.length,
           roundsCount: roundsArray.length,
-          fastClickData: {
+          kumulatifFastClickData: {
             hizliTiklamaOrani: initialPerformance.sayiGorevPerformansi?.hizliTiklamaOrani,
             hizliTiklamaSayisi: initialPerformance.sayiGorevPerformansi?.hizliTiklamaSayisi,
             toplamTiklamaSayisi: initialPerformance.sayiGorevPerformansi?.toplamTiklamaSayisi,
+          },
+          sonRoundFastClickData: {
+            sonRoundHizliTiklamaOrani: initialPerformance.sayiGorevPerformansi?.sonRoundHizliTiklamaOrani,
+            sonRoundHizliTiklamaSayisi: initialPerformance.sayiGorevPerformansi?.sonRoundHizliTiklamaSayisi,
+            sonRoundToplamTiklamaSayisi: initialPerformance.sayiGorevPerformansi?.sonRoundToplamTiklamaSayisi,
           }
         });
 
