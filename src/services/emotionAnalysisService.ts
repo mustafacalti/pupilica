@@ -77,7 +77,9 @@ class EmotionAnalysisService {
 
     // Screen looking time hesapla
     const lookingResults = this.currentGameSession.filter(r => r.lookingAtScreen);
-    const screenLookingTime = lookingResults.length * 0.5; // Her analiz ~0.5 saniye
+    // Her emotion entry 5 saniye boyunca geçerli (kamera 5 saniyede bir analiz ediyor)
+    const avgEmotionDuration = totalGameTime / this.currentGameSession.length;
+    const screenLookingTime = lookingResults.length * avgEmotionDuration;
     const screenLookingPercentage = (screenLookingTime / totalGameTime) * 100;
 
     // DEBUG: Screen looking hesaplamasını kontrol et
@@ -85,8 +87,10 @@ class EmotionAnalysisService {
       totalEmotions: this.currentGameSession.length,
       lookingEmotions: lookingResults.length,
       totalGameTime: totalGameTime.toFixed(1) + 's',
+      avgEmotionDuration: avgEmotionDuration.toFixed(1) + 's',
       screenLookingTime: screenLookingTime.toFixed(1) + 's',
       screenLookingPercentage: screenLookingPercentage.toFixed(1) + '%',
+      calculationCheck: `${lookingResults.length}/${this.currentGameSession.length} = ${(lookingResults.length/this.currentGameSession.length*100).toFixed(1)}%`,
       sampleEmotions: this.currentGameSession.slice(-3).map(e => ({
         emotion: e.emotion,
         lookingAtScreen: e.lookingAtScreen,
@@ -226,17 +230,20 @@ class EmotionAnalysisService {
     emotionGroups: Record<string, EmotionAnalysisResult[]>,
     totalTime: number
   ): EmotionStats[] {
+    const totalEmotions = Object.values(emotionGroups).reduce((sum, arr) => sum + arr.length, 0);
+
     return Object.entries(emotionGroups).map(([emotion, results]) => {
-      const emotionTime = results.length * 0.5; // Her analiz ~0.5 saniye
+      // Her emotion count'ını yüzdeye çevir
+      const percentage = (results.length / totalEmotions) * 100;
       const lookingResults = results.filter(r => r.lookingAtScreen);
-      const lookingTime = lookingResults.length * 0.5;
+      const lookingPercentage = results.length > 0 ? (lookingResults.length / results.length) * 100 : 0;
 
       return {
         emotion,
-        totalTime: emotionTime,
-        lookingTime,
-        percentage: (emotionTime / totalTime) * 100,
-        lookingPercentage: emotionTime > 0 ? (lookingTime / emotionTime) * 100 : 0
+        totalTime: results.length, // Count olarak
+        lookingTime: lookingResults.length, // Count olarak
+        percentage: percentage,
+        lookingPercentage: lookingPercentage
       };
     }).sort((a, b) => b.totalTime - a.totalTime);
   }
