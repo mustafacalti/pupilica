@@ -13,7 +13,7 @@ export interface OllamaResponse {
 }
 
 class OllamaService {
-  private modelName: string = 'hf.co/umutkkgz/Kaira-Turkish-Gemma-9B-T1-GGUF:Q3_K_M'; // Türkçe Gemma model
+  private modelName: string = 'alibayram/turkish-gemma-9b-v0.1:latest'; // Türkçe Gemma model
 
   /**
    * Ollama CLI üzerinden soru üretir
@@ -306,6 +306,64 @@ Birden çok doğru cevap.`;
     } catch (error) {
       console.error('Ollama status kontrolü hatası:', error);
       return false;
+    }
+  }
+
+  /**
+   * Basit metin yanıtı üretir (renk tanıma oyunu için)
+   */
+  async generateSimpleResponse(prompt: string): Promise<string> {
+    console.log('🤖 [OLLAMA DEBUG] Basit yanıt üretimi başlıyor:', prompt);
+
+    // Prompt'u daha spesifik hale getir
+    const enhancedPrompt = `${prompt}
+
+ÖNEMLI TALİMATLAR:
+- Sadece tek kelime renk ismi söyle
+- Hiç açıklama yapma
+- <think> tag'i kullanma
+- "Hmm" gibi düşünce belirteci kullanma
+- Sadece renk ismini yaz ve dur
+
+Örnek: "Mavi" veya "Kırmızı"`;
+
+    try {
+      const ollamaApiUrl = 'http://localhost:11434/api/generate';
+
+      const requestBody = {
+        model: this.modelName,
+        prompt: enhancedPrompt,
+        stream: false,
+        options: {
+          temperature: 0.3, // Daha deterministik
+          top_p: 0.5, // Daha fokuslu
+          num_predict: 10 // Çok kısa yanıt için
+        }
+      };
+
+      const response = await fetch(ollamaApiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      if (!response.ok) {
+        throw new Error(`Ollama API hatası: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+
+      if (!data.response) {
+        throw new Error('Ollama boş yanıt döndürdü');
+      }
+
+      console.log('✅ [OLLAMA DEBUG] Basit yanıt alındı:', data.response.trim());
+      return data.response.trim();
+    } catch (error) {
+      console.error('❌ [OLLAMA DEBUG] Basit yanıt hatası:', error);
+      throw new Error(`Ollama servisi yanıt veremedi: ${error}`);
     }
   }
 

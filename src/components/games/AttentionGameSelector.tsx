@@ -6,6 +6,7 @@ import { AttentionClickGame } from './AttentionClickGame';
 import { AttentionCountGame } from './AttentionCountGame';
 import { AttentionDynamicGame } from './AttentionDynamicGame';
 import { ConflictGame } from './ConflictGame';
+import { ColorRecognitionGame } from './ColorRecognitionGame';
 import {
   Target,
   Hash,
@@ -15,7 +16,8 @@ import {
   Star,
   Clock,
   MousePointer,
-  Palette
+  Palette,
+  Camera
 } from 'lucide-react';
 
 interface AttentionGameSelectorProps {
@@ -25,7 +27,7 @@ interface AttentionGameSelectorProps {
   onEmotionDetected?: (emotion: EmotionResult) => void;
 }
 
-type GameType = 'click' | 'count' | 'dynamic' | 'conflict';
+type GameType = 'click' | 'count' | 'dynamic' | 'conflict' | 'colorRecognition';
 type DifficultyLevel = 'kolay' | 'orta' | 'zor';
 
 interface GameInfo {
@@ -132,6 +134,20 @@ export const AttentionGameSelector: React.FC<AttentionGameSelectorProps> = ({
         'Dikkat odaklanma',
         'Bilişsel esneklik'
       ]
+    },
+    {
+      id: 'colorRecognition',
+      name: 'AI Renk Tanıma',
+      description: 'AI seçtiği rengi kameraya gösterme oyunu',
+      icon: <Camera className="h-8 w-8" />,
+      color: 'indigo',
+      bgGradient: 'from-indigo-500 to-purple-500',
+      features: [
+        'AI destekli renk seçimi',
+        'Gerçek zamanlı renk tanıma',
+        'Kamera etkileşimi',
+        '5 saniye odaklanma'
+      ]
     }
   ];
 
@@ -216,6 +232,9 @@ export const AttentionGameSelector: React.FC<AttentionGameSelectorProps> = ({
         case 'conflict':
           console.log('🎨 [DEBUG] Loading ConflictGame');
           return <ConflictGame {...commonProps} />;
+        case 'colorRecognition':
+          console.log('📷 [DEBUG] Loading ColorRecognitionGame');
+          return <ColorRecognitionGame studentId={studentId} studentAge={studentAge} onGameComplete={handleGameCompleteWithReturn} onEmotionDetected={onEmotionDetected} />;
         default:
           console.error('❌ [DEBUG] Unknown game type:', selectedGame);
           return null;
@@ -409,6 +428,7 @@ export const AttentionGameSelector: React.FC<AttentionGameSelectorProps> = ({
                       game.color === 'blue' ? 'bg-blue-400' :
                       game.color === 'green' ? 'bg-green-400' :
                       game.color === 'purple' ? 'bg-purple-400' :
+                      game.color === 'indigo' ? 'bg-indigo-400' :
                       'bg-red-400'
                     }`}></div>
                     <span>{feature}</span>
@@ -423,6 +443,7 @@ export const AttentionGameSelector: React.FC<AttentionGameSelectorProps> = ({
                     game.color === 'blue' ? 'bg-blue-500 hover:bg-blue-600' :
                     game.color === 'green' ? 'bg-green-500 hover:bg-green-600' :
                     game.color === 'purple' ? 'bg-purple-500 hover:bg-purple-600' :
+                    game.color === 'indigo' ? 'bg-indigo-500 hover:bg-indigo-600' :
                     'bg-red-500 hover:bg-red-600'
                   } text-white`}
                 >
