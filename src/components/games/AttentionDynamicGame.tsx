@@ -3,7 +3,10 @@ import { Card, CardContent } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { AttentionSprintTask, AttentionSprintPerformance, EmotionResult } from '../../types';
 import { attentionSprintGenerator } from '../../services/attentionSprintGenerator';
-import { Clock, Target, Zap, RotateCcw, Star, Brain, Play } from 'lucide-react';
+import { emotionAnalysisService, EmotionAnalysisResult, AttentionMetrics } from '../../services/emotionAnalysisService';
+import { adaptiveDifficultyService, DifficultyAdjustment, GamePerformanceData } from '../../services/adaptiveDifficultyService';
+import { cameraEmotionService } from '../../services/cameraEmotionService';
+import { Clock, Target, Zap, RotateCcw, Star, Brain, Play, Camera, Eye } from 'lucide-react';
 const X = () => <span>❌</span>; // Fallback icon
 
 interface AttentionDynamicGameProps {
@@ -43,6 +46,13 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
   const [gameStartTime] = useState(Date.now());
   const [countdown, setCountdown] = useState(3);
   const [isGenerating, setIsGenerating] = useState(false);
+
+  // Emotion analysis states
+  const [emotionAnalysisActive, setEmotionAnalysisActive] = useState(false);
+  const [currentEmotion, setCurrentEmotion] = useState<EmotionAnalysisResult | null>(null);
+  const [attentionMetrics, setAttentionMetrics] = useState<AttentionMetrics | null>(null);
+  const [difficultyAdjustment, setDifficultyAdjustment] = useState<DifficultyAdjustment | null>(null);
+  const [realtimeFeedback, setRealtimeFeedback] = useState<string>('');
 
   // Dinamik tıklama modu için state'ler
   const [clickingObjects, setClickingObjects] = useState<{
@@ -168,7 +178,72 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
   const isGeneratingRef = useRef(false);
   const isEndingRound = useRef(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const emotionSimulationRef = useRef<NodeJS.Timeout | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const totalRounds = 5;
+
+  // Emotion tracking fonksiyonları
+  const startEmotionTracking = useCallback(async () => {
+    console.log('🎭 [EMOTION] Emotion tracking başlatılıyor...');
+
+    emotionAnalysisService.startGameSession();
+    setEmotionAnalysisActive(true);
+
+    const onEmotionDetected = (result: EmotionAnalysisResult) => {
+      setCurrentEmotion(result);
+      emotionAnalysisService.addEmotionResult(result);
+
+      // Real-time feedback güncelle
+      const metrics = emotionAnalysisService.getCurrentGameMetrics();
+      setAttentionMetrics(metrics);
+
+      const feedback = adaptiveDifficultyService.getRealtimeFeedback(metrics);
+      setRealtimeFeedback(feedback.message);
+
+      // Legacy emotion sistem için de ekle
+      const legacyEmotion: EmotionResult = {
+        emotion: result.emotion,
+        confidence: result.confidence,
+        timestamp: result.timestamp
+      };
+      setEmotions(prev => [...prev.slice(-10), legacyEmotion]); // Son 10 emotion tut
+      onEmotionDetected?.(legacyEmotion);
+    };
+
+    // Önce gerçek kamera dene
+    let cameraSuccess = false;
+    if (videoRef.current) {
+      cameraSuccess = await cameraEmotionService.startEmotionTracking(
+        videoRef.current,
+        onEmotionDetected
+      );
+    }
+
+    // Kamera başarısız olursa mock kullan
+    if (!cameraSuccess) {
+      console.log('📱 [EMOTION] Mock emotion simulation başlatılıyor...');
+      cameraEmotionService.startMockEmotionSimulation(onEmotionDetected, {
+        isPlaying: gameState === 'active',
+        correctClicks: correctClicksRef.current,
+        wrongClicks: wrongClicksRef.current,
+        timeLeft: timeLeft
+      });
+    }
+
+    console.log('✅ [EMOTION] Emotion tracking aktif');
+  }, [gameState, timeLeft, onEmotionDetected]);
+
+  const stopEmotionTracking = useCallback(() => {
+    console.log('⏹️ [EMOTION] Emotion tracking durduruluyor...');
+
+    cameraEmotionService.stopEmotionTracking();
+    setEmotionAnalysisActive(false);
+
+    const finalMetrics = emotionAnalysisService.endGameSession();
+    setAttentionMetrics(finalMetrics);
+
+    console.log('🏁 [EMOTION] Final metrics:', finalMetrics);
+  }, []);
 
   // İlk görevi yükle
   useEffect(() => {
@@ -394,11 +469,14 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
   };
 
   // Oyunu başlat
-  const startRound = () => {
+  const startRound = async () => {
     if (!currentTask) return;
 
     setGameState('countdown');
     setCountdown(3);
+
+    // Emotion tracking başlat
+    await startEmotionTracking();
 
     const countdownInterval = setInterval(() => {
       setCountdown(prev => {
@@ -721,11 +799,21 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
       timerRef.current = null;
     }
 
+    // Emotion tracking durdur
+    stopEmotionTracking();
+
     setRounds([]);
     setCurrentRound(0);
     setScore(0);
     setEmotions([]);
     setGameState('ready');
+
+    // Emotion states sıfırla
+    setEmotionAnalysisActive(false);
+    setCurrentEmotion(null);
+    setAttentionMetrics(null);
+    setDifficultyAdjustment(null);
+    setRealtimeFeedback('');
     setClickingObjects([]);
     setCorrectClicks(0);
     setWrongClicks(0);
@@ -783,6 +871,15 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
+      {/* Hidden video element for emotion tracking */}
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted
+        style={{ display: 'none' }}
+      />
+
       {/* Header */}
       <Card>
         <CardContent>
@@ -798,6 +895,27 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
                 <Brain className="h-4 w-4 text-purple-600" />
                 <span className="text-xs text-purple-600">Zorluk: {difficulty}</span>
               </div>
+
+              {/* Emotion tracking status */}
+              {emotionAnalysisActive && (
+                <div className="flex items-center space-x-2">
+                  <div className={`w-2 h-2 rounded-full ${cameraEmotionService.isTrackingActive() ? 'bg-green-500' : 'bg-orange-500'}`}></div>
+                  <Camera className="h-4 w-4 text-green-600" />
+                  <span className="text-xs text-green-600">
+                    {cameraEmotionService.isTrackingActive() ? 'Kamera Aktif' : 'Mock Mode'}
+                  </span>
+                </div>
+              )}
+
+              {/* Real-time emotion display */}
+              {currentEmotion && (
+                <div className="flex items-center space-x-2">
+                  <Eye className={`h-4 w-4 ${currentEmotion.lookingAtScreen ? 'text-green-600' : 'text-red-600'}`} />
+                  <span className="text-xs text-gray-600">
+                    {currentEmotion.emotion} ({(currentEmotion.confidence * 100).toFixed(0)}%)
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </CardContent>

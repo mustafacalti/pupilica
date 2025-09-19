@@ -13,8 +13,8 @@ class AttentionSprintGenerator {
   /**
    * ADHD'li 12 yaş çocukları için dikkat sprintleri üretir
    */
-  async generateAttentionSprint(request: AttentionSprintRequest): Promise<AttentionSprintTask> {
-    const { performansOzeti, studentAge, sonGorevler = [], forcedDifficulty } = request;
+  async generateAttentionSprint(request: AttentionSprintRequest & { emotionData?: string }): Promise<AttentionSprintTask> {
+    const { performansOzeti, studentAge, sonGorevler = [], forcedDifficulty, emotionData } = request;
 
     // Zorluk seviyesi belirleme - kullanıcı seçimi varsa onu kullan
     const difficulty = forcedDifficulty || this.determineDifficulty(performansOzeti);
@@ -27,7 +27,7 @@ class AttentionSprintGenerator {
     const onerilenTip = this.determineTaskVariety(sonGorevler);
 
     // 12 yaş ADHD çocuklara özel prompt
-    const prompt = this.buildAttentionSprintPrompt(performansOzeti, studentAge, difficulty, onerilenTip);
+    const prompt = this.buildAttentionSprintPrompt(performansOzeti, studentAge, difficulty, onerilenTip, emotionData);
 
     try {
       console.log('🎯 [ATTENTION SPRINT] Görev üretiliyor:', { difficulty, performansOzeti });
