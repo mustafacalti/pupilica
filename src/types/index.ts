@@ -90,6 +90,14 @@ export interface AttentionSprintTask {
   dikkatDagitici: number; // 0-1 arası dikkat dağıtıcı sayısı
   difficulty: 'kolay' | 'orta' | 'zor';
   hedefTipi: 'renk' | 'sekil' | 'sayi' | 'genel'; // Ana hedef tipi
+  // AI'dan gelen emotion-based oyun parametreleri
+  gameParams?: {
+    spawnInterval: number; // 1500-4000ms
+    objectLifespan: number; // 3000-8000ms
+    targetRatio: number; // 0.3-0.8
+    visualComplexity: number; // 0.2-1.0
+    feedbackFrequency: number; // 0.5-3.0
+  };
 }
 
 export interface AttentionSprintPerformance {
@@ -117,5 +125,21 @@ export interface AttentionSprintPerformance {
     sayiBasariOrani: number;
     ortalamaReaksiyonSuresiSayi: number;
     hizliCozumSayisi: number; // Çok hızlı çözülen görev sayısı
+  };
+  // AI için attention metrics
+  attentionMetrics?: {
+    totalGameTime: number;
+    screenLookingTime: number;
+    screenLookingPercentage: number;
+    emotionStats: Array<{
+      emotion: string;
+      totalTime: number;
+      lookingTime: number;
+      percentage: number;
+      lookingPercentage: number;
+    }>;
+    dominantEmotion: string;
+    attentionScore: number;
+    distractionEvents: number;
   };
 }

@@ -6,12 +6,14 @@ export interface CameraEmotionData {
   gaze_status: string;
   gaze_x?: number;
   looking_at_screen: boolean;
+  lookingAtScreen: boolean; // Python camelCase
+  faceDetected: boolean; // Python field
   timestamp: string;
 }
 
 class CameraEmotionService {
   private isActive = false;
-  private pythonServerUrl = 'http://localhost:8000'; // Python server
+  private pythonServerUrl = 'http://localhost:5000'; // Python server
   private pollInterval: NodeJS.Timeout | null = null;
   private onEmotionCallback?: (result: EmotionAnalysisResult) => void;
   private videoRef: React.RefObject<HTMLVideoElement> | null = null;
@@ -81,10 +83,16 @@ class CameraEmotionService {
       this.onEmotionCallback = onEmotionDetected;
       this.isActive = true;
 
-      // Python server'dan düzenli olarak emotion data çek
+      // Python server'da kamera BAŞLATMA - React frontend kamerayı kullanacak
+      // await fetch(`${this.pythonServerUrl}/start_camera`, {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/json' }
+      // });
+
+      // Video frame'ini düzenli olarak capture et ve analiz et
       this.pollInterval = setInterval(() => {
-        this.pollEmotionData();
-      }, 500); // 500ms'de bir analiz
+        this.captureAndAnalyzeFrame(videoElement);
+      }, 5000); // 5 saniyede bir analiz - daha az spam
 
       console.log('✅ [EMOTION] Real-time kamera tracking aktif');
       return true;
@@ -96,13 +104,55 @@ class CameraEmotionService {
   }
 
   /**
-   * Python server'dan emotion data çek
+   * Video frame'ini capture et ve Python'a gönder
+   */
+  private async captureAndAnalyzeFrame(videoElement: HTMLVideoElement): Promise<void> {
+    if (!this.isActive) return;
+
+    try {
+      // Video frame'ini canvas'a çiz
+      const canvas = document.createElement('canvas');
+      canvas.width = 640;
+      canvas.height = 480;
+      const ctx = canvas.getContext('2d');
+
+      if (!ctx) return;
+
+      ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+
+      // Canvas'ı base64'e çevir
+      const imageData = canvas.toDataURL('image/jpeg', 0.8);
+
+      // Python server'a frame gönder
+      const response = await fetch(`${this.pythonServerUrl}/analyze_frame`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          frame: imageData.split(',')[1] // base64 kısmını al
+        })
+      });
+
+      if (response.ok) {
+        const data: CameraEmotionData = await response.json();
+        const emotionResult = this.convertToEmotionResult(data);
+
+        if (this.onEmotionCallback) {
+          this.onEmotionCallback(emotionResult);
+        }
+      }
+    } catch (error) {
+      console.log('🔍 [FRAME] Frame analiz hatası:', error);
+    }
+  }
+
+  /**
+   * Python server'dan emotion data çek (fallback)
    */
   private async pollEmotionData(): Promise<void> {
     if (!this.isActive) return;
 
     try {
-      const response = await fetch(`${this.pythonServerUrl}/emotion-data`, {
+      const response = await fetch(`${this.pythonServerUrl}/emotion_data`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' }
       });
@@ -124,23 +174,36 @@ class CameraEmotionService {
    * Python data'sını EmotionAnalysisResult'a çevir
    */
   private convertToEmotionResult(data: CameraEmotionData): EmotionAnalysisResult {
-    // Emotion mapping
+    // Emotion mapping - Python server basit emotion'lar gönderiyor
     const emotionMap: Record<string, EmotionAnalysisResult['emotion']> = {
-      'a happy child': 'happy',
-      'a sad child': 'sad',
-      'a bored child': 'bored',
-      'a confused child': 'confused',
-      'a surprised child': 'surprised',
-      'an angry child': 'angry',
-      'a neutral child': 'neutral'
+      'happy': 'happy',
+      'sad': 'sad',
+      'bored': 'bored',
+      'confused': 'confused',
+      'surprised': 'surprised',
+      'angry': 'angry',
+      'neutral': 'neutral',
+      'focused': 'neutral', // focused -> neutral mapping
+      'frustrated': 'angry' // frustrated -> angry mapping
     };
 
     const emotion = emotionMap[data.emotion] || 'neutral';
 
-    // Gaze status mapping
+    // Gaze status mapping - Python server lookingAtScreen boolean gönderiyor
     let gazeStatus: EmotionAnalysisResult['gazeStatus'] = 'no-face';
-    if (data.gaze_status === 'LOOKING AT SCREEN') gazeStatus = 'looking';
-    else if (data.gaze_status === 'NOT LOOKING AT SCREEN') gazeStatus = 'not-looking';
+    const lookingAtScreen = data.lookingAtScreen || data.looking_at_screen || false; // Fallback
+
+    if (data.faceDetected) {
+      gazeStatus = lookingAtScreen ? 'looking' : 'not-looking';
+    }
+
+    console.log('🔍 [GAZE MAPPING DEBUG]', {
+      faceDetected: data.faceDetected,
+      lookingAtScreen_snake: data.looking_at_screen,
+      lookingAtScreen_camel: data.lookingAtScreen,
+      finalLookingAtScreen: lookingAtScreen,
+      gazeStatus
+    });
 
     return {
       emotion,
@@ -148,7 +211,7 @@ class CameraEmotionService {
       timestamp: new Date(),
       gazeStatus,
       gazeX: data.gaze_x,
-      lookingAtScreen: data.looking_at_screen
+      lookingAtScreen: lookingAtScreen
     };
   }
 
@@ -164,6 +227,12 @@ class CameraEmotionService {
       clearInterval(this.pollInterval);
       this.pollInterval = null;
     }
+
+    // Python server'da kamera durdur
+    fetch(`${this.pythonServerUrl}/stop_camera`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    }).catch(() => {}); // Hata olsa da devam et
 
     this.onEmotionCallback = undefined;
   }

@@ -48,7 +48,20 @@ class EmotionAnalysisService {
     this.emotions.push(result);
     this.currentGameSession.push(result);
 
-    console.log(`😊 [EMOTION] ${result.emotion} (${(result.confidence * 100).toFixed(1)}%) - ${result.gazeStatus}`);
+    // DEBUG: lookingAtScreen değerini kontrol et
+    console.log('📥 [EMOTION ADDED]', {
+      emotion: result.emotion,
+      confidence: (result.confidence * 100).toFixed(1) + '%',
+      gazeStatus: result.gazeStatus,
+      lookingAtScreen: result.lookingAtScreen,
+      timestamp: new Date(result.timestamp).toLocaleTimeString()
+    });
+
+    // Console spam'i azalt - emotion değişikliklerinde log
+    const lastResult = this.currentGameSession[this.currentGameSession.length - 2];
+    if (!lastResult || lastResult.emotion !== result.emotion) {
+      console.log(`😊 [EMOTION] ${result.emotion} (${(result.confidence * 100).toFixed(1)}%) - ${result.gazeStatus}`);
+    }
   }
 
   /**
@@ -66,6 +79,20 @@ class EmotionAnalysisService {
     const lookingResults = this.currentGameSession.filter(r => r.lookingAtScreen);
     const screenLookingTime = lookingResults.length * 0.5; // Her analiz ~0.5 saniye
     const screenLookingPercentage = (screenLookingTime / totalGameTime) * 100;
+
+    // DEBUG: Screen looking hesaplamasını kontrol et
+    console.log('👁️ [SCREEN LOOKING DEBUG]', {
+      totalEmotions: this.currentGameSession.length,
+      lookingEmotions: lookingResults.length,
+      totalGameTime: totalGameTime.toFixed(1) + 's',
+      screenLookingTime: screenLookingTime.toFixed(1) + 's',
+      screenLookingPercentage: screenLookingPercentage.toFixed(1) + '%',
+      sampleEmotions: this.currentGameSession.slice(-3).map(e => ({
+        emotion: e.emotion,
+        lookingAtScreen: e.lookingAtScreen,
+        timestamp: new Date(e.timestamp).toLocaleTimeString()
+      }))
+    });
 
     // Dominant emotion bul
     const dominantEmotion = this.getDominantEmotion(emotionGroups);
@@ -87,12 +114,13 @@ class EmotionAnalysisService {
       distractionEvents: this.countDistractionEvents()
     };
 
-    console.log('📊 [EMOTION METRICS]', {
-      screenLooking: `${screenLookingPercentage.toFixed(1)}%`,
-      dominantEmotion,
-      attentionScore,
-      distractionEvents: metrics.distractionEvents
-    });
+    // Console spam'i azalt
+    // console.log('📊 [EMOTION METRICS]', {
+    //   screenLooking: `${screenLookingPercentage.toFixed(1)}%`,
+    //   dominantEmotion,
+    //   attentionScore,
+    //   distractionEvents: metrics.distractionEvents
+    // });
 
     return metrics;
   }

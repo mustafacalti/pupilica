@@ -43,8 +43,9 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
   const [currentRound, setCurrentRound] = useState(0);
   const [score, setScore] = useState(0);
   const [emotions, setEmotions] = useState<EmotionResult[]>([]);
+  const emotionsRef = useRef<EmotionResult[]>([]); // Real-time emotions için ref
   const [gameStartTime] = useState(Date.now());
-  const [countdown, setCountdown] = useState(3);
+  const [countdown, setCountdown] = useState(2); // Daha kısa countdown
   const [isGenerating, setIsGenerating] = useState(false);
 
   // Emotion analysis states
@@ -190,12 +191,30 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
     setEmotionAnalysisActive(true);
 
     const onEmotionDetected = (result: EmotionAnalysisResult) => {
+      // Console spam'i azalt
+      // console.log('🎭 [EMOTION DETECTED]', {
+      //   emotion: result.emotion,
+      //   confidence: `${Math.round(result.confidence * 100)}%`,
+      //   timestamp: new Date(result.timestamp).toLocaleTimeString(),
+      //   gameState,
+      //   currentRound: currentRound + 1
+      // });
+
       setCurrentEmotion(result);
       emotionAnalysisService.addEmotionResult(result);
 
       // Real-time feedback güncelle
       const metrics = emotionAnalysisService.getCurrentGameMetrics();
       setAttentionMetrics(metrics);
+
+      // Console spam'i azalt
+      // console.log('📊 [ATTENTION METRICS]', {
+      //   totalGameTime: `${metrics.totalGameTime?.toFixed(1)}s`,
+      //   screenLooking: `${metrics.screenLookingPercentage?.toFixed(1)}%`,
+      //   dominantEmotion: metrics.dominantEmotion,
+      //   attentionScore: metrics.attentionScore?.toFixed(1),
+      //   distractionEvents: metrics.distractionEvents
+      // });
 
       const feedback = adaptiveDifficultyService.getRealtimeFeedback(metrics);
       setRealtimeFeedback(feedback.message);
@@ -206,8 +225,22 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
         confidence: result.confidence,
         timestamp: result.timestamp
       };
-      setEmotions(prev => [...prev.slice(-10), legacyEmotion]); // Son 10 emotion tut
-      onEmotionDetected?.(legacyEmotion);
+
+      setEmotions(prev => {
+        const newEmotions = [...prev.slice(-10), legacyEmotion];
+        emotionsRef.current = newEmotions; // Ref'i de güncelle - real-time erişim için
+        console.log('🎯 [EMOTION ADDED TO ARRAY]', {
+          emotion: legacyEmotion.emotion,
+          totalEmotions: newEmotions.length,
+          arraySize: newEmotions.length,
+          refSize: emotionsRef.current.length,
+          willSendToAI: newEmotions.length > 0 ? 'Yes' : 'No'
+        });
+        return newEmotions;
+      });
+
+      // Recursive call kaldırıldı - infinite loop'u önlemek için
+      // onEmotionDetected?.(legacyEmotion);
     };
 
     // Önce gerçek kamera dene
@@ -219,15 +252,10 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
       );
     }
 
-    // Kamera başarısız olursa mock kullan
+    // Kamera başarısız olursa uyarı ver
     if (!cameraSuccess) {
-      console.log('📱 [EMOTION] Mock emotion simulation başlatılıyor...');
-      cameraEmotionService.startMockEmotionSimulation(onEmotionDetected, {
-        isPlaying: gameState === 'active',
-        correctClicks: correctClicksRef.current,
-        wrongClicks: wrongClicksRef.current,
-        timeLeft: timeLeft
-      });
+      console.log('📱 [EMOTION] Gerçek kamera bulunamadı - Python server çalışıyor mu?');
+      console.log('💡 [TIP] Terminal\'de çalıştır: python emotion_server.py');
     }
 
     console.log('✅ [EMOTION] Emotion tracking aktif');
@@ -245,9 +273,10 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
     console.log('🏁 [EMOTION] Final metrics:', finalMetrics);
   }, []);
 
-  // İlk görevi yükle
+  // İlk görevi AI'dan yükle
   useEffect(() => {
     if (!hasGeneratedFirstTask.current && !isGenerating) {
+      console.log('🤖 [TASK] İlk görev AI\'dan yükleniyor (emotion data olmadan)');
       hasGeneratedFirstTask.current = true;
       generateFirstTask();
     }
@@ -259,6 +288,7 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
       }
     };
   }, []);
+
 
   const generateFirstTask = useCallback(async (currentCorrectParam?: number, currentWrongParam?: number) => {
     if (isGeneratingRef.current) return;
@@ -323,11 +353,16 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
       formattedRoundsCount: formattedRounds.length
     });
 
+    // AI'ın kendi odaklanma analizini yapması için raw data gönder
+    const currentMetrics = emotionAnalysisService.getCurrentGameMetrics();
+
     const initialPerformance: AttentionSprintPerformance = {
       son3Tur: formattedRounds,
       ortalamaReaksiyonSuresi: avgReactionTime,
       basariOrani: currentAccuracy,
-      odaklanmaDurumu: currentAccuracy > 0.7 ? 'yuksek' : currentAccuracy > 0.5 ? 'orta' : 'dusuk',
+      odaklanmaDurumu: 'ai-analiz', // AI'ın analiz etmesi için placeholder
+      // AI için attention metrics ekle
+      attentionMetrics: currentMetrics,
       // Dinamik tıklama performansı olarak sayiGorevPerformansi ekle
       sayiGorevPerformansi: {
         ortalamaSayiZorlugu: difficulty === 'kolay' ? 3 : difficulty === 'orta' ? 5 : 7,
@@ -338,10 +373,41 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
     };
 
     try {
+      // State yerine ref kullan - real-time emotion data için
+      const currentEmotions = emotionsRef.current;
+      const emotionDataForAI = currentEmotions.length > 0 ? JSON.stringify(currentEmotions) : undefined;
+
+      console.log('🤖 [AI PROMPT DATA]', {
+        hasEmotionData: !!emotionDataForAI,
+        emotionCountFromState: emotions.length,
+        emotionCountFromRef: currentEmotions.length,
+        emotionSummary: currentEmotions.slice(-3).map(e => `${e.emotion}(${Math.round(e.confidence * 100)}%)`),
+        isFirstTask: !rounds.length,
+        timingInfo: {
+          gameStartTime: gameStartTime,
+          emotionTrackingActive: emotionAnalysisActive,
+          currentTime: Date.now()
+        },
+        performanceData: {
+          successRate: `${Math.round(initialPerformance.basariOrani * 100)}%`,
+          avgReaction: `${initialPerformance.ortalamaReaksiyonSuresi.toFixed(1)}s`,
+          focusState: initialPerformance.odaklanmaDurumu
+        }
+      });
+
       const task = await attentionSprintGenerator.generateAttentionSprint({
         performansOzeti: initialPerformance,
         studentAge,
-        sonGorevler: ['dinamik-tıklama'] // Dinamik tıklama oyunu iste
+        sonGorevler: ['dinamik-tıklama'], // Dinamik tıklama oyunu iste
+        emotionData: emotionDataForAI
+      });
+
+      console.log('✨ [AI GENERATED TASK]', {
+        task: task.gorev,
+        duration: `${task.sure_saniye}s`,
+        difficulty: task.difficulty,
+        tips: task.ipuclari,
+        distractors: task.dikkatDagitici
       });
 
       // Sadece dinamik tıklama görevlerini filtrele - orijinal süreyi koru
@@ -473,7 +539,7 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
     if (!currentTask) return;
 
     setGameState('countdown');
-    setCountdown(3);
+    setCountdown(2); // Daha kısa countdown
 
     // Emotion tracking başlat
     await startEmotionTracking();
@@ -522,7 +588,20 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
 
   // Dinamik tıklama objeler spawn et
   const startClickingSpawn = () => {
-    const params = getClickingParams(difficulty);
+    // AI'dan gelen emotion-based parametreleri kullan, yoksa default
+    const params = currentTask?.gameParams ? {
+      spawnInterval: currentTask.gameParams.spawnInterval,
+      objectLifespan: currentTask.gameParams.objectLifespan,
+      targetRatio: currentTask.gameParams.targetRatio,
+    } : getClickingParams(difficulty);
+
+    console.log('🎮 [GAME PARAMS]', {
+      source: currentTask?.gameParams ? 'AI-emotion-based' : 'default-difficulty',
+      spawnInterval: `${params.spawnInterval}ms`,
+      objectLifespan: `${params.objectLifespan}ms`,
+      targetRatio: `${(params.targetRatio * 100).toFixed(1)}%`,
+      aiParams: currentTask?.gameParams
+    });
     let spawnIntervalId: NodeJS.Timeout;
 
     setCorrectClicks(0);
@@ -741,7 +820,11 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
         confidence: 0.9,
         timestamp: new Date()
       };
-      setEmotions(prev => [...prev, emotion]);
+      setEmotions(prev => {
+        const newEmotions = [...prev, emotion];
+        emotionsRef.current = newEmotions;
+        return newEmotions;
+      });
       onEmotionDetected?.(emotion);
     } else {
       const emotion: EmotionResult = {
@@ -749,7 +832,11 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
         confidence: 0.7,
         timestamp: new Date()
       };
-      setEmotions(prev => [...prev, emotion]);
+      setEmotions(prev => {
+        const newEmotions = [...prev, emotion];
+        emotionsRef.current = newEmotions;
+        return newEmotions;
+      });
       onEmotionDetected?.(emotion);
     }
 
@@ -806,6 +893,7 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
     setCurrentRound(0);
     setScore(0);
     setEmotions([]);
+    emotionsRef.current = []; // Ref'i de temizle
     setGameState('ready');
 
     // Emotion states sıfırla

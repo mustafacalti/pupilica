@@ -3,7 +3,8 @@ import { Card, CardContent } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { AttentionSprintTask, AttentionSprintPerformance, EmotionResult } from '../../types';
 import { attentionSprintGenerator } from '../../services/attentionSprintGenerator';
-import { Clock, Target, Zap, RotateCcw, Star, Brain, Play } from 'lucide-react';
+import { cameraEmotionService } from '../../services/cameraEmotionService';
+import { Clock, Target, Zap, RotateCcw, Star, Brain, Play, Camera } from 'lucide-react';
 
 interface AttentionClickGameProps {
   studentId: string;
@@ -87,7 +88,8 @@ export const AttentionClickGame: React.FC<AttentionClickGameProps> = ({
       const task = await attentionSprintGenerator.generateAttentionSprint({
         performansOzeti: initialPerformance,
         studentAge,
-        sonGorevler: ['tıklama'] // Normal tıklama oyunu iste
+        sonGorevler: ['tıklama'], // Normal tıklama oyunu iste
+        emotionData: emotions.length > 0 ? JSON.stringify(emotions) : undefined
       });
 
       // Sadece normal tıklama görevlerini filtrele

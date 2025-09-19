@@ -29,6 +29,20 @@ class AttentionSprintGenerator {
     // 12 yaş ADHD çocuklara özel prompt
     const prompt = this.buildAttentionSprintPrompt(performansOzeti, studentAge, difficulty, onerilenTip, emotionData);
 
+    // AI'a gönderilen tam prompt'u logla
+    console.log('📝 [AI PROMPT FULL]', {
+      hasEmotionData: !!emotionData,
+      promptLength: prompt.length,
+      emotionDataLength: emotionData?.length || 0,
+      preview: emotionData ? `${JSON.parse(emotionData).length} emotions` : 'no emotions'
+    });
+
+    // Prompt'u konsola yazdır (daha okunabilir)
+    console.log('📄 [AI PROMPT TEXT]');
+    console.log('='.repeat(80));
+    console.log(prompt);
+    console.log('='.repeat(80));
+
     try {
       console.log('🎯 [ATTENTION SPRINT] Görev üretiliyor:', { difficulty, performansOzeti });
 
@@ -404,6 +418,7 @@ class AttentionSprintGenerator {
     return tipOrnekleri.join('\n');
   }
 
+
   /**
    * 12 yaş ADHD çocuklara özel prompt oluşturma
    */
@@ -411,11 +426,11 @@ class AttentionSprintGenerator {
     performans: AttentionSprintPerformance,
     studentAge: number,
     difficulty: 'kolay' | 'orta' | 'zor',
-    onerilenTip: string
+    onerilenTip: string,
+    emotionData?: string
   ): string {
     const performansMetni = this.formatPerformanceForPrompt(performans);
     const tipOrnekleri = this.getTaskExamplesForType(onerilenTip, difficulty);
-
     return `ADHD'li 12 yaş çocuk için Dikkat Sprintleri görevi üret. SADECE JSON döndür.
 
 ÖNERİLEN GÖREV TİPİ: ${onerilenTip} (çeşitlilik için)
@@ -428,12 +443,48 @@ HEDEF KITLE:
 - ADHD özellik: Kısa dikkat süresi, hiperaktivite, impulse kontrol zorluğu
 - Motivasyon: Görsel ödüller, hızlı geri bildirim, başarı hissi
 
+${emotionData ? `KAMERA VERİSİ - TÜM DUYGUSAL DURUMLAR (Oyun süresince):
+${emotionData}
+
+DİKKAT: Bu emotion data'dan çok boyutlu analiz yap:
+
+DUYGUSAL DURUM ANALİZİ:
+- Hangi duygu baskın? Son trend nasıl?
+- Emotion stabilite: Sabit mi değişken mi?
+- Pozitif/negatif emotion dengesi?
+
+ÖĞRENME STİLİ ÇIKARIMI:
+- confused→happy geçişi = Yavaş öğrenen ama başarılı mı?
+- happy→bored pattern = Hızla sıkılan, challenge isteyen mi?
+- surprised spike'ları = Yenilikçi görevleri seven mi?
+
+MOTİVASYON/STRES ANALİZİ:
+- İçsel motivasyon: happy/neutral dominant mı?
+- Frustration tolerance: angry/confused nasıl?
+- Kaygı seviyesi: emotion volatility yüksek mi?
+
+ATTENTION SPAN PATTERNİ:
+- Emotion değişim hızı = Dikkat süresi ipucu
+- Bored'a kadar geçen süre = Natural attention span
+- Cognitive load: neutral→confused geçiş noktası
+
+Bu analizlere göre en uygun görev stratejisini belirle:
+
+Bu analizine göre çocuğun mevcut duygusal durumuna uygun görev üret:
+- Mutlu/heyecanlı ise: Momentum sürdürecek, biraz daha zorlayıcı görevler
+- Kafa karışık/yorgun ise: Basit, net talimatlar, daha az dikkat dağıtıcı
+- Odaklanmış ise: Bu durumu koruyacak dengeli görevler
+- Stresli/sinirli ise: Sakinleştirici, pozitif, başarıya odaklı görevler
+
+İpuçlarını da bu duygusal duruma göre ayarla.` : ''}
+
 GÖREV KURALLARI:
 - Süre: 30-60 saniye (ADHD için kısa)
 - Tek odak: Sadece 1 şey yap (çoklu görev yok)
 - Net talimat: Basit, anlaşılır komutlar
 - Görsel zengin: Renkler, şekiller, emojiler kullan
 - Olumlu dil: "Yapma" yerine "Yap" kalıbı
+- Duygu durumuna uygun ipuçları ve zorluk seviyesi ayarla
 ${onerilenTip === 'sayma' ? '- ÖNEMLİ: SADECE SAYMA GÖREVİ ÜRETİN! "tıkla", "bas", "yakala" gibi eylemler YOK. Sadece "say", "hesapla", "bul" kullanın.' : ''}
 
 ZORLUK SEVİYESİ: ${difficulty}
@@ -441,15 +492,38 @@ ZORLUK SEVİYESİ: ${difficulty}
 PERFORMANS ÖZETİ:
 ${performansMetni}
 
+${performans.attentionMetrics ? `
+DETAYLI DİKKAT METRİKLERİ:
+- Oyun süresi: ${performans.attentionMetrics.totalGameTime.toFixed(1)}s
+- Ekrana bakma: %${performans.attentionMetrics.screenLookingPercentage.toFixed(1)}
+- Dikkat skoru: ${performans.attentionMetrics.attentionScore.toFixed(1)}/100
+- Baskın duygu: ${performans.attentionMetrics.dominantEmotion}
+- Dikkat dağılması: ${performans.attentionMetrics.distractionEvents} kez
+- Emotion dağılımı: ${performans.attentionMetrics.emotionStats.map(s => `${s.emotion}(${s.percentage.toFixed(1)}%)`).join(', ')}
+
+Bu metrikleri de göz önünde bulundurarak çocuğun GERÇEK odaklanma seviyesini sen belirle:
+- Başarı oranı + Dikkat skoru + Ekrana bakma + Emotion pattern + Dikkat dağılması
+- "yuksek", "orta" veya "dusuk" olarak değerlendir
+` : ''}
+
 ÇIKTI ŞEMASI:
 {
   "gorev": string, // ÖRNERİLEN TİPE GÖRE: ${onerilenTip === 'sayma' ? '"🔴 Kırmızı daireleri say"' : '"3 saniye bekle, sonra 🔴 kırmızı daire tıkla"'}
   "sure_saniye": number, // 30-60 arası
-  "ipuclari": [string], // Max 2 ipucu, kısa ve net
+  "ipuclari": [string], // Max 2 ipucu, kısa ve net, duygusal duruma uygun
   "hedefRenk": string, // Varsa: "kırmızı", "mavi" vs
   "hedefSayi": number, // Varsa: sayma görevi için
   "hedefSekil": string, // Varsa: "daire", "kare" vs
-  "dikkatDagitici": number // 0-1 arası (0=yok, 1=maksimum)
+  "dikkatDagitici": number, // 0-1 arası (0=yok, 1=maksimum)
+
+  // EMOTION ANALİZİNE GÖRE OYUN PARAMETRELERİ:
+  "gameParams": {
+    "spawnInterval": number, // 1500-4000ms - Kısa attention span = düşük değer, confused'dan kaçın
+    "objectLifespan": number, // 3000-8000ms - Yavaş reaction = yüksek değer, stressed ise uzat
+    "targetRatio": number, // 0.3-0.8 - Düşük frustration tolerance = yüksek ratio (kolay)
+    "visualComplexity": number, // 0.2-1.0 - Confused/overwhelmed ise düşür, happy/confident ise artır
+    "feedbackFrequency": number // 0.5-3.0 - Low motivation = sık feedback, high confidence = az feedback
+  }
 }
 
 12 YAŞ İÇİN GÖREV ÖRNEKLERİ (ÖNERİLEN TİP: ${onerilenTip}):
