@@ -3,7 +3,10 @@ import { Card, CardContent } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { AttentionSprintTask, AttentionSprintPerformance, EmotionResult } from '../../types';
 import { attentionSprintGenerator } from '../../services/attentionSprintGenerator';
-import { Clock, Target, Zap, RotateCcw, Star, Brain, Play } from 'lucide-react';
+import { emotionAnalysisService } from '../../services/emotionAnalysisService';
+import { adaptiveDifficultyService } from '../../services/adaptiveDifficultyService';
+import { cameraEmotionService } from '../../services/cameraEmotionService';
+import { Clock, Target, Zap, RotateCcw, Star, Brain, Play, Camera, Eye } from 'lucide-react';
 
 interface AttentionCountGameProps {
   studentId: string;
@@ -21,6 +24,12 @@ interface CountRound {
   reactionTime: number;
   userAnswer: number;
   correctAnswer: number;
+  // Count game specific metrics
+  accuracy: number; // Sayma doğruluğu (0-1)
+  objectsDisplayed: number; // Ekranda gösterilen toplam obje sayısı
+  targetObjectsDisplayed: number; // Hedef objeleri sayısı
+  countingDuration: number; // Sayma süresi (answer time hariç)
+  answerTime: number; // Cevap verme süresi
 }
 
 export const AttentionCountGame: React.FC<AttentionCountGameProps> = ({
@@ -37,9 +46,16 @@ export const AttentionCountGame: React.FC<AttentionCountGameProps> = ({
   const [currentRound, setCurrentRound] = useState(0);
   const [score, setScore] = useState(0);
   const [emotions, setEmotions] = useState<EmotionResult[]>([]);
+  const emotionsRef = useRef<EmotionResult[]>([]); // Real-time emotions için ref
   const [gameStartTime] = useState(Date.now());
   const [countdown, setCountdown] = useState(3);
   const [isGenerating, setIsGenerating] = useState(false);
+
+  // Emotion analysis states
+  const [emotionAnalysisActive, setEmotionAnalysisActive] = useState(false);
+  const [currentEmotion, setCurrentEmotion] = useState<any | null>(null);
+  const [attentionMetrics, setAttentionMetrics] = useState<any | null>(null);
+  const [realtimeFeedback, setRealtimeFeedback] = useState<string>('');
 
   // Sayma modu için state'ler
   const [countingObjects, setCountingObjects] = useState<{
@@ -75,9 +91,78 @@ export const AttentionCountGame: React.FC<AttentionCountGameProps> = ({
   const isEndingRound = useRef(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const spawnIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const totalRounds = 5;
 
-  const generateFirstTask = useCallback(async () => {
+  // Emotion tracking fonksiyonları
+  const startEmotionTracking = useCallback(async () => {
+    console.log('🎭 [EMOTION] Emotion tracking başlatılıyor...');
+
+    setEmotionAnalysisActive(true);
+
+    // Prop ile çakışmayı önlemek için isim değiştirildi
+    const handleDetectedEmotion = (result: any) => {
+      if (!emotionAnalysisService.isGameActiveStatus()) {
+        // Oyun aktif değilse emotion callback'i işleme
+        return;
+      }
+
+      setCurrentEmotion(result);
+      emotionAnalysisService.addEmotionResult(result);
+
+      const metrics = emotionAnalysisService.getCurrentGameMetrics();
+      setAttentionMetrics(metrics);
+
+      const feedback = adaptiveDifficultyService.getRealtimeFeedback(metrics);
+      setRealtimeFeedback(feedback.message);
+
+      // Legacy emotion sistem için de ekle - SADECE OYUN AKTİFKEN
+      const legacyEmotion: EmotionResult = {
+        emotion: result.emotion,
+        confidence: result.confidence,
+        timestamp: result.timestamp,
+      };
+
+      setEmotions((prev) => {
+        const newEmotions = [...prev.slice(-10), legacyEmotion];
+        emotionsRef.current = newEmotions; // Ref'i de güncelle - real-time erişim için
+        return newEmotions;
+      });
+
+      // Dışarı bildirim (prop)
+      onEmotionDetected?.(legacyEmotion);
+    };
+
+    // Önce gerçek kamera dene
+    let cameraSuccess = false;
+    if (videoRef.current) {
+      cameraSuccess = await cameraEmotionService.startEmotionTracking(
+        videoRef.current,
+        handleDetectedEmotion
+      );
+    }
+
+    if (!cameraSuccess) {
+      console.log('📱 [EMOTION] Gerçek kamera bulunamadı - Python server çalışıyor mu?');
+      console.log("💡 [TIP] Terminal'de çalıştır: python emotion_server.py");
+    }
+
+    console.log('✅ [EMOTION] Emotion tracking aktif');
+  }, [onEmotionDetected]);
+
+  const stopEmotionTracking = useCallback(() => {
+    console.log('⏹️ [EMOTION] Emotion tracking durduruluyor...');
+
+    cameraEmotionService.stopEmotionTracking();
+    setEmotionAnalysisActive(false);
+
+    const finalMetrics = emotionAnalysisService.endGameSession();
+    setAttentionMetrics(finalMetrics);
+
+    console.log('🏁 [EMOTION] Final metrics:', finalMetrics);
+  }, []);
+
+  const generateFirstTask = useCallback(async (roundEmotions?: any[]) => {
     if (isGeneratingRef.current) {
       console.log('🚫 [DUPLICATE CALL] generateFirstTask already running, skipping');
       return;
@@ -87,20 +172,85 @@ export const AttentionCountGame: React.FC<AttentionCountGameProps> = ({
     isGeneratingRef.current = true;
     setIsGenerating(true);
 
+    // Count game performans metriklerini hesapla
+    const totalCorrectCounts = rounds.reduce((sum, r) => sum + (r.success ? 1 : 0), 0);
+    const totalCounts = rounds.length;
+    const currentAccuracy = totalCounts > 0 ? totalCorrectCounts / totalCounts : 0.7;
+
+    // Ortalama reaksiyon süresi
+    const avgReactionTime = rounds.length > 0
+      ? rounds.reduce((sum, r) => sum + r.reactionTime, 0) / rounds.length
+      : 15.0; // Count game için daha uzun default
+
+    // Count game specific metrics
+    const avgCountingDuration = rounds.length > 0
+      ? rounds.reduce((sum, r) => sum + r.countingDuration, 0) / rounds.length
+      : 15.0;
+
+    const avgAnswerTime = rounds.length > 0
+      ? rounds.reduce((sum, r) => sum + r.answerTime, 0) / rounds.length
+      : 5.0;
+
+    const totalObjectsDisplayed = rounds.reduce((sum, r) => sum + r.objectsDisplayed, 0);
+    const totalTargetObjectsDisplayed = rounds.reduce((sum, r) => sum + r.targetObjectsDisplayed, 0);
+
+    // Rounds'u AttentionSprintPerformance formatına çevir
+    const formattedRounds = rounds.slice(-3).map((round) => ({
+      basari: round.success,
+      sure: round.reactionTime,
+      zorluk: difficulty as 'kolay' | 'orta' | 'zor',
+      hedefTipi: 'sayma' as const,
+      hizliCozum: round.reactionTime < 10.0, // Count game için 10s altı hızlı
+      zamanlamaSapmasi: Math.abs(round.reactionTime - avgReactionTime),
+      hedefZaman: avgCountingDuration,
+    }));
+
+    const currentMetrics = emotionAnalysisService.getCurrentGameMetrics();
+
     const initialPerformance: AttentionSprintPerformance = {
-      son3Tur: [],
-      ortalamaReaksiyonSuresi: 2.5,
-      basariOrani: 0.7,
-      odaklanmaDurumu: 'orta'
-    };
+      son3Tur: formattedRounds as any,
+      ortalamaReaksiyonSuresi: avgReactionTime,
+      basariOrani: currentAccuracy,
+      odaklanmaDurumu: 'ai-analiz' as any,
+      attentionMetrics: currentMetrics as any,
+      // Count game özel metrikleri
+      saymaGorevPerformansi: {
+        saymaDogrulugu: currentAccuracy,
+        ortalamaSaymaSuresi: avgCountingDuration,
+        ortalamaCevapSuresi: avgAnswerTime,
+        toplamObjeGosterilen: totalObjectsDisplayed,
+        toplamHedefObje: totalTargetObjectsDisplayed,
+        saymaHizi: avgCountingDuration > 0 ? totalTargetObjectsDisplayed / avgCountingDuration : 0,
+        toplamTur: totalCounts,
+        basariliTur: totalCorrectCounts,
+        ortalamaDikkatSuresi: avgCountingDuration,
+      } as any,
+    } as any;
 
     try {
-      // AI'dan SAYMA oyunu türünde görev iste
+      // Eğer roundEmotions parametre olarak geçildiyse onu kullan, yoksa current round emotions'ları al
+      const currentRoundEmotions = roundEmotions || emotionAnalysisService.getCurrentRoundEmotions();
+      const fullGameEmotions = emotionAnalysisService.getFullGameEmotions();
+
+      const emotionDataForAI = currentRoundEmotions.length > 0 ? JSON.stringify(currentRoundEmotions) : undefined;
+
+      console.log('🤖 [AI PROMPT DATA]', {
+        hasEmotionData: !!emotionDataForAI,
+        roundEmotionCount: currentRoundEmotions.length,
+        fullGameEmotionCount: fullGameEmotions.length,
+        roundsCount: rounds.length,
+        accuracy: currentAccuracy,
+        avgReactionTime,
+        avgCountingDuration,
+        passedRoundEmotions: roundEmotions ? roundEmotions.length : 0,
+        emotionsSource: roundEmotions ? 'passed-from-previous-round' : 'current-round-service'
+      });
+
       const task = await attentionSprintGenerator.generateAttentionSprint({
         performansOzeti: initialPerformance,
         studentAge,
-        sonGorevler: ['sayma'], // Sadece sayma türü görevler iste
-        forcedDifficulty: difficulty // Kullanıcının seçtiği zorluk seviyesini geç
+        sonGorevler: ['sayma'],
+        emotionData: emotionDataForAI,
       });
 
       // Eğer AI sayma görevi vermezse zorla sayma görevine çevir
@@ -123,7 +273,7 @@ export const AttentionCountGame: React.FC<AttentionCountGameProps> = ({
       isGeneratingRef.current = false;
       setIsGenerating(false);
     }
-  }, [studentAge, difficulty]);
+  }, [studentAge, difficulty, rounds]);
 
   // İlk görevi yükle
   useEffect(() => {
@@ -409,11 +559,14 @@ export const AttentionCountGame: React.FC<AttentionCountGameProps> = ({
   };
 
   // Oyunu başlat
-  const startRound = () => {
+  const startRound = async () => {
     if (!currentTask) return;
 
     setGameState('countdown');
     setCountdown(3);
+
+    // Emotion tracking başlat - oyun başlamadan önce kamera hazırla
+    await startEmotionTracking();
 
     const countdownInterval = setInterval(() => {
       setCountdown(prev => {
@@ -492,6 +645,9 @@ export const AttentionCountGame: React.FC<AttentionCountGameProps> = ({
 
     setTotalTargetCount(0);
     setCountingStartTime(Date.now());
+
+    // İLK OBJE SPAWN OLACAK - FRAME ANALİZİ BAŞLAT
+    cameraEmotionService.startFrameAnalysis?.();
 
     spawnIntervalRef.current = setInterval(() => {
       if (spawnedCount >= params.totalObjects) {
@@ -709,10 +865,16 @@ export const AttentionCountGame: React.FC<AttentionCountGameProps> = ({
     setUserCount('');
     setShowFinalMessage(false); // Reset final message
 
-    console.log('🚀 [GAME START] Oyun başlıyor:', {
+    // OYUN BAŞLADI - emotion kaydetmeyi başlat
+    emotionAnalysisService.startGameSession();
+    // İLK ROUND BAŞLADI - round emotion tracking başlat
+    emotionAnalysisService.startRoundSession();
+
+    console.log('🚀 [COUNT GAME START] Oyun başlıyor:', {
       originalDuration: currentTask.sure_saniye,
       adjustedDuration: finalGameDuration,
-      answerTime: 5
+      answerTime: 5,
+      emotionTrackingActive: emotionAnalysisActive
     });
 
     // Sayma modunu başlat
@@ -796,6 +958,20 @@ export const AttentionCountGame: React.FC<AttentionCountGameProps> = ({
 
     setRounds(prev => [...prev, round]);
 
+    // ROUND BİTTİ - o round'a ait emotion'ları al ve sakla
+    const roundEmotions = emotionAnalysisService.endRoundSession();
+    console.log('🏁 [ROUND ENDED] Round emotion data:', roundEmotions.length);
+
+    // FRAME ANALİZİ DURDUR - Python server'a frame göndermeyi durdur
+    cameraEmotionService.stopFrameAnalysis?.();
+
+    // Tüm oyun bitmemişse final metrics alma
+    if (currentRound + 1 >= totalRounds) {
+      const finalMetrics = emotionAnalysisService.endGameSession();
+      setAttentionMetrics(finalMetrics);
+      console.log('⏹️ [GAME ENDED] Emotion kaydetme durdu, final metrics:', finalMetrics);
+    }
+
     if (success) {
       setScore(prev => prev + 1);
       const emotion: EmotionResult = {
@@ -826,7 +1002,10 @@ export const AttentionCountGame: React.FC<AttentionCountGameProps> = ({
         setUserCount('');
         setTotalTargetCount(0);
         setCountingStartTime(0);
-        generateFirstTask();
+        // YENİ ROUND BAŞLADI - yeni round emotion tracking başlat
+        emotionAnalysisService.startRoundSession();
+        // ROUND EMOTIONS'I NEXT TASK GENERATION'A GEÇ
+        generateFirstTask(roundEmotions);
         setGameState('ready');
       }
       isEndingRound.current = false;
@@ -836,6 +1015,10 @@ export const AttentionCountGame: React.FC<AttentionCountGameProps> = ({
   // Oyunu tamamla
   const completeGame = () => {
     setGameState('completed');
+
+    // Emotion tracking tamamen durdur
+    stopEmotionTracking();
+
     const gameDuration = Math.floor((Date.now() - gameStartTime) / 1000);
     onGameComplete(score, gameDuration, emotions);
   };
@@ -847,11 +1030,22 @@ export const AttentionCountGame: React.FC<AttentionCountGameProps> = ({
       timerRef.current = null;
     }
 
+    stopEmotionTracking();
+
     setRounds([]);
     setCurrentRound(0);
     setScore(0);
     setEmotions([]);
+    emotionsRef.current = [];
     setGameState('ready');
+
+    // Emotion states sıfırla
+    setEmotionAnalysisActive(false);
+    setCurrentEmotion(null);
+    setAttentionMetrics(null);
+    setRealtimeFeedback('');
+
+    // Count game specific states
     setCountingObjects([]);
     setUserCount('');
     setTotalTargetCount(0);
@@ -915,6 +1109,9 @@ export const AttentionCountGame: React.FC<AttentionCountGameProps> = ({
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
+      {/* Hidden video element for emotion tracking */}
+      <video ref={videoRef} autoPlay playsInline muted style={{ display: 'none' }} />
+
       {/* Header */}
       <Card>
         <CardContent>

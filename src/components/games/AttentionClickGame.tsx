@@ -3,8 +3,10 @@ import { Card, CardContent } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { AttentionSprintTask, AttentionSprintPerformance, EmotionResult } from '../../types';
 import { attentionSprintGenerator } from '../../services/attentionSprintGenerator';
+import { emotionAnalysisService } from '../../services/emotionAnalysisService';
+import { adaptiveDifficultyService } from '../../services/adaptiveDifficultyService';
 import { cameraEmotionService } from '../../services/cameraEmotionService';
-import { Clock, Target, Zap, RotateCcw, Star, Brain, Play, Camera } from 'lucide-react';
+import { Clock, Target, Zap, RotateCcw, Star, Brain, Play, Camera, Eye } from 'lucide-react';
 
 interface AttentionClickGameProps {
   studentId: string;
@@ -20,6 +22,11 @@ interface ClickRound {
   endTime?: number;
   success: boolean;
   reactionTime: number;
+  // Click game specific metrics
+  targetAppearanceDelay: number; // Hedefin çıkma gecikme süresi
+  clickAccuracy: number; // Tıklama doğruluğu (hedef/distractor)
+  distractorClicks: number; // Yanlış tıklama sayısı
+  missedTargets: number; // Kaçırılan hedef sayısı
 }
 
 export const AttentionClickGame: React.FC<AttentionClickGameProps> = ({
@@ -41,6 +48,7 @@ export const AttentionClickGame: React.FC<AttentionClickGameProps> = ({
   const [currentRound, setCurrentRound] = useState(0);
   const [score, setScore] = useState(0);
   const [emotions, setEmotions] = useState<EmotionResult[]>([]);
+  const emotionsRef = useRef<EmotionResult[]>([]); // Real-time emotions için ref
   const [gameStartTime] = useState(Date.now());
   const [countdown, setCountdown] = useState(3);
   const [showTarget, setShowTarget] = useState(false);
@@ -49,12 +57,95 @@ export const AttentionClickGame: React.FC<AttentionClickGameProps> = ({
   const [targetPosition, setTargetPosition] = useState({ x: 50, y: 50 });
   const [distractors, setDistractors] = useState<{id: string, x: number, y: number, type: string, value: string}[]>([]);
 
+  // Emotion analysis states
+  const [emotionAnalysisActive, setEmotionAnalysisActive] = useState(false);
+  const [currentEmotion, setCurrentEmotion] = useState<any | null>(null);
+  const [attentionMetrics, setAttentionMetrics] = useState<any | null>(null);
+  const [realtimeFeedback, setRealtimeFeedback] = useState<string>('');
+
+  // Click game specific tracking
+  const [targetAppearanceDelay, setTargetAppearanceDelay] = useState(0);
+  const [distractorClicks, setDistractorClicks] = useState(0);
+  const [missedTargets, setMissedTargets] = useState(0);
+
+  // Tıklama feedback'i için
+  const [clickFeedback, setClickFeedback] = useState<{
+    isCorrect: boolean;
+    x: number;
+    y: number;
+  } | null>(null);
+
   const roundStartTimeRef = useRef<number>(0);
   const hasGeneratedFirstTask = useRef(false);
   const isGeneratingRef = useRef(false);
   const isEndingRound = useRef(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const totalRounds = 5;
+
+  // Emotion tracking fonksiyonları
+  const startEmotionTracking = useCallback(async () => {
+    console.log('🎭 [EMOTION] Emotion tracking başlatılıyor...');
+
+    setEmotionAnalysisActive(true);
+
+    const handleDetectedEmotion = (result: any) => {
+      if (!emotionAnalysisService.isGameActiveStatus()) {
+        return;
+      }
+
+      setCurrentEmotion(result);
+      emotionAnalysisService.addEmotionResult(result);
+
+      const metrics = emotionAnalysisService.getCurrentGameMetrics();
+      setAttentionMetrics(metrics);
+
+      const feedback = adaptiveDifficultyService.getRealtimeFeedback(metrics);
+      setRealtimeFeedback(feedback.message);
+
+      // Legacy emotion sistem için de ekle
+      const legacyEmotion: EmotionResult = {
+        emotion: result.emotion,
+        confidence: result.confidence,
+        timestamp: result.timestamp,
+      };
+
+      setEmotions((prev) => {
+        const newEmotions = [...prev.slice(-10), legacyEmotion];
+        emotionsRef.current = newEmotions;
+        return newEmotions;
+      });
+
+      onEmotionDetected?.(legacyEmotion);
+    };
+
+    // Kamera tracking başlat
+    let cameraSuccess = false;
+    if (videoRef.current) {
+      cameraSuccess = await cameraEmotionService.startEmotionTracking(
+        videoRef.current,
+        handleDetectedEmotion
+      );
+    }
+
+    if (!cameraSuccess) {
+      console.log('📱 [EMOTION] Gerçek kamera bulunamadı - Python server çalışıyor mu?');
+    }
+
+    console.log('✅ [EMOTION] Emotion tracking aktif');
+  }, [onEmotionDetected]);
+
+  const stopEmotionTracking = useCallback(() => {
+    console.log('⏹️ [EMOTION] Emotion tracking durduruluyor...');
+
+    cameraEmotionService.stopEmotionTracking();
+    setEmotionAnalysisActive(false);
+
+    const finalMetrics = emotionAnalysisService.endGameSession();
+    setAttentionMetrics(finalMetrics);
+
+    console.log('🏁 [EMOTION] Final metrics:', finalMetrics);
+  }, []);
 
   // İlk görevi yükle
   useEffect(() => {
@@ -77,22 +168,76 @@ export const AttentionClickGame: React.FC<AttentionClickGameProps> = ({
     isGeneratingRef.current = true;
     setIsGenerating(true);
 
+    // Click game performans metriklerini hesapla
+    const totalCorrectClicks = rounds.reduce((sum, r) => sum + (r.success ? 1 : 0), 0);
+    const totalClicks = rounds.length;
+    const currentAccuracy = totalClicks > 0 ? totalCorrectClicks / totalClicks : 0.7;
+
+    // Ortalama reaksiyon süresi
+    const avgReactionTime = rounds.length > 0
+      ? rounds.reduce((sum, r) => sum + r.reactionTime, 0) / rounds.length
+      : 2.5;
+
+    // Click game specific metrics
+    const avgTargetDelay = rounds.length > 0
+      ? rounds.reduce((sum, r) => sum + r.targetAppearanceDelay, 0) / rounds.length
+      : 1.5;
+
+    const totalDistractorClicks = rounds.reduce((sum, r) => sum + r.distractorClicks, 0);
+    const totalMissedTargets = rounds.reduce((sum, r) => sum + r.missedTargets, 0);
+
+    // Rounds'u AttentionSprintPerformance formatına çevir
+    const formattedRounds = rounds.slice(-3).map((round) => ({
+      basari: round.success,
+      sure: round.reactionTime,
+      zorluk: difficulty as 'kolay' | 'orta' | 'zor',
+      hedefTipi: 'tek-tıklama' as const,
+      hizliCozum: round.reactionTime < 1.5,
+      zamanlamaSapmasi: Math.abs(round.reactionTime - avgReactionTime),
+      hedefZaman: avgTargetDelay,
+    }));
+
+    const currentMetrics = emotionAnalysisService.getCurrentGameMetrics();
+
     const initialPerformance: AttentionSprintPerformance = {
-      son3Tur: [],
-      ortalamaReaksiyonSuresi: 2.5,
-      basariOrani: 0.7,
-      odaklanmaDurumu: 'orta'
-    };
+      son3Tur: formattedRounds as any,
+      ortalamaReaksiyonSuresi: avgReactionTime,
+      basariOrani: currentAccuracy,
+      odaklanmaDurumu: 'ai-analiz' as any,
+      attentionMetrics: currentMetrics as any,
+      // Click game özel metrikleri
+      clickGorevPerformansi: {
+        hedefBulmaHizi: avgReactionTime,
+        dikkatDagiticiDirenci: totalDistractorClicks > 0 ? currentAccuracy : 1.0,
+        hedefKacirmaSayisi: totalMissedTargets,
+        ortalamaBeklemeSSuresi: avgTargetDelay,
+        basariOrani: currentAccuracy,
+        toplamTur: totalClicks,
+        basariliTur: totalCorrectClicks,
+        yanlisTiklamalar: totalDistractorClicks,
+      } as any,
+    } as any;
 
     try {
+      const currentRoundEmotions = emotionAnalysisService.getCurrentRoundEmotions();
+      const emotionDataForAI = currentRoundEmotions.length > 0 ? JSON.stringify(currentRoundEmotions) : undefined;
+
+      console.log('🎯 [CLICK GAME AI PROMPT DATA]', {
+        hasEmotionData: !!emotionDataForAI,
+        roundEmotionCount: currentRoundEmotions.length,
+        roundsCount: rounds.length,
+        accuracy: currentAccuracy,
+        avgReactionTime,
+        distractorClicks: totalDistractorClicks,
+      });
+
       const task = await attentionSprintGenerator.generateAttentionSprint({
         performansOzeti: initialPerformance,
         studentAge,
-        sonGorevler: ['tıklama'], // Normal tıklama oyunu iste
-        emotionData: emotions.length > 0 ? JSON.stringify(emotions) : undefined
+        sonGorevler: ['tek-tıklama'],
+        emotionData: emotionDataForAI,
       });
 
-      // Sadece normal tıklama görevlerini filtrele
       const filteredTask = {
         ...task,
         difficulty,
@@ -108,7 +253,7 @@ export const AttentionClickGame: React.FC<AttentionClickGameProps> = ({
       isGeneratingRef.current = false;
       setIsGenerating(false);
     }
-  }, [studentAge, difficulty]);
+  }, [studentAge, difficulty, rounds]);
 
   // Sadece normal tıklama görevlerini filtrele
   const filterClickTaskOnly = (gorev: string): string => {
@@ -164,13 +309,16 @@ export const AttentionClickGame: React.FC<AttentionClickGameProps> = ({
   };
 
   // Oyunu başlat
-  const startRound = () => {
+  const startRound = async () => {
     if (!currentTask) return;
 
     setGameState('countdown');
     setCountdown(3);
     setShowTarget(false);
     setTargetClicked(false);
+
+    // Emotion tracking başlat
+    await startEmotionTracking();
 
     const countdownInterval = setInterval(() => {
       setCountdown(prev => {
@@ -266,10 +414,21 @@ export const AttentionClickGame: React.FC<AttentionClickGameProps> = ({
     setTargetPosition(generateRandomPosition());
     setDistractors(generateDistractors());
 
+    // OYUN BAŞLADI - emotion kaydetmeyi başlat
+    emotionAnalysisService.startGameSession();
+    // İLK ROUND BAŞLADI - round emotion tracking başlat
+    emotionAnalysisService.startRoundSession();
+
+    // Hedef appearance delay hesapla ve kaydet
     const delay = Math.random() * 2000 + 1000;
+    setTargetAppearanceDelay(delay);
+
     setTimeout(() => {
       setShowTarget(true);
       startTimer();
+
+      // FRAME ANALİZİ BAŞLAT
+      cameraEmotionService.startFrameAnalysis?.();
     }, delay);
   };
 
@@ -279,22 +438,53 @@ export const AttentionClickGame: React.FC<AttentionClickGameProps> = ({
     if (gameState !== 'active' || !showTarget || targetClicked) return;
 
     setTargetClicked(true);
+
+    // Feedback göster
+    setClickFeedback({
+      isCorrect: true,
+      x: targetPosition.x,
+      y: targetPosition.y,
+    });
+
+    // Feedback'i 1 saniye sonra kaldır
+    setTimeout(() => {
+      setClickFeedback(null);
+    }, 1000);
+
     const reactionTime = (Date.now() - roundStartTimeRef.current) / 1000;
     endRound(true, reactionTime);
   };
 
   // Yanıltıcı öğeye tıklama
-  const handleDistractorClick = (e: React.MouseEvent) => {
+  const handleDistractorClick = (e: React.MouseEvent, distractorX: number, distractorY: number) => {
     e.stopPropagation();
     if (gameState !== 'active' || targetClicked) return;
+
+    // Feedback göster
+    setClickFeedback({
+      isCorrect: false,
+      x: distractorX,
+      y: distractorY,
+    });
+
+    // Feedback'i 1 saniye sonra kaldır
+    setTimeout(() => {
+      setClickFeedback(null);
+    }, 1000);
+
+    // Distractor click sayısını artır
+    setDistractorClicks(prev => prev + 1);
 
     const reactionTime = (Date.now() - roundStartTimeRef.current) / 1000;
     endRound(false, reactionTime);
   };
 
-  // Oyun alanına tıklama
+  // Oyun alanına tıklama (miss)
   const handleGameAreaClick = () => {
     if (gameState !== 'active' || !showTarget || targetClicked) return;
+
+    // Missed target sayısını artır
+    setMissedTargets(prev => prev + 1);
 
     const reactionTime = (Date.now() - roundStartTimeRef.current) / 1000;
     endRound(false, reactionTime);
@@ -313,15 +503,46 @@ export const AttentionClickGame: React.FC<AttentionClickGameProps> = ({
 
     const finalReactionTime = reactionTime || (Date.now() - roundStartTimeRef.current) / 1000;
 
+    // Click accuracy hesapla (doğru tıklama oranı)
+    const totalClicks = 1 + distractorClicks; // Bu round için
+    const clickAccuracy = success ? 1.0 : 0.0;
+
     const round: ClickRound = {
       task: currentTask,
       startTime: roundStartTimeRef.current,
       endTime: Date.now(),
       success,
-      reactionTime: finalReactionTime
+      reactionTime: finalReactionTime,
+      targetAppearanceDelay,
+      clickAccuracy,
+      distractorClicks,
+      missedTargets
     };
 
+    console.log('🎯 [CLICK ROUND METRICS]', {
+      success,
+      reactionTime: finalReactionTime,
+      targetDelay: targetAppearanceDelay,
+      distractorClicks,
+      missedTargets,
+      clickAccuracy
+    });
+
     setRounds(prev => [...prev, round]);
+
+    // ROUND BİTTİ - o round'a ait emotion'ları al
+    const roundEmotions = emotionAnalysisService.endRoundSession();
+    console.log('🏁 [CLICK ROUND ENDED] Round emotion data:', roundEmotions.length);
+
+    // FRAME ANALİZİ DURDUR
+    cameraEmotionService.stopFrameAnalysis?.();
+
+    // Tüm oyun bitmemişse final metrics alma
+    if (currentRound + 1 >= totalRounds) {
+      const finalMetrics = emotionAnalysisService.endGameSession();
+      setAttentionMetrics(finalMetrics);
+      console.log('⏹️ [CLICK GAME ENDED] Final metrics:', finalMetrics);
+    }
 
     if (success) {
       setScore(prev => prev + 1);
@@ -352,6 +573,15 @@ export const AttentionClickGame: React.FC<AttentionClickGameProps> = ({
         setShowTarget(false);
         setTargetClicked(false);
         setDistractors([]);
+
+        // Round specific state'leri resetle
+        setDistractorClicks(0);
+        setMissedTargets(0);
+        setTargetAppearanceDelay(0);
+
+        // YENİ ROUND BAŞLADI - yeni round emotion tracking başlat
+        emotionAnalysisService.startRoundSession();
+
         generateFirstTask();
         setGameState('ready');
       }
@@ -362,6 +592,10 @@ export const AttentionClickGame: React.FC<AttentionClickGameProps> = ({
   // Oyunu tamamla
   const completeGame = () => {
     setGameState('completed');
+
+    // Emotion tracking tamamen durdur
+    stopEmotionTracking();
+
     const gameDuration = Math.floor((Date.now() - gameStartTime) / 1000);
     onGameComplete(score, gameDuration, emotions);
   };
@@ -373,15 +607,31 @@ export const AttentionClickGame: React.FC<AttentionClickGameProps> = ({
       timerRef.current = null;
     }
 
+    stopEmotionTracking();
+
     setRounds([]);
     setCurrentRound(0);
     setScore(0);
     setEmotions([]);
+    emotionsRef.current = [];
     setGameState('ready');
     setShowTarget(false);
     setTargetClicked(false);
     setTargetPosition({ x: 50, y: 50 });
     setDistractors([]);
+
+    // Emotion states sıfırla
+    setEmotionAnalysisActive(false);
+    setCurrentEmotion(null);
+    setAttentionMetrics(null);
+    setRealtimeFeedback('');
+
+    // Click game specific states sıfırla
+    setDistractorClicks(0);
+    setMissedTargets(0);
+    setTargetAppearanceDelay(0);
+    setClickFeedback(null);
+
     hasGeneratedFirstTask.current = false;
     isGeneratingRef.current = false;
     isEndingRound.current = false;
@@ -435,6 +685,9 @@ export const AttentionClickGame: React.FC<AttentionClickGameProps> = ({
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
+      {/* Hidden video element for emotion tracking */}
+      <video ref={videoRef} autoPlay playsInline muted style={{ display: 'none' }} />
+
       {/* Header */}
       <Card>
         <CardContent>
@@ -450,6 +703,39 @@ export const AttentionClickGame: React.FC<AttentionClickGameProps> = ({
                 <Brain className="h-4 w-4 text-purple-600" />
                 <span className="text-xs text-purple-600">Zorluk: {difficulty}</span>
               </div>
+
+              {/* Emotion tracking status */}
+              {emotionAnalysisActive && (
+                <div className="flex items-center space-x-2">
+                  <div
+                    className={`w-2 h-2 rounded-full ${
+                      cameraEmotionService.isTrackingActive() && cameraEmotionService.isFrameAnalysisActive?.()
+                        ? 'bg-green-500'
+                        : cameraEmotionService.isTrackingActive()
+                        ? 'bg-yellow-500'
+                        : 'bg-orange-500'
+                    }`}
+                  ></div>
+                  <Camera className="h-4 w-4 text-green-600" />
+                  <span className="text-xs text-green-600">
+                    {cameraEmotionService.isTrackingActive() && cameraEmotionService.isFrameAnalysisActive?.()
+                      ? 'Analiz Aktif'
+                      : cameraEmotionService.isTrackingActive()
+                      ? 'Kamera Bağlı'
+                      : 'Mock Mode'}
+                  </span>
+                </div>
+              )}
+
+              {/* Real-time emotion display */}
+              {currentEmotion && (
+                <div className="flex items-center space-x-2">
+                  <Eye className={`h-4 w-4 ${currentEmotion.lookingAtScreen ? 'text-green-600' : 'text-red-600'}`} />
+                  <span className="text-xs text-gray-600">
+                    {currentEmotion.emotion} ({(currentEmotion.confidence * 100).toFixed(0)}%)
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </CardContent>
@@ -508,8 +794,8 @@ export const AttentionClickGame: React.FC<AttentionClickGameProps> = ({
                   {distractors.map((distractor) => (
                     <button
                       key={distractor.id}
-                      onClick={handleDistractorClick}
-                      className="absolute w-12 h-12 rounded-full bg-white hover:bg-red-100 transition-colors duration-200 flex items-center justify-center text-2xl shadow-lg border-2 border-gray-300"
+                      onClick={(e) => handleDistractorClick(e, distractor.x, distractor.y)}
+                      className="absolute w-12 h-12 rounded-full bg-white hover:bg-gray-100 transition-colors duration-200 flex items-center justify-center text-2xl shadow-lg border-2 border-gray-300"
                       style={{
                         left: `${distractor.x}%`,
                         top: `${distractor.y}%`,
@@ -524,13 +810,7 @@ export const AttentionClickGame: React.FC<AttentionClickGameProps> = ({
                   <button
                     onClick={handleTargetClick}
                     disabled={targetClicked}
-                    className={`
-                      absolute w-12 h-12 rounded-full transition-colors duration-200 flex items-center justify-center text-2xl shadow-lg border-2
-                      ${targetClicked
-                        ? 'bg-green-100 border-green-400 scale-110'
-                        : 'bg-white hover:bg-green-50 border-blue-400 hover:border-green-400'
-                      }
-                    `}
+                    className="absolute w-12 h-12 rounded-full transition-colors duration-200 flex items-center justify-center text-2xl shadow-lg border-2 bg-white hover:bg-gray-50 border-gray-300 hover:border-blue-400"
                     style={{
                       left: `${targetPosition.x}%`,
                       top: `${targetPosition.y}%`,
@@ -556,6 +836,25 @@ export const AttentionClickGame: React.FC<AttentionClickGameProps> = ({
                     {!currentTask.hedefSekil && currentTask.hedefRenk === 'sarı' && '🟡'}
                     {!currentTask.hedefSekil && !currentTask.hedefRenk && !currentTask.hedefSayi && '🎯'}
                   </button>
+
+                  {/* Tıklama feedback'i */}
+                  {clickFeedback && (
+                    <div
+                      className={`absolute w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold animate-ping pointer-events-none ${
+                        clickFeedback.isCorrect
+                          ? 'bg-green-500 text-white'
+                          : 'bg-red-500 text-white'
+                      }`}
+                      style={{
+                        left: `${clickFeedback.x}%`,
+                        top: `${clickFeedback.y}%`,
+                        transform: 'translate(-50%, -50%)',
+                        zIndex: 1000,
+                      }}
+                    >
+                      {clickFeedback.isCorrect ? '✓' : '✗'}
+                    </div>
+                  )}
                 </div>
               )}
 

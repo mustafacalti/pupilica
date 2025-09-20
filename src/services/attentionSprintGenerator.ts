@@ -190,9 +190,9 @@ class AttentionSprintGenerator {
         console.log('🎨 [VARIETY] Özel istek: Dinamik tıklama oyunu');
         return 'dinamik-tıklama';
       }
-      if (ozelTip === 'tıklama') {
+      if (ozelTip === 'tıklama' || ozelTip === 'tek-tıklama') {
         console.log('🎨 [VARIETY] Özel istek: Normal tıklama oyunu');
-        return 'renk-tıklama';
+        return 'tek-tıklama';
       }
     }
 
@@ -509,7 +509,7 @@ Bu metrikleri de göz önünde bulundurarak çocuğun GERÇEK odaklanma seviyesi
 
 ÇIKTI ŞEMASI:
 {
-  "gorev": string, // ÖRNERİLEN TİPE GÖRE: ${onerilenTip === 'sayma' ? '"🔴 Kırmızı daireleri say"' : '"3 saniye bekle, sonra 🔴 kırmızı daire tıkla"'}
+  "gorev": string, // ÖRNERİLEN TİPE GÖRE: ${onerilenTip === 'sayma' ? '"🔴 Kırmızı daireleri say"' : onerilenTip === 'tek-tıklama' ? '"🔴 Kırmızı daire çıktığında tıkla"' : onerilenTip === 'dinamik-tıklama' ? '"30 saniye içinde tüm 🔴 kırmızı daireleri tıkla"' : '"3 saniye bekle, sonra 🔴 kırmızı daire tıkla"'}
   "sure_saniye": number, // 30-60 arası
   "ipuclari": [string], // Max 2 ipucu, kısa ve net, duygusal duruma uygun
   "hedefRenk": string, // Varsa: "kırmızı", "mavi" vs
@@ -534,6 +534,16 @@ ${onerilenTip === 'sayma' ?
 - "⭐ Yıldızların sayısını bul"
 - "🔵 Mavi şekilleri say"
 - "🟡 Sarı objeleri hesapla"` :
+onerilenTip === 'tek-tıklama' ?
+`- "🔴 Kırmızı daire çıktığında tıkla"
+- "🔵 Mavi kare belirdiğinde bas"
+- "🟢 Yeşil yıldız gördüğünde tıkla"
+- "🟡 Sarı üçgen görünce bas"
+- "⭐ Yıldız şekli çıktığında tıkla"` :
+onerilenTip === 'dinamik-tıklama' ?
+`- "30 saniye içinde tüm 🔴 kırmızı daireleri tıkla"
+- "25 saniye içinde tüm 🔵 mavi kareleri yakala"
+- "35 saniye içinde tüm 🟢 yeşil yıldızları tıkla"` :
 `- "🔴 Kırmızı butona 2 saniye sonra bas"
 - "🟢 Yeşil kareler sayısını bul"
 - "👀 Mavi ⭐ yıldızları takip et"
@@ -546,12 +556,20 @@ YAPMA:
 - Olumsuz kelimeler
 - Soyut kavramlar
 
-ZORUNLU KURALLAR DİNAMİK TIKLAMA İÇİN:
+${onerilenTip === 'dinamik-tıklama' ? `ZORUNLU KURALLAR DİNAMİK TIKLAMA İÇİN:
 - Süre MUTLAKA belirt: "30 saniye içinde" formatında
 - Renk MUTLAKA emoji ile: 🔴 kırmızı, 🔵 mavi, 🟢 yeşil, 🟡 sarı
 - Şekil MUTLAKA spesifik: daire, kare, üçgen, yıldız, kalp, elmas
 - Örnek: "45 saniye içinde tüm 🔵 mavi daireleri tıkla"
-- "hedefRenk" ve "hedefSekil" alanları MUTLAKA doldur`;
+- "hedefRenk" ve "hedefSekil" alanları MUTLAKA doldur` : ''}
+
+${onerilenTip === 'sayma' ? `ZORUNLU KURALLAR SAYMA GÖREVLERİ İÇİN:
+- Sadece "say", "hesapla", "bul" eylemleri kullan
+- "tıkla", "bas", "yakala" gibi eylemler YASAKta
+- Renk MUTLAKA emoji ile: 🔴 kırmızı, 🔵 mavi, 🟢 yeşil, 🟡 sarı
+- Şekil MUTLAKA spesifik: daire, kare, üçgen, yıldız, kalp, elmas
+- Örnek: "🔵 Mavi daireleri say"
+- "hedefRenk" ve "hedefSekil" alanları MUTLAKA doldur` : ''}`;
 
     // AI'A GİDEN GERÇEK PROMPT'U CONSOLE'A YAZDIR
     console.log('🤖 [AI PROMPT] =============================================================================');
