@@ -1,13 +1,14 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { WordImageGame } from '../components/games/WordImageGame';
-import { NumberGame } from '../components/games/NumberGame';
-import { ColorGame } from '../components/games/ColorGame';
-import { AttentionGameSelector } from '../components/games/AttentionGameSelector';
+import { AttentionClickGame } from '../components/games/AttentionClickGame';
+import { AttentionCountGame } from '../components/games/AttentionCountGame';
+import { AttentionDynamicGame } from '../components/games/AttentionDynamicGame';
+import { ConflictGame } from '../components/games/ConflictGame';
+import { ColorRecognitionGame } from '../components/games/ColorRecognitionGame';
 import { StoryAttentionGame } from '../components/games/StoryAttentionGame';
-import { Brain, BookOpen, Hash, Palette, Target, LogOut, User, Trophy, Clock, Sparkles } from 'lucide-react';
+import { Brain, MousePointer, Hash, Zap, Palette, Camera, LogOut, User, Trophy, Clock, Sparkles } from 'lucide-react';
 
-type GameType = 'word-image' | 'number' | 'color' | 'attention-sprint' | 'story-attention' | null;
+type GameType = 'attention-click' | 'attention-count' | 'attention-dynamic' | 'conflict' | 'color-recognition' | 'story-attention' | null;
 
 export const StudentDashboardPage: React.FC = () => {
   const { currentUser, logout } = useAuth();
@@ -39,26 +40,36 @@ export const StudentDashboardPage: React.FC = () => {
     if (!currentUser?.id) return null;
 
     switch (selectedGame) {
-      case 'word-image':
-        return <WordImageGame
+      case 'attention-click':
+        return <AttentionClickGame
           studentId={currentUser.id}
-          studentAge={currentUser.age || 6}
+          studentAge={currentUser.age || 12}
+          difficulty="orta"
           onGameComplete={handleGameComplete}
         />;
-      case 'number':
-        return <NumberGame
+      case 'attention-count':
+        return <AttentionCountGame
           studentId={currentUser.id}
-          studentAge={currentUser.age || 6}
+          studentAge={currentUser.age || 12}
+          difficulty="orta"
           onGameComplete={handleGameComplete}
         />;
-      case 'color':
-        return <ColorGame
+      case 'attention-dynamic':
+        return <AttentionDynamicGame
           studentId={currentUser.id}
-          studentAge={currentUser.age || 6}
+          studentAge={currentUser.age || 12}
+          difficulty="orta"
           onGameComplete={handleGameComplete}
         />;
-      case 'attention-sprint':
-        return <AttentionGameSelector
+      case 'conflict':
+        return <ConflictGame
+          studentId={currentUser.id}
+          studentAge={currentUser.age || 12}
+          difficulty="orta"
+          onGameComplete={handleGameComplete}
+        />;
+      case 'color-recognition':
+        return <ColorRecognitionGame
           studentId={currentUser.id}
           studentAge={currentUser.age || 12}
           onGameComplete={handleGameComplete}
@@ -178,28 +189,31 @@ export const StudentDashboardPage: React.FC = () => {
         </div>
 
         {/* Games Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-          {/* Word-Image Game */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* Attention Click Game */}
           <div className="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
-            <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-6 text-white">
-              <BookOpen className="h-12 w-12 mb-4" />
-              <h3 className="text-xl font-bold mb-2">Kelime-Resim Eşleştirme</h3>
+            <div className="bg-gradient-to-r from-blue-500 to-purple-500 p-6 text-white">
+              <MousePointer className="h-12 w-12 mb-4" />
+              <h3 className="text-xl font-bold mb-2">Dikkat Tıklama</h3>
               <p className="text-blue-100">
-                Kelimeler ve resimler arasında bağlantı kur
+                Hızlı reaksiyon gerektiren tek hedef tıklama oyunu
               </p>
             </div>
             <div className="p-6">
               <div className="mb-4">
                 <div className="flex justify-between text-sm text-gray-600 mb-1">
-                  <span>Son Puan</span>
-                  <span>85/100</span>
+                  <span>Özellik</span>
+                  <span>Tek Hedef</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div className="bg-blue-500 h-2 rounded-full" style={{ width: '85%' }}></div>
+                  <div className="bg-blue-500 h-2 rounded-full" style={{ width: '100%' }}></div>
+                </div>
+                <div className="mt-2 text-xs text-gray-600">
+                  Tek hedef odaklanma • Hızlı reaksiyon • Dikkat dağıtıcılar
                 </div>
               </div>
               <button
-                onClick={() => setSelectedGame('word-image')}
+                onClick={() => setSelectedGame('attention-click')}
                 className="w-full bg-blue-500 hover:bg-blue-600 text-white py-3 px-4 rounded-lg font-medium transition-colors"
               >
                 Oyunu Başlat
@@ -207,27 +221,30 @@ export const StudentDashboardPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Number Game */}
+          {/* Attention Count Game */}
           <div className="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
-            <div className="bg-gradient-to-r from-green-500 to-green-600 p-6 text-white">
+            <div className="bg-gradient-to-r from-green-500 to-emerald-500 p-6 text-white">
               <Hash className="h-12 w-12 mb-4" />
-              <h3 className="text-xl font-bold mb-2">Sayı Öğrenme</h3>
+              <h3 className="text-xl font-bold mb-2">Dikkat Sayma</h3>
               <p className="text-green-100">
-                Sayıları sayarak matematik öğren
+                Beliren objeleri sayarak konsantrasyon geliştirme
               </p>
             </div>
             <div className="p-6">
               <div className="mb-4">
                 <div className="flex justify-between text-sm text-gray-600 mb-1">
-                  <span>Son Puan</span>
-                  <span>72/100</span>
+                  <span>Özellik</span>
+                  <span>Sayısal Dikkat</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div className="bg-green-500 h-2 rounded-full" style={{ width: '72%' }}></div>
+                  <div className="bg-green-500 h-2 rounded-full" style={{ width: '100%' }}></div>
+                </div>
+                <div className="mt-2 text-xs text-gray-600">
+                  Sayısal dikkat • Görsel takip • Konsantrasyon • Bellek
                 </div>
               </div>
               <button
-                onClick={() => setSelectedGame('number')}
+                onClick={() => setSelectedGame('attention-count')}
                 className="w-full bg-green-500 hover:bg-green-600 text-white py-3 px-4 rounded-lg font-medium transition-colors"
               >
                 Oyunu Başlat
@@ -235,27 +252,30 @@ export const StudentDashboardPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Color Game */}
+          {/* Attention Dynamic Game */}
           <div className="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
-            <div className="bg-gradient-to-r from-purple-500 to-purple-600 p-6 text-white">
-              <Palette className="h-12 w-12 mb-4" />
-              <h3 className="text-xl font-bold mb-2">Renk Eşleştirme</h3>
+            <div className="bg-gradient-to-r from-purple-500 to-pink-500 p-6 text-white">
+              <Zap className="h-12 w-12 mb-4" />
+              <h3 className="text-xl font-bold mb-2">Dinamik Dikkat</h3>
               <p className="text-purple-100">
-                Renkleri eşleştirerek öğren
+                Sürekli çıkan hedefleri hızla yakalama
               </p>
             </div>
             <div className="p-6">
               <div className="mb-4">
                 <div className="flex justify-between text-sm text-gray-600 mb-1">
-                  <span>Son Puan</span>
-                  <span>91/100</span>
+                  <span>Özellik</span>
+                  <span>Çoklu Hedef</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div className="bg-purple-500 h-2 rounded-full" style={{ width: '91%' }}></div>
+                  <div className="bg-purple-500 h-2 rounded-full" style={{ width: '100%' }}></div>
+                </div>
+                <div className="mt-2 text-xs text-gray-600">
+                  Çoklu hedef takibi • Hızlı karar • Refleks • Sürekli dikkat
                 </div>
               </div>
               <button
-                onClick={() => setSelectedGame('color')}
+                onClick={() => setSelectedGame('attention-dynamic')}
                 className="w-full bg-purple-500 hover:bg-purple-600 text-white py-3 px-4 rounded-lg font-medium transition-colors"
               >
                 Oyunu Başlat
@@ -263,33 +283,64 @@ export const StudentDashboardPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Attention Games */}
+          {/* Conflict Game */}
           <div className="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
-            <div className="bg-gradient-to-r from-orange-500 to-red-500 p-6 text-white">
-              <Target className="h-12 w-12 mb-4" />
-              <h3 className="text-xl font-bold mb-2">Dikkat Oyunları</h3>
-              <p className="text-orange-100">
-                3 farklı dikkat geliştirici oyun seçeneği
+            <div className="bg-gradient-to-r from-red-500 to-orange-500 p-6 text-white">
+              <Palette className="h-12 w-12 mb-4" />
+              <h3 className="text-xl font-bold mb-2">Çatışma Oyunu</h3>
+              <p className="text-red-100">
+                Stroop etkisi ile dikkat geliştirme
               </p>
             </div>
             <div className="p-6">
               <div className="mb-4">
                 <div className="flex justify-between text-sm text-gray-600 mb-1">
-                  <span>Oyun Çeşidi</span>
-                  <span>3 Tür</span>
+                  <span>Özellik</span>
+                  <span>Stroop Etkisi</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div className="bg-orange-500 h-2 rounded-full" style={{ width: '100%' }}></div>
+                  <div className="bg-red-500 h-2 rounded-full" style={{ width: '100%' }}></div>
                 </div>
                 <div className="mt-2 text-xs text-gray-600">
-                  Tıklama • Sayma • Dinamik
+                  Stroop etkisi • Renk-kelime çatışması • Bilişsel esneklik
                 </div>
               </div>
               <button
-                onClick={() => setSelectedGame('attention-sprint')}
-                className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 px-4 rounded-lg font-medium transition-colors"
+                onClick={() => setSelectedGame('conflict')}
+                className="w-full bg-red-500 hover:bg-red-600 text-white py-3 px-4 rounded-lg font-medium transition-colors"
               >
-                Oyunları Keşfet
+                Oyunu Başlat
+              </button>
+            </div>
+          </div>
+
+          {/* Color Recognition Game */}
+          <div className="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
+            <div className="bg-gradient-to-r from-indigo-500 to-purple-500 p-6 text-white">
+              <Camera className="h-12 w-12 mb-4" />
+              <h3 className="text-xl font-bold mb-2">AI Renk Tanıma</h3>
+              <p className="text-indigo-100">
+                AI seçtiği rengi kameraya gösterme oyunu
+              </p>
+            </div>
+            <div className="p-6">
+              <div className="mb-4">
+                <div className="flex justify-between text-sm text-gray-600 mb-1">
+                  <span>Özellik</span>
+                  <span>AI Destekli</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div className="bg-indigo-500 h-2 rounded-full" style={{ width: '100%' }}></div>
+                </div>
+                <div className="mt-2 text-xs text-gray-600">
+                  AI renk seçimi • Gerçek zamanlı tanıma • Kamera etkileşimi
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedGame('color-recognition')}
+                className="w-full bg-indigo-500 hover:bg-indigo-600 text-white py-3 px-4 rounded-lg font-medium transition-colors"
+              >
+                Oyunu Başlat
               </button>
             </div>
           </div>

@@ -212,7 +212,7 @@ class CameraEmotionService {
       'surprised': 'surprised',
       'angry': 'angry',
       'neutral': 'neutral',
-      'focused': 'neutral', // focused -> neutral mapping
+      'focused': 'focused', // focused kalır focused olarak
       'frustrated': 'angry' // frustrated -> angry mapping
     };
 

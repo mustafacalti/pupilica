@@ -1,5 +1,5 @@
 export interface EmotionAnalysisResult {
-  emotion: 'happy' | 'sad' | 'bored' | 'confused' | 'surprised' | 'angry' | 'neutral';
+  emotion: 'happy' | 'sad' | 'bored' | 'confused' | 'surprised' | 'angry' | 'neutral' | 'focused';
   confidence: number;
   timestamp: Date;
   gazeStatus: 'looking' | 'not-looking' | 'no-face';
@@ -218,7 +218,8 @@ class EmotionAnalysisService {
 
     // Emotion score (30 puan max)
     const emotionScores: Record<string, number> = {
-      'happy': 30,
+      'focused': 30, // En yüksek puan - odaklanma en iyi
+      'happy': 28,
       'neutral': 25,
       'surprised': 20,
       'confused': 15,

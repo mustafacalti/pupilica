@@ -56,7 +56,7 @@ def analyze_simple_emotion(landmarks, face_bbox):
             eye_landmarks = [33, 133, 362, 263]  # Göz çevresi
 
             # Şimdilik rastgele ama ağırlıklı seçim
-            weights = [0.3, 0.4, 0.1, 0.1, 0.05, 0.05]  # neutral ve happy daha sık
+            weights = [0.25, 0.3, 0.1, 0.25, 0.05, 0.05]  # neutral, happy ve focused daha sık
             emotion = random.choices(emotions, weights=weights)[0]
             confidence = random.uniform(0.7, 0.95)
         else:
