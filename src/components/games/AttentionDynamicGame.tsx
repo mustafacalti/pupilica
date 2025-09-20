@@ -100,6 +100,14 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
   const [clickAnalytics, setClickAnalytics] = useState<ClickAnalytic[]>([]);
   const clickAnalyticsRef = useRef<ClickAnalytic[]>([]);
 
+  // Tıklama feedback'i için
+  const [clickFeedback, setClickFeedback] = useState<{
+    id: string;
+    isCorrect: boolean;
+    x: number;
+    y: number;
+  } | null>(null);
+
   // Şekil renkleri için CSS color mapping
   const getShapeColor = (colorName: string): string => {
     const colorMap: Record<string, string> = {
@@ -113,7 +121,7 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
     return colorMap[colorName] || '#dc2626';
   };
 
-  // Şekil render fonksiyonu
+  // Şekil render fonksiyonu - sadece CSS kullanarak şekil üret
   const renderShape = (value: string) => {
     if (value.includes('-')) {
       const [shape, color] = value.split('-');
@@ -162,13 +170,38 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
         case 'diamond':
           return <div className="w-8 h-8 transform rotate-45" style={{ backgroundColor: shapeColor }} />;
 
+        case 'hexagon':
+          return (
+            <div
+              className="w-8 h-8"
+              style={{
+                clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)',
+                backgroundColor: shapeColor,
+              }}
+            />
+          );
+
+        case 'oval':
+          return <div className="w-10 h-6 rounded-full" style={{ backgroundColor: shapeColor }} />;
+
         default:
-          return value;
+          // Emoji yerine CSS şekil üret
+          return <div className="w-8 h-8 rounded-full" style={{ backgroundColor: '#6b7280' }} />;
       }
     }
 
-    // Normal emoji değerleri için
-    return value;
+    // Eski emoji sistem yerine CSS şekil üret
+    const colorMap: Record<string, string> = {
+      '🔴': '#dc2626', // kırmızı
+      '🔵': '#2563eb', // mavi
+      '🟢': '#16a34a', // yeşil
+      '🟡': '#eab308', // sarı
+      '🟣': '#9333ea', // mor
+      '🟠': '#ea580c', // turuncu
+    };
+
+    const color = colorMap[value] || '#6b7280';
+    return <div className="w-8 h-8 rounded-full" style={{ backgroundColor: color }} />;
   };
 
   const roundStartTimeRef = useRef<number>(0);
@@ -705,46 +738,54 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
           else if (currentTask.hedefSekil === 'elmas') value = `diamond-${currentTask.hedefRenk}`;
           else value = '🔴';
         } else {
-          const wrongValues = ['🔴', '🔵', '🟢', '🟡', '🟣', '🟠', '⭐', '⭕', '⬜', '🔺', '💎'];
-          value = wrongValues[Math.floor(Math.random() * wrongValues.length)];
+          // Yanlış kutucuklar için farklı şekil-renk kombinasyonu üret
+          const wrongShapes = ['circle', 'square', 'triangle', 'star', 'heart', 'diamond'];
+          const wrongColors = ['kırmızı', 'mavi', 'yeşil', 'sarı', 'mor', 'turuncu'];
+
+          let wrongShape, wrongColor;
+          do {
+            wrongShape = wrongShapes[Math.floor(Math.random() * wrongShapes.length)];
+            wrongColor = wrongColors[Math.floor(Math.random() * wrongColors.length)];
+          } while (wrongShape === currentTask.hedefSekil && wrongColor === currentTask.hedefRenk);
+
+          value = `${wrongShape}-${wrongColor}`;
         }
       } else if (currentTask?.hedefRenk) {
-        const colorMap: Record<string, string> = {
-          kırmızı: '🔴',
-          mavi: '🔵',
-          yeşil: '🟢',
-          sarı: '🟡',
-          mor: '🟣',
-          turuncu: '🟠',
-        };
-        if (shouldSpawnTarget) {
-          value = colorMap[currentTask.hedefRenk] || '🔵';
-        } else {
-  const hr = currentTask?.hedefRenk as keyof typeof colorMap | undefined;
-  const targetEmoji = hr ? colorMap[hr] : undefined;
-  const pool = Object.values(colorMap).filter(c => c !== targetEmoji);
-  const fallback = Object.values(colorMap)[0];
-  value = (pool[Math.floor(Math.random() * pool.length)] ?? fallback);
-}
-      } else if (currentTask?.hedefSekil) {
-        const shapeMap: Record<string, string> = {
-          yıldız: 'star-kırmızı',
-          daire: 'circle-kırmızı',
-          kare: 'square-kırmızı',
-          üçgen: 'triangle-kırmızı',
-          kalp: 'heart-kırmızı',
-          elmas: 'diamond-kırmızı',
-        };
+        // Sadece renk hedefi varsa, şekil random seç
+        const shapes = ['circle', 'square', 'triangle', 'star', 'heart', 'diamond'];
+        const randomShape = shapes[Math.floor(Math.random() * shapes.length)];
 
-        if (shouldSpawnTarget) value = shapeMap[currentTask.hedefSekil] || 'triangle-kırmızı';
-        else {
-  const hs = currentTask?.hedefSekil;
-  const wrongShapes = hs
-    ? Object.values(shapeMap).filter((s) => s !== shapeMap[hs])
-    : Object.values(shapeMap); // Eğer hedef şekil yoksa tüm şekiller kullanılır
-  
-  value = wrongShapes[Math.floor(Math.random() * wrongShapes.length)];
-}
+        if (shouldSpawnTarget) {
+          value = `${randomShape}-${currentTask.hedefRenk}`;
+        } else {
+          const wrongColors = ['kırmızı', 'mavi', 'yeşil', 'sarı', 'mor', 'turuncu'].filter(c => c !== currentTask.hedefRenk);
+          const wrongColor = wrongColors[Math.floor(Math.random() * wrongColors.length)];
+          value = `${randomShape}-${wrongColor}`;
+        }
+      } else if (currentTask?.hedefSekil) {
+        // Sadece şekil hedefi varsa, renk random seç
+        const colors = ['kırmızı', 'mavi', 'yeşil', 'sarı', 'mor', 'turuncu'];
+        const randomColor = colors[Math.floor(Math.random() * colors.length)];
+
+        if (shouldSpawnTarget) {
+          value = `${currentTask.hedefSekil === 'daire' ? 'circle' :
+                    currentTask.hedefSekil === 'kare' ? 'square' :
+                    currentTask.hedefSekil === 'üçgen' ? 'triangle' :
+                    currentTask.hedefSekil === 'yıldız' ? 'star' :
+                    currentTask.hedefSekil === 'kalp' ? 'heart' :
+                    currentTask.hedefSekil === 'elmas' ? 'diamond' : 'circle'}-${randomColor}`;
+        } else {
+          const wrongShapes = ['circle', 'square', 'triangle', 'star', 'heart', 'diamond'];
+          const targetShape = currentTask.hedefSekil === 'daire' ? 'circle' :
+                             currentTask.hedefSekil === 'kare' ? 'square' :
+                             currentTask.hedefSekil === 'üçgen' ? 'triangle' :
+                             currentTask.hedefSekil === 'yıldız' ? 'star' :
+                             currentTask.hedefSekil === 'kalp' ? 'heart' :
+                             currentTask.hedefSekil === 'elmas' ? 'diamond' : 'circle';
+
+          const wrongShape = wrongShapes.filter(s => s !== targetShape)[Math.floor(Math.random() * (wrongShapes.length - 1))];
+          value = `${wrongShape}-${randomColor}`;
+        }
       }
 
       const newObject = {
@@ -819,6 +860,19 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
     const isFast = reactionTime < FAST_CLICK_THRESHOLD_MS;
 
     console.log(`⚡ [FAST CLICK DEBUG] Reaction: ${reactionTime}ms, Threshold: ${FAST_CLICK_THRESHOLD_MS}ms, IsFast: ${isFast}`);
+
+    // Feedback göster
+    setClickFeedback({
+      id: `feedback-${Date.now()}`,
+      isCorrect: isTargetObject,
+      x: clickedObject.x,
+      y: clickedObject.y,
+    });
+
+    // Feedback'i 1 saniye sonra kaldır
+    setTimeout(() => {
+      setClickFeedback(null);
+    }, 1000);
 
     // Genel reaksiyon süresi listesi
     reactionTimesRef.current.push(reactionTime);
@@ -987,6 +1041,7 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
         targetSpawnedRef.current = 0;
         setClickAnalytics([]);
         clickAnalyticsRef.current = [];
+        setClickFeedback(null);
 
         // YENİ ROUND BAŞLADI - yeni round emotion tracking başlat
         emotionAnalysisService.startRoundSession();
@@ -1037,6 +1092,7 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
     targetSpawnedRef.current = 0;
     setClickAnalytics([]);
     clickAnalyticsRef.current = [];
+    setClickFeedback(null);
     hasGeneratedFirstTask.current = false;
     isGeneratingRef.current = false;
     isEndingRound.current = false;
@@ -1186,11 +1242,7 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
                   <button
                     key={obj.id}
                     onClick={() => handleClickingObjectClick(obj.id, obj.isTarget)}
-                    className={`absolute w-12 h-12 rounded-full transition-all duration-300 flex items-center justify-center text-2xl shadow-lg border-2 ${
-                      obj.isTarget
-                        ? 'bg-green-50 border-green-300 hover:bg-green-100 hover:scale-110'
-                        : 'bg-red-50 border-red-300 hover:bg-red-100'
-                    } animate-bounce`}
+                    className="absolute w-12 h-12 rounded-full transition-all duration-300 flex items-center justify-center text-2xl shadow-lg border-2 bg-white border-gray-300 hover:bg-gray-50 hover:scale-110 animate-bounce"
                     style={{
                       left: `${obj.x}%`,
                       top: `${obj.y}%`,
@@ -1201,6 +1253,25 @@ export const AttentionDynamicGame: React.FC<AttentionDynamicGameProps> = ({
                     {renderShape(obj.value)}
                   </button>
                 ))}
+
+                {/* Tıklama feedback'i */}
+                {clickFeedback && (
+                  <div
+                    className={`absolute w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold animate-ping pointer-events-none ${
+                      clickFeedback.isCorrect
+                        ? 'bg-green-500 text-white'
+                        : 'bg-red-500 text-white'
+                    }`}
+                    style={{
+                      left: `${clickFeedback.x}%`,
+                      top: `${clickFeedback.y}%`,
+                      transform: 'translate(-50%, -50%)',
+                      zIndex: 1000,
+                    }}
+                  >
+                    {clickFeedback.isCorrect ? '✓' : '✗'}
+                  </div>
+                )}
               </div>
 
               {/* Tıklama modu skorları */}
