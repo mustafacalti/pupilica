@@ -35,6 +35,7 @@ interface DynamicSceneRequest {
   previousStory?: string;
   userChoice?: string;
   sceneNumber: number;
+  emotionData?: string;
 }
 
 interface AIStoryResponse {
@@ -233,6 +234,40 @@ Bu seçime göre hikayeyi devam ettir.`;
     } else {
       prompt += `
 Bu hikayenin başlangıç sahnesi. Çocuk için ilginç bir durumla başla.`;
+    }
+
+    // Emotion data integration - like ConflictGame
+    if (request.emotionData) {
+      prompt += `
+
+KAMERA VERİSİ - ÇOCUĞUN DUYGUSAL DURUMU (Son sahne boyunca):
+${request.emotionData}
+
+DİKKAT: Bu emotion data'dan çok boyutlu analiz yap:
+
+DUYGUSAL DURUM ANALİZİ:
+- Hangi duygu baskın? Son trend nasıl?
+- Emotion stabilite: Sabit mi değişken mi?
+- Pozitif/negatif emotion dengesi?
+
+ÖĞRENME STİLİ ÇIKARIMI:
+- confused→happy geçişi = Yavaş öğrenen ama başarılı mı?
+- happy→bored pattern = Hızla sıkılan, challenge isteyen mi?
+- surprised spike'ları = Yenilikçi görevleri seven mi?
+
+MOTİVASYON/STRES ANALİZİ:
+- İçsel motivasyon: happy/neutral dominant mı?
+- Frustration tolerance: angry/confused nasıl?
+- Kaygı seviyesi: emotion volatility yüksek mi?
+
+HİKAYE ADAPTASYONU:
+Bu analizlere göre hikaye yolunu belirle:
+- Mutlu/heyecanlı ise: Momentum sürdürecek, biraz daha heyecanlı macera
+- Kafa karışık/yorgun ise: Basit, net hikaye, az seçenek
+- Odaklanmış ise: Bu durumu koruyacak dengeli macera
+- Stresli/sinirli ise: Sakinleştirici, pozitif, başarıya odaklı hikaye yolu
+
+Çocuğun mevcut duygusal durumuna uygun hikaye yolunu seç.`;
     }
 
     prompt += `

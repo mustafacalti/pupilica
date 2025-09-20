@@ -1,7 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { BookOpen, Target, Eye, Zap, ArrowLeft, Play, Pause, Sparkles } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { BookOpen, Target, Eye, Zap, ArrowLeft, Play, Pause, Sparkles, Camera } from 'lucide-react';
 import { aiStoryService, AIStoryRequest, StoryScene, DynamicSceneRequest } from '../../services/aiStoryService';
 import { saveStoryAttentionGameData, StoryAttentionGameData } from '../../services/firestore';
+import { emotionAnalysisService } from '../../services/emotionAnalysisService';
+import { cameraEmotionService } from '../../services/cameraEmotionService';
 
 interface StoryAttentionGameProps {
   studentId: string;
@@ -48,8 +50,63 @@ export const StoryAttentionGame: React.FC<StoryAttentionGameProps> = ({
   const [emergencyActive, setEmergencyActive] = useState(false);
   const [showFinalReport, setShowFinalReport] = useState(false);
 
+  // Emotion analysis states
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [emotionAnalysisActive, setEmotionAnalysisActive] = useState(false);
+  const [currentEmotion, setCurrentEmotion] = useState<any | null>(null);
+  const [attentionMetrics, setAttentionMetrics] = useState<any | null>(null);
+
+  // Emotion tracking fonksiyonları
+  const startEmotionTracking = useCallback(async () => {
+    console.log('🎭 [EMOTION] Emotion tracking başlatılıyor...');
+
+    setEmotionAnalysisActive(true);
+
+    // Prop ile çakışmayı önlemek için isim değiştirildi
+    const handleDetectedEmotion = (result: any) => {
+      if (!emotionAnalysisService.isGameActiveStatus()) {
+        // Oyun aktif değilse emotion callback'i işleme
+        return;
+      }
+
+      setCurrentEmotion(result);
+      emotionAnalysisService.addEmotionResult(result);
+
+      const metrics = emotionAnalysisService.getCurrentGameMetrics();
+      setAttentionMetrics(metrics);
+    };
+
+    // Önce gerçek kamera dene
+    let cameraSuccess = false;
+    if (videoRef.current) {
+      cameraSuccess = await cameraEmotionService.startEmotionTracking(
+        videoRef.current,
+        handleDetectedEmotion
+      );
+    }
+
+    if (!cameraSuccess) {
+      console.log('📱 [EMOTION] Gerçek kamera bulunamadı - Python server çalışıyor mu?');
+      console.log("💡 [TIP] Terminal'de çalıştır: python emotion_server.py");
+    }
+
+    console.log('✅ [EMOTION] Emotion tracking aktif');
+  }, []);
+
+  const stopEmotionTracking = useCallback(() => {
+    console.log('⏹️ [EMOTION] Emotion tracking durduruluyor...');
+
+    cameraEmotionService.stopEmotionTracking();
+    setEmotionAnalysisActive(false);
+
+    const finalMetrics = emotionAnalysisService.endGameSession();
+    setAttentionMetrics(finalMetrics);
+
+    console.log('🏁 [EMOTION] Final metrics:', finalMetrics);
+  }, []);
+
   // Dinamik sahne oluşturma
-  const generateNextScene = useCallback(async () => {
+  const generateNextScene = useCallback(async (sceneEmotionData?: any) => {
     if (isLoadingStory) {
       console.log('Already loading story, skipping...');
       return;
@@ -63,28 +120,49 @@ export const StoryAttentionGame: React.FC<StoryAttentionGameProps> = ({
         'underwater': 'Deniz Altı Maceraları'
       };
 
+      // Emotion data'yı AI'ya gönder
+      let emotionDataString = '';
+      if (sceneEmotionData && sceneEmotionData.emotions && sceneEmotionData.emotions.length > 0) {
+        emotionDataString = sceneEmotionData.emotions.map((emotion: any, index: number) =>
+          `${index + 1}. ${emotion.timestamp}: ${emotion.dominantEmotion} (${emotion.confidence?.toFixed(2) || 'N/A'})`
+        ).join('\n');
+      }
+
       const request: DynamicSceneRequest = {
         studentAge,
         theme: themeNames[storyTheme],
         previousStory: currentScene?.story || undefined,
         userChoice: lastChoice,
-        sceneNumber
+        sceneNumber,
+        emotionData: emotionDataString || undefined
       };
+
+      console.log('🤖 [STORY AI] Emotion data AI\'ya gönderiliyor:', emotionDataString);
 
       const newScene = await aiStoryService.generateNextScene(request);
       setCurrentScene(newScene);
+
+      // YENİ SAHNE BAŞLADI - yeni emotion session başlat
+      console.log('🎭 [STORY GAME] Yeni sahne başladı, emotion session başlatılıyor...');
+      emotionAnalysisService.startRoundSession();
+
     } catch (error) {
       console.error('Dynamic scene generation failed:', error);
     } finally {
       setIsLoadingStory(false);
     }
-  }, [studentAge, storyTheme, lastChoice, isLoadingStory]);
+  }, [studentAge, storyTheme, lastChoice, isLoadingStory, currentScene?.story, sceneNumber]);
 
-  // SceneNumber değiştiğinde yeni sahne oluştur
+  // SceneNumber değiştiğinde yeni sahne oluştur (sadece emotion data olmadan)
   useEffect(() => {
     if (gameStarted && !gameEnded && sceneNumber > 1 && !isLoadingStory && currentScene?.id !== sceneNumber) {
       console.log('Generating next scene for scene number:', sceneNumber);
-      generateNextScene();
+      // Emotion data olmadan sahne oluştur (fallback için)
+      setTimeout(() => {
+        if (!isLoadingStory) {
+          generateNextScene();
+        }
+      }, 200); // HandleNextScene'daki emotion call'dan sonra çalışsın
     }
   }, [sceneNumber, gameStarted, gameEnded, generateNextScene, isLoadingStory, currentScene]);
 
@@ -193,6 +271,13 @@ export const StoryAttentionGame: React.FC<StoryAttentionGameProps> = ({
     // Seçim metnini kaydet
     setLastChoice(choice.text);
 
+    // EMOTION SESSION MANAGEMENT - Sahne boyunca toplanan emotion verilerini al
+    console.log('🎭 [STORY GAME] Sahne tamamlandı, emotion verisi alınıyor...');
+
+    // Sahne emotion session'ını bitir ve veriyi al
+    const sceneEmotionData = emotionAnalysisService.endRoundSession();
+    console.log('🎭 [STORY GAME] Sahne emotion verisi:', sceneEmotionData);
+
     setAttentionData(prev => {
       const newData = {
         ...prev,
@@ -216,7 +301,7 @@ export const StoryAttentionGame: React.FC<StoryAttentionGameProps> = ({
       return newData;
     });
 
-    handleNextScene();
+    handleNextScene(sceneEmotionData);
   }, [currentScene, sceneStartTime, emergencyActive]);
 
   const handleBackgroundSymbolClick = useCallback(() => {
@@ -238,7 +323,7 @@ export const StoryAttentionGame: React.FC<StoryAttentionGameProps> = ({
     handleNextScene();
   }, [sceneStartTime]);
 
-  const handleNextScene = useCallback(() => {
+  const handleNextScene = useCallback((sceneEmotionData?: any) => {
     console.log('Handling next scene. Current scene number:', sceneNumber);
 
     // Maksimum 10 sahne sonra oyunu bitir
@@ -249,17 +334,48 @@ export const StoryAttentionGame: React.FC<StoryAttentionGameProps> = ({
     } else {
       console.log('Moving to next scene:', sceneNumber + 1);
       setSceneNumber(prev => prev + 1);
-      // generateNextScene'i buradan çağırmıyoruz, useEffect ile tetiklenecek
+
+      // Emotion data ile birlikte yeni sahne oluştur
+      if (sceneEmotionData) {
+        console.log('🎭 [STORY GAME] Emotion data ile yeni sahne oluşturuluyor...');
+        // Bir sonraki sahne için emotion data'yı sakla
+        setTimeout(() => {
+          generateNextScene(sceneEmotionData);
+        }, 100); // SceneNumber update'inden sonra çalışsın
+      }
     }
-  }, [sceneNumber]);
+  }, [sceneNumber, generateNextScene]);
 
+  // Game end kontrolü - emotion tracking durdur
+  useEffect(() => {
+    if (gameEnded) {
+      console.log('🏁 [STORY GAME] Oyun bitti, emotion tracking durduruluyor...');
 
+      // FRAME ANALİZİ DURDUR - Python server'a frame göndermeyi durdur
+      cameraEmotionService.stopFrameAnalysis?.();
+
+      // Emotion tracking tamamen durdur
+      stopEmotionTracking();
+    }
+  }, [gameEnded, stopEmotionTracking]);
 
   const startGame = async (theme: 'adventure' | 'space' | 'underwater' = 'adventure') => {
+    // Emotion tracking başlat - oyun başlamadan önce kamera hazırla
+    await startEmotionTracking();
+
     setStoryTheme(theme);
     setGameStarted(true);
     setSceneNumber(1);
     setLastChoice('');
+
+    // OYUN BAŞLADI - emotion kaydetmeyi başlat
+    emotionAnalysisService.startGameSession();
+    // İLK SAHNE BAŞLADI - scene emotion tracking başlat
+    emotionAnalysisService.startRoundSession();
+
+    // İLK SAHNE BAŞLADI - FRAME ANALİZİ BAŞLAT
+    cameraEmotionService.startFrameAnalysis?.();
+
     await generateNextScene();
   };
 
@@ -271,6 +387,11 @@ export const StoryAttentionGame: React.FC<StoryAttentionGameProps> = ({
     setShowFinalReport(false);
     setLastChoice('');
     setIsLoadingStory(false);
+
+    // Emotion states sıfırla
+    setEmotionAnalysisActive(false);
+    setCurrentEmotion(null);
+    setAttentionMetrics(null);
     setAttentionData({
       selectiveAttention: 0,
       sustainedAttention: 0,
@@ -286,6 +407,9 @@ export const StoryAttentionGame: React.FC<StoryAttentionGameProps> = ({
   if (showFinalReport) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 p-4">
+        {/* Hidden video for camera access */}
+        <video ref={videoRef} autoPlay playsInline muted style={{ display: 'none' }} />
+
         <div className="max-w-4xl mx-auto">
           <div className="bg-white rounded-lg shadow-lg p-8">
             <div className="text-center mb-8">
@@ -366,6 +490,9 @@ export const StoryAttentionGame: React.FC<StoryAttentionGameProps> = ({
   if (!gameStarted) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 p-4">
+        {/* Hidden video for camera access */}
+        <video ref={videoRef} autoPlay playsInline muted style={{ display: 'none' }} />
+
         <div className="max-w-2xl mx-auto">
           <div className="bg-white rounded-lg shadow-lg p-8">
             <div className="text-center">
@@ -452,6 +579,9 @@ export const StoryAttentionGame: React.FC<StoryAttentionGameProps> = ({
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 p-4">
+      {/* Hidden video for camera access */}
+      <video ref={videoRef} autoPlay playsInline muted style={{ display: 'none' }} />
+
       {/* Background task symbol */}
       {backgroundSymbolVisible && currentScene?.backgroundTask && (
         <div
@@ -501,6 +631,24 @@ export const StoryAttentionGame: React.FC<StoryAttentionGameProps> = ({
 
         {/* Story scene */}
         <div className="bg-white rounded-lg shadow-lg p-8">
+          {/* Emotion tracking indicator */}
+          {emotionAnalysisActive && (
+            <div className="mb-4 flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <div className="flex items-center gap-2">
+                <Camera className="h-5 w-5 text-blue-600" />
+                <span className="text-blue-800 font-medium">Kamera Aktif</span>
+              </div>
+              {currentEmotion && (
+                <div className="text-sm text-blue-700">
+                  <span className="font-medium">Şu an:</span> {currentEmotion.dominantEmotion || 'Analiz ediliyor...'}
+                  {currentEmotion.confidence && (
+                    <span className="ml-1">({(currentEmotion.confidence * 100).toFixed(0)}%)</span>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="text-center mb-8">
             <div className="text-4xl mb-4">📚</div>
             <h2 className="text-2xl font-bold text-gray-800 mb-4">
