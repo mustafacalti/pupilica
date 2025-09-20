@@ -2,8 +2,10 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { Card, CardContent } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { EmotionResult } from '../../types';
-import { Brain, Clock, Target, Award, X, RotateCcw, TrendingUp } from 'lucide-react';
+import { Brain, Clock, Target, Award, X, RotateCcw, TrendingUp, Camera, Eye } from 'lucide-react';
 import { conflictGameAI, PerformanceMetrics, DifficultySettings } from '../../services/conflictGameAI';
+import { emotionAnalysisService } from '../../services/emotionAnalysisService';
+import { cameraEmotionService } from '../../services/cameraEmotionService';
 
 interface ConflictGameProps {
   studentId: string;
@@ -74,6 +76,12 @@ export const ConflictGame: React.FC<ConflictGameProps> = ({
   const gameContainerRef = useRef<HTMLDivElement>(null);
   const emotionCollectionRef = useRef<EmotionResult[]>([]);
   const gameStartTimeRef = useRef<number>(0);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  // Emotion analysis states
+  const [emotionAnalysisActive, setEmotionAnalysisActive] = useState(false);
+  const [currentEmotion, setCurrentEmotion] = useState<any | null>(null);
+  const [attentionMetrics, setAttentionMetrics] = useState<any | null>(null);
 
   // AI-driven dynamic settings - başlangıç değerleri
   const [currentSettings, setCurrentSettings] = useState<DifficultySettings>({
@@ -177,6 +185,65 @@ export const ConflictGame: React.FC<ConflictGameProps> = ({
       console.log('📍 [DEBUG] Position generation took', attempts, 'attempts');
     }
     return position;
+  }, []);
+
+  // Emotion tracking fonksiyonları
+  const startEmotionTracking = useCallback(async () => {
+    console.log('🎭 [EMOTION] Emotion tracking başlatılıyor...');
+
+    setEmotionAnalysisActive(true);
+
+    // Prop ile çakışmayı önlemek için isim değiştirildi
+    const handleDetectedEmotion = (result: any) => {
+      if (!emotionAnalysisService.isGameActiveStatus()) {
+        // Oyun aktif değilse emotion callback'i işleme
+        return;
+      }
+
+      setCurrentEmotion(result);
+      emotionAnalysisService.addEmotionResult(result);
+
+      const metrics = emotionAnalysisService.getCurrentGameMetrics();
+      setAttentionMetrics(metrics);
+
+      // Legacy emotion sistem için de ekle - SADECE OYUN AKTİFKEN
+      const legacyEmotion: EmotionResult = {
+        emotion: result.emotion,
+        confidence: result.confidence,
+        timestamp: result.timestamp,
+      };
+
+      emotionCollectionRef.current = [...emotionCollectionRef.current.slice(-10), legacyEmotion];
+      onEmotionDetected?.(legacyEmotion);
+    };
+
+    // Önce gerçek kamera dene
+    let cameraSuccess = false;
+    if (videoRef.current) {
+      cameraSuccess = await cameraEmotionService.startEmotionTracking(
+        videoRef.current,
+        handleDetectedEmotion
+      );
+    }
+
+    if (!cameraSuccess) {
+      console.log('📱 [EMOTION] Gerçek kamera bulunamadı - Python server çalışıyor mu?');
+      console.log("💡 [TIP] Terminal'de çalıştır: python emotion_server.py");
+    }
+
+    console.log('✅ [EMOTION] Emotion tracking aktif');
+  }, [onEmotionDetected]);
+
+  const stopEmotionTracking = useCallback(() => {
+    console.log('⏹️ [EMOTION] Emotion tracking durduruluyor...');
+
+    cameraEmotionService.stopEmotionTracking();
+    setEmotionAnalysisActive(false);
+
+    const finalMetrics = emotionAnalysisService.endGameSession();
+    setAttentionMetrics(finalMetrics);
+
+    console.log('🏁 [EMOTION] Final metrics:', finalMetrics);
   }, []);
 
   const generateBoxes = useCallback((targetColor: ColorName, commandType: CommandType) => {
@@ -357,6 +424,9 @@ export const ConflictGame: React.FC<ConflictGameProps> = ({
 
     const boxes = generateBoxes(targetColor, commandType);
 
+    // YENİ ROUND BAŞLADI - yeni round emotion tracking başlat
+    emotionAnalysisService.startRoundSession();
+
     // ADIM 1: Önce komutu göster (kutular gizli)
     setGameState(prev => ({
       ...prev,
@@ -395,6 +465,10 @@ export const ConflictGame: React.FC<ConflictGameProps> = ({
 
     // Reaksiyon süresini kaydet
     reactionTimes.current.push(reactionTime);
+
+    // ROUND BİTTİ - o round'a ait emotion'ları al ve sakla
+    const roundEmotions = emotionAnalysisService.endRoundSession();
+    console.log('🏁 [CONFLICT ROUND ENDED] Round emotion data:', roundEmotions.length);
 
     setGameState(prev => {
       const newState = { ...prev };
@@ -511,7 +585,20 @@ export const ConflictGame: React.FC<ConflictGameProps> = ({
       // AI çalıştığını göster
       setAiMessage("AI analiz ediyor... 🤖");
 
-      const aiRecommendation = await conflictGameAI.getAdaptiveDifficulty(performanceMetrics);
+      // Emotion data'yı topla ve AI'a gönder
+      const currentRoundEmotions = emotionAnalysisService.getCurrentRoundEmotions();
+      const fullGameEmotions = emotionAnalysisService.getFullGameEmotions();
+      const emotionDataForAI = fullGameEmotions.length > 0 ? JSON.stringify(fullGameEmotions) : undefined;
+
+      console.log('🤖 [CONFLICT AI PROMPT DATA]', {
+        hasEmotionData: !!emotionDataForAI,
+        roundEmotionCount: currentRoundEmotions.length,
+        fullGameEmotionCount: fullGameEmotions.length,
+        performanceMetrics,
+        emotionsSource: 'full-game-emotions'
+      });
+
+      const aiRecommendation = await conflictGameAI.getAdaptiveDifficulty(performanceMetrics, emotionDataForAI);
 
       // AI önerisini uygula
       setCurrentSettings(aiRecommendation.newSettings);
@@ -521,8 +608,13 @@ export const ConflictGame: React.FC<ConflictGameProps> = ({
       console.log('✅ AI Adaptasyon tamamlandı:', {
         newSettings: aiRecommendation.newSettings,
         reasoning: aiRecommendation.reasoning,
-        oldSettings: currentSettings
+        oldSettings: currentSettings,
+        emotionDataUsed: !!emotionDataForAI
       });
+
+      // AI analizi tamamlandı - emotion data'yı sıfırla (yeni settings için temiz başlat)
+      console.log('🧹 [EMOTION RESET] AI analizi sonrası emotion data temizleniyor');
+      emotionAnalysisService.clearHistory();
 
       // AI mesajını daha uzun göster
       setTimeout(() => {
@@ -560,7 +652,10 @@ export const ConflictGame: React.FC<ConflictGameProps> = ({
     }
   }, [performanceMetrics, currentSettings]);
 
-  const startGame = useCallback(() => {
+  const startGame = useCallback(async () => {
+    // Emotion tracking başlat - oyun başlamadan önce kamera hazırla
+    await startEmotionTracking();
+
     // Performans metriklerini sıfırla
     setPerformanceMetrics({
       correctAttempts: 0,
@@ -575,6 +670,11 @@ export const ConflictGame: React.FC<ConflictGameProps> = ({
 
     // Reaksiyon sürelerini sıfırla
     reactionTimes.current = [];
+
+    // OYUN BAŞLADI - emotion kaydetmeyi başlat
+    emotionAnalysisService.startGameSession();
+    // İLK ROUND BAŞLADI - round emotion tracking başlat
+    emotionAnalysisService.startRoundSession();
 
     setGameState(prev => ({
       ...prev,
@@ -595,6 +695,9 @@ export const ConflictGame: React.FC<ConflictGameProps> = ({
     gameStartTimeRef.current = Date.now();
     emotionCollectionRef.current = [];
 
+    // İLK ROUND BAŞLADI - FRAME ANALİZİ BAŞLAT
+    cameraEmotionService.startFrameAnalysis?.();
+
     generateNewRound();
 
     // İlk AI analizi oyundan sonra (veriler toplandıktan sonra)
@@ -602,10 +705,16 @@ export const ConflictGame: React.FC<ConflictGameProps> = ({
   }, [generateNewRound]);
 
   const endGame = useCallback(() => {
+    // FRAME ANALİZİ DURDUR - Python server'a frame göndermeyi durdur
+    cameraEmotionService.stopFrameAnalysis?.();
+
+    // Emotion tracking tamamen durdur
+    stopEmotionTracking();
+
     setGameState(prev => ({ ...prev, gameEnded: true }));
     const duration = Date.now() - gameStartTimeRef.current;
     onGameComplete(gameState.score, duration, emotionCollectionRef.current);
-  }, [gameState.score, onGameComplete]);
+  }, [gameState.score, onGameComplete, stopEmotionTracking]);
 
   const restartGame = useCallback(() => {
     // Settings'leri başlangıç değerlerine sıfırla
@@ -620,6 +729,12 @@ export const ConflictGame: React.FC<ConflictGameProps> = ({
 
     setAiMessage("");
     setAiTips([]);
+
+    // Emotion states sıfırla
+    setEmotionAnalysisActive(false);
+    setCurrentEmotion(null);
+    setAttentionMetrics(null);
+    emotionCollectionRef.current = [];
 
     setGameState(prev => ({
       ...prev,
@@ -681,6 +796,8 @@ export const ConflictGame: React.FC<ConflictGameProps> = ({
   if (!gameState.gameStarted) {
     return (
       <div className="max-w-4xl mx-auto space-y-6">
+        {/* Hidden video element for emotion tracking - her zaman DOM'da olsun */}
+        <video ref={videoRef} autoPlay playsInline muted style={{ display: 'none' }} />
         <Card>
           <CardContent className="text-center py-8">
             <div className="mb-6">
@@ -750,6 +867,8 @@ export const ConflictGame: React.FC<ConflictGameProps> = ({
   if (gameState.gameEnded) {
     return (
       <div className="max-w-2xl mx-auto space-y-6">
+        {/* Hidden video element for emotion tracking - her zaman DOM'da olsun */}
+        <video ref={videoRef} autoPlay playsInline muted style={{ display: 'none' }} />
         <Card>
           <CardContent className="text-center py-8">
             <div className="mb-6">
@@ -821,6 +940,8 @@ export const ConflictGame: React.FC<ConflictGameProps> = ({
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 p-4">
+      {/* Hidden video element for emotion tracking */}
+      <video ref={videoRef} autoPlay playsInline muted style={{ display: 'none' }} />
       {/* Üst panel - Komut ve istatistikler */}
       <div className="max-w-6xl mx-auto mb-6">
         <Card>
@@ -870,6 +991,39 @@ export const ConflictGame: React.FC<ConflictGameProps> = ({
                     AI: {currentSettings.boxCount} kutu, %{Math.round(currentSettings.conflictRate * 100)} çatışma
                   </span>
                 </div>
+
+                {/* Emotion tracking status */}
+                {emotionAnalysisActive && (
+                  <div className="flex items-center space-x-2">
+                    <div
+                      className={`w-2 h-2 rounded-full ${
+                        cameraEmotionService.isTrackingActive() && cameraEmotionService.isFrameAnalysisActive?.()
+                          ? 'bg-green-500'
+                          : cameraEmotionService.isTrackingActive()
+                          ? 'bg-yellow-500'
+                          : 'bg-orange-500'
+                      }`}
+                    ></div>
+                    <Camera className="h-4 w-4 text-green-600" />
+                    <span className="text-xs text-green-600">
+                      {cameraEmotionService.isTrackingActive() && cameraEmotionService.isFrameAnalysisActive?.()
+                        ? 'Analiz Aktif'
+                        : cameraEmotionService.isTrackingActive()
+                        ? 'Kamera Bağlı'
+                        : 'Mock Mode'}
+                    </span>
+                  </div>
+                )}
+
+                {/* Real-time emotion display */}
+                {currentEmotion && (
+                  <div className="flex items-center space-x-2">
+                    <Eye className={`h-4 w-4 ${currentEmotion.lookingAtScreen ? 'text-green-600' : 'text-red-600'}`} />
+                    <span className="text-xs text-gray-600">
+                      {currentEmotion.emotion} ({(currentEmotion.confidence * 100).toFixed(0)}%)
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           </CardContent>

@@ -31,8 +31,8 @@ class ConflictGameAI {
   /**
    * Performans metriklerine göre AI'dan zorluk önerisi al
    */
-  async getAdaptiveDifficulty(metrics: PerformanceMetrics): Promise<AIRecommendation> {
-    const prompt = this.buildDifficultyPrompt(metrics);
+  async getAdaptiveDifficulty(metrics: PerformanceMetrics, emotionData?: string): Promise<AIRecommendation> {
+    const prompt = this.buildDifficultyPrompt(metrics, emotionData);
 
     try {
       const response = await this.callOllama(prompt);
@@ -51,13 +51,51 @@ class ConflictGameAI {
   /**
    * ADHD çocukları için optimize edilmiş zorluk analizi promptu
    */
-  private buildDifficultyPrompt(metrics: PerformanceMetrics): string {
+  private buildDifficultyPrompt(metrics: PerformanceMetrics, emotionData?: string): string {
     const accuracy = metrics.totalAttempts > 0 ? (metrics.correctAttempts / metrics.totalAttempts * 100) : 0;
     const recentErrorPatterns = this.analyzeErrorPatterns(metrics.recentErrors);
 
+    let emotionSection = '';
+    if (emotionData) {
+      emotionSection = `
+
+KAMERA VERİSİ - TÜM DUYGUSAL DURUMLAR (Oyun süresince):
+${emotionData}
+
+DİKKAT: Bu emotion data'dan çok boyutlu analiz yap:
+
+DUYGUSAL DURUM ANALİZİ:
+- Hangi duygu baskın? Son trend nasıl?
+- Emotion stabilite: Sabit mi değişken mi?
+- Pozitif/negatif emotion dengesi?
+
+ÖĞRENME STİLİ ÇIKARIMI:
+- confused→happy geçişi = Yavaş öğrenen ama başarılı mı?
+- happy→bored pattern = Hızla sıkılan, challenge isteyen mi?
+- surprised spike'ları = Yenilikçi görevleri seven mi?
+
+MOTİVASYON/STRES ANALİZİ:
+- İçsel motivasyon: happy/neutral dominant mı?
+- Frustration tolerance: angry/confused nasıl?
+- Kaygı seviyesi: emotion volatility yüksek mi?
+
+ATTENTION SPAN PATTERNİ:
+- Emotion değişim hızı = Dikkat süresi ipucu
+- Bored'a kadar geçen süre = Natural attention span
+- Cognitive load: neutral→confused geçiş noktası
+
+Bu analizlere göre en uygun zorluk stratejisini belirle:
+
+Bu analizine göre çocuğun mevcut duygusal durumuna uygun zorluk ayarla:
+- Mutlu/heyecanlı ise: Momentum sürdürecek, biraz daha zorlayıcı görevler
+- Kafa karışık/yorgun ise: Basit, net talimatlar, daha az dikkat dağıtıcı
+- Odaklanmış ise: Bu durumu koruyacak dengeli görevler
+- Stresli/sinirli ise: Sakinleştirici, pozitif, başarıya odaklı görevler`;
+    }
+
     return `Adjust difficulty for ADHD child Stroop game.
 
-DATA: ${accuracy.toFixed(1)}% accuracy, ${metrics.averageReactionTime}ms reaction
+DATA: ${accuracy.toFixed(1)}% accuracy, ${metrics.averageReactionTime}ms reaction${emotionSection}
 
 RULES:
 - If accuracy >80% AND reaction <2000ms: increase difficulty
