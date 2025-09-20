@@ -19,7 +19,7 @@ class CameraEmotionService {
   private onEmotionCallback?: (result: EmotionAnalysisResult) => void;
   private videoRef: React.RefObject<HTMLVideoElement> | null = null;
   private lastAnalysisTime = 0; // Son analiz zamanı (strict timing için)
-  private readonly ANALYSIS_INTERVAL = 5000; // 5 saniye strict interval
+  private readonly ANALYSIS_INTERVAL = 3000; // 3 saniye strict interval
 
   /**
    * Kamera erişimini kontrol et
@@ -93,10 +93,10 @@ class CameraEmotionService {
       // });
 
       // Video frame'ini düzenli olarak capture et ve analiz et
-      // Interval 1 saniye ama strict timing kontrolü ile gerçekten 5 saniyede bir analiz
+      // Interval 1 saniye ama strict timing kontrolü ile gerçekten 3 saniyede bir analiz
       this.pollInterval = setInterval(() => {
         this.captureAndAnalyzeFrame(videoElement);
-      }, 1000); // 1 saniyede bir kontrol, ama analiz 5 saniyede bir
+      }, 1000); // 1 saniyede bir kontrol, ama analiz 3 saniyede bir
 
       console.log('✅ [EMOTION] Real-time kamera tracking aktif');
       return true;
@@ -119,7 +119,7 @@ class CameraEmotionService {
       return;
     }
 
-    // STRICT TIMING KONTROLÜ - 5 saniyede bir kesin analiz
+    // STRICT TIMING KONTROLÜ - 3 saniyede bir kesin analiz
     const now = Date.now();
     if (this.lastAnalysisTime > 0 && (now - this.lastAnalysisTime) < this.ANALYSIS_INTERVAL) {
       console.log('⏱️ [TIMING] Analiz çok erken, atlanıyor', {
@@ -344,7 +344,7 @@ class CameraEmotionService {
 
     this.isAnalysisActive = true;
     this.lastAnalysisTime = 0; // Timing'i sıfırla - ilk analiz hemen yapılabilsin
-    console.log('🎥 [CAMERA] Frame analizi başlatıldı, strict 5s timing aktif');
+    console.log('🎥 [CAMERA] Frame analizi başlatıldı, strict 3s timing aktif');
   }
 
   /**
