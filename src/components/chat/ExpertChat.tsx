@@ -176,11 +176,11 @@ export const ExpertChat: React.FC<ExpertChatProps> = ({ studentName, students = 
     }
 
     if (message.includes('merhaba') || message.includes('selam') || message.includes('hello')) {
-      return `Merhaba! Ben PeakFokus AI Uzmanı. ${studentName ? `${studentName}'in gelişimi` : 'Çocuğunuzun gelişimi'} hakkında sorularınızı yanıtlamaya hazırım.\n\nSize şu konularda yardımcı olabilirim:\n• Dikkat gelişimi\n• Duygusal durum\n• Oyun önerileri\n• Gelişim takibi\n• Öğrenme stratejileri\n\nNasıl yardımcı olabilirim?`;
+      return `Merhaba! Ben PeakFocus AI Uzmanı. ${studentName ? `${studentName}'in gelişimi` : 'Çocuğunuzun gelişimi'} hakkında sorularınızı yanıtlamaya hazırım.\n\nSize şu konularda yardımcı olabilirim:\n• Dikkat gelişimi\n• Duygusal durum\n• Oyun önerileri\n• Gelişim takibi\n• Öğrenme stratejileri\n\nNasıl yardımcı olabilirim?`;
     }
 
     // Genel yanıt
-    return `Anlayabildiğim kadarıyla ${message} konusunda yardım istiyorsunuz.\n\nBen PeakFokus AI Uzmanı olarak şu konularda detaylı yardım sağlayabilirim:\n\n• 🎯 Dikkat ve odaklanma teknikleri\n• 😊 Duygusal gelişim desteği\n• 🎮 Oyun önerileri ve stratejileri\n• 📈 Gelişim takibi ve değerlendirme\n• 🧠 Öğrenme zorluklarına çözümler\n\nDaha spesifik bir soru sorabilirsiniz. ${studentName ? `${studentName}'in` : 'Çocuğunuzun'} hangi konudaki gelişimi hakkında konuşmak istersiniz?`;
+    return `Anlayabildiğim kadarıyla ${message} konusunda yardım istiyorsunuz.\n\nBen PeakFocus AI Uzmanı olarak şu konularda detaylı yardım sağlayabilirim:\n\n• 🎯 Dikkat ve odaklanma teknikleri\n• 😊 Duygusal gelişim desteği\n• 🎮 Oyun önerileri ve stratejileri\n• 📈 Gelişim takibi ve değerlendirme\n• 🧠 Öğrenme zorluklarına çözümler\n\nDaha spesifik bir soru sorabilirsiniz. ${studentName ? `${studentName}'in` : 'Çocuğunuzun'} hangi konudaki gelişimi hakkında konuşmak istersiniz?`;
   };
 
   const sendMessage = async () => {
@@ -223,7 +223,7 @@ export const ExpertChat: React.FC<ExpertChatProps> = ({ studentName, students = 
     if (isOpen && messages.length === 0) {
       const welcomeMessage: Message = {
         id: 'welcome',
-        text: `Merhaba! Ben PeakFokus AI Uzmanı. ${studentName ? `${studentName}'in gelişimi` : 'Çocuğunuzun gelişimi'} hakkında sorularınızı yanıtlamaya hazırım.\n\nSize nasıl yardımcı olabilirim?`,
+        text: `Merhaba! Ben PeakFocus AI Uzmanı. ${studentName ? `${studentName}'in gelişimi` : 'Çocuğunuzun gelişimi'} hakkında sorularınızı yanıtlamaya hazırım.\n\nSize nasıl yardımcı olabilirim?`,
         sender: 'ai',
         timestamp: new Date()
       };

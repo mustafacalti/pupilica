@@ -46,7 +46,7 @@ export const Header: React.FC<HeaderProps> = ({ aiStatus = 'connected' }) => {
               <Brain className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-gray-800">PeakFokus AI</h1>
+              <h1 className="text-xl font-bold text-gray-800">PeakFocus AI</h1>
               <p className="text-sm text-gray-600">Veli Paneli</p>
             </div>
           </div>

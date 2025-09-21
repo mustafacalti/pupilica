@@ -34,7 +34,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode }) => {
           <LogIn className="h-8 w-8 text-white" />
         </div>
         <h2 className="text-2xl font-bold text-gray-800">Öğretmen Girişi</h2>
-        <p className="text-gray-600 mt-2">PeakFokus AI Platformuna hoş geldiniz</p>
+        <p className="text-gray-600 mt-2">PeakFocus AI Platformuna hoş geldiniz</p>
       </div>
 
       {error && (
