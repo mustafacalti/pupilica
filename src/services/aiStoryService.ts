@@ -6,7 +6,7 @@ interface StoryScene {
     id: string;
     text: string;
     color?: string;
-    isCorrect: boolean;
+    mood: string;
     isDistractor?: boolean;
     stroopConflict?: boolean;
   }[];
@@ -53,9 +53,8 @@ class AIStoryService {
       story: "Ali büyülü bir ormana girdi. Önünde iki kapı belirdi.",
       question: "Ali hangi kapıyı seçmeli?",
       choices: [
-        { id: 'a', text: '🟢 Yeşil Kapı', color: '#10B981', isCorrect: true },
-        { id: 'b', text: '🔴 Kırmızı Kapı', color: '#EF4444', isCorrect: false },
-        { id: 'c', text: '🎁 Parlak Kutu', color: '#F59E0B', isCorrect: false, isDistractor: true }
+        { id: 'a', text: '🟢 Yeşil Kapı', color: '#10B981', mood: 'maceracı' },
+        { id: 'b', text: '🔴 Kırmızı Kapı', color: '#EF4444', mood: 'temkinli' }
       ]
     },
     {
@@ -63,10 +62,8 @@ class AIStoryService {
       story: "Ali doğru renge sahip kapıdan geçmeli.",
       question: "Hangi seçenek doğru RENGE sahip?",
       choices: [
-        { id: 'a', text: 'MAVİ', color: '#EF4444', isCorrect: false, stroopConflict: true },
-        { id: 'b', text: 'KIRMIZI', color: '#3B82F6', isCorrect: false, stroopConflict: true },
-        { id: 'c', text: 'YEŞİL', color: '#10B981', isCorrect: true },
-        { id: 'd', text: '💎 Elmas', color: '#8B5CF6', isCorrect: false, isDistractor: true }
+        { id: 'a', text: 'MAVİ', color: '#EF4444', mood: 'dikkatli', stroopConflict: true },
+        { id: 'b', text: 'YEŞİL', color: '#10B981', mood: 'meraklı' }
       ]
     },
     {
@@ -74,9 +71,8 @@ class AIStoryService {
       story: "Ali köprüden geçerken dikkatli olmalı. Tehlikeli yaratıklar var!",
       question: "Ali hangi köprüyü seçmeli?",
       choices: [
-        { id: 'a', text: '🌉 Güvenli Köprü', isCorrect: true },
-        { id: 'b', text: '⚡ Yıldırım Köprü', isCorrect: false },
-        { id: 'c', text: '🍭 Şeker Köprü', isCorrect: false, isDistractor: true }
+        { id: 'a', text: '🌉 Güvenli Köprü', mood: 'sakin' },
+        { id: 'b', text: '⚡ Yıldırım Köprü', mood: 'cesur' }
       ],
       backgroundTask: {
         targetSymbol: '🐍',
@@ -88,9 +84,8 @@ class AIStoryService {
       story: "Ejderha aniden ortaya çıktı! Hızla kaçmak gerekiyor!",
       question: "Acil durum! Ne yapmalı?",
       choices: [
-        { id: 'a', text: '🏃‍♂️ KAÇ', isCorrect: true },
-        { id: 'b', text: '⚔️ SAVAŞ', isCorrect: false },
-        { id: 'c', text: '🎪 DANS ET', isCorrect: false, isDistractor: true }
+        { id: 'a', text: '🏃‍♂️ KAÇ', mood: 'temkinli' },
+        { id: 'b', text: '⚔️ SAVAŞ', mood: 'cesur' }
       ],
       emergencyTask: {
         symbol: '🚨',
@@ -103,10 +98,8 @@ class AIStoryService {
       story: "Ali hazine odasına ulaştı. Doğru renkteki sandığı seçmeli.",
       question: "Hangi renk yazısı doğru renkte yazılmış?",
       choices: [
-        { id: 'a', text: 'SARI', color: '#10B981', isCorrect: false, stroopConflict: true },
-        { id: 'b', text: 'PEMBE', color: '#EC4899', isCorrect: true },
-        { id: 'c', text: 'TURUNCU', color: '#3B82F6', isCorrect: false, stroopConflict: true },
-        { id: 'd', text: '🌟 Yıldız', color: '#F59E0B', isCorrect: false, isDistractor: true }
+        { id: 'a', text: 'SARI', color: '#10B981', mood: 'dikkatli', stroopConflict: true },
+        { id: 'b', text: 'PEMBE', color: '#EC4899', mood: 'meraklı' }
       ]
     },
     {
@@ -114,9 +107,8 @@ class AIStoryService {
       story: "Ali büyücünün testine girdi. Aynı anda iki işi yapması gerekiyor!",
       question: "Ali hangi büyüyü seçmeli?",
       choices: [
-        { id: 'a', text: '✨ İyileştirme Büyüsü', isCorrect: true },
-        { id: 'b', text: '💥 Patlama Büyüsü', isCorrect: false },
-        { id: 'c', text: '🎭 Yanılsama Büyüsü', isCorrect: false, isDistractor: true }
+        { id: 'a', text: '✨ İyileştirme Büyüsü', mood: 'sakin' },
+        { id: 'b', text: '💥 Patlama Büyüsü', mood: 'maceracı' }
       ],
       backgroundTask: {
         targetSymbol: '🦉',
@@ -237,26 +229,34 @@ Seçim: ${request.userChoice}`;
     if (request.emotionData) {
       prompt += `
 
-DUYGU: ${request.emotionData.substring(0, 200)}
+DUYGU ANALİZİ: ${request.emotionData.substring(0, 200)}
 
-Duygusal duruma göre hikaye yap:
-- Mutlu → heyecanlı macera
-- Sıkılmış → ilginç sürpriz
-- Karışık → basit seçenekler`;
+DUYGUya GÖRE MOOD BELİRLE:
+- Mutlu/Heyecanlı → seçeneklere "maceracı" ve "cesur" mood ver
+- Üzgün/Yorgun → seçeneklere "sakin" ve "temkinli" mood ver
+- Sinirli/Stresli → seçeneklere "dikkatli" ve "sakin" mood ver
+- Sıkılmış/İlgisiz → seçeneklere "meraklı" ve "maceracı" mood ver
+- Karışık/Belirsiz → seçeneklere "normal" ve "temkinli" mood ver
+- Korkmuş/Endişeli → seçeneklere "sakin" ve "dikkatli" mood ver
+
+YAPAY ZEKA: Yukarıdaki duygu analizini oku ve seçeneklerin mood değerlerini otomatik belirle.`;
     }
 
     prompt += `
 
-JSON döndür:
+JSON döndür (SADECE 2 seçenek):
 {
   "id": ${request.sceneNumber},
   "story": "Kısa hikaye",
   "question": "Ne yapmalı?",
   "choices": [
-    {"id": "a", "text": "🟢 Seçenek 1", "isCorrect": true},
-    {"id": "b", "text": "🔴 Seçenek 2", "isCorrect": false}
+    {"id": "a", "text": "🟢 Seçenek 1", "mood": "AI_BELIRLENEN_MOOD"},
+    {"id": "b", "text": "🔴 Seçenek 2", "mood": "AI_BELIRLENEN_MOOD"}
   ]
-}`;
+}
+
+KULLANILACAK MOOD'LAR: "maceracı", "temkinli", "meraklı", "sakin", "cesur", "dikkatli"
+ÖNEMLİ: Duygu analizine göre uygun mood'ları seç ve ata.`;
 
     return prompt;
   }
@@ -282,13 +282,25 @@ JSON döndür:
 
       let jsonText = jsonMatch[0];
 
-      // Eksik choices array'i tamamla
-      if (jsonText.includes('"choices": [') && !jsonText.includes(']}')) {
-        // Son choice'tan sonra eksik kısımları ekle
-        const lastChoiceMatch = jsonText.match(/{"id": "[^"]+", "text": "[^"]+", "isCorrect": [^}]+}(?!.*"id":)/);
-        if (lastChoiceMatch) {
-          const position = jsonText.lastIndexOf(lastChoiceMatch[0]) + lastChoiceMatch[0].length;
-          jsonText = jsonText.substring(0, position) + '\n  ]\n}';
+      // Eksik JSON'ı akıllıca tamamla
+      if (jsonText.includes('"choices": [')) {
+        // Eksik 3. choice'u tamamla
+        if (jsonText.includes('{"id": "c", "text') && !jsonText.includes('}, {\\"id\\": \\"c\\"') && !jsonText.includes('"isCorrect"')) {
+          // 3. choice başlamış ama tamamlanmamış - sil
+          const cChoiceStart = jsonText.indexOf('{"id": "c", "text');
+          if (cChoiceStart > 0) {
+            jsonText = jsonText.substring(0, cChoiceStart - 1); // Virgül de dahil sil
+          }
+        }
+
+        // Array'i kapat
+        if (!jsonText.endsWith(']}')) {
+          if (!jsonText.endsWith(']')) {
+            jsonText += '\n  ]';
+          }
+          if (!jsonText.endsWith('}')) {
+            jsonText += '\n}';
+          }
         }
       }
 
@@ -308,12 +320,12 @@ JSON döndür:
           id: choice.id || String.fromCharCode(97 + index),
           text: choice.text || `Seçenek ${index + 1}`,
           color: choice.color,
-          isCorrect: choice.isCorrect || false,
+          mood: choice.mood || 'normal',
           isDistractor: choice.isDistractor || false,
           stroopConflict: choice.stroopConflict || false
         })) || [
-          { id: 'a', text: '🟢 Devam et', isCorrect: true, isDistractor: false, stroopConflict: false },
-          { id: 'b', text: '🔴 Dur', isCorrect: false, isDistractor: false, stroopConflict: false }
+          { id: 'a', text: '🟢 Devam et', mood: 'normal', isDistractor: false, stroopConflict: false },
+          { id: 'b', text: '🔴 Dur', mood: 'temkinli', isDistractor: false, stroopConflict: false }
         ],
         emergencyTask: scene.emergencyTask,
         backgroundTask: scene.backgroundTask
@@ -330,18 +342,16 @@ JSON döndür:
         story: `Ali yeni bir yola çıktı. (Sahne ${request.sceneNumber})`,
         question: 'Hangi yönde gitmeli?',
         choices: [
-          { id: 'a', text: '🟢 Sağa git', isCorrect: true },
-          { id: 'b', text: '🔴 Sola git', isCorrect: false },
-          { id: 'c', text: '💎 Parlak taş', isCorrect: false, isDistractor: true }
+          { id: 'a', text: '🟢 Sağa git', mood: 'maceracı' },
+          { id: 'b', text: '🔴 Sola git', mood: 'temkinli' }
         ]
       },
       {
         story: `Ali ilginç bir yaratıkla karşılaştı. (Sahne ${request.sceneNumber})`,
         question: 'Ne yapmalı?',
         choices: [
-          { id: 'a', text: '🟢 Dostça yaklaş', isCorrect: true },
-          { id: 'b', text: '🔴 Kaç', isCorrect: false },
-          { id: 'c', text: '🎁 Hediye ver', isCorrect: false, isDistractor: true }
+          { id: 'a', text: '🟢 Dostça yaklaş', mood: 'cesur' },
+          { id: 'b', text: '🔴 Kaç', mood: 'dikkatli' }
         ]
       }
     ];
@@ -354,7 +364,7 @@ JSON döndür:
       question: scene.question,
       choices: scene.choices.map((choice, index) => ({
         ...choice,
-        isDistractor: choice.isDistractor || false,
+        isDistractor: false,
         stroopConflict: false
       }))
     };
@@ -368,7 +378,7 @@ Tema: ${request.theme || 'Ali\'nin maceraları'}
 Her sahne için:
 - Kısa hikaye (1-2 cümle)
 - Soru
-- 3-4 seçenek (1 doğru, diğerleri yanlış, bazıları çeldirici)
+- 2 seçenek (farklı mood'larla)
 
 JSON formatında döndür:
 {
@@ -378,14 +388,14 @@ JSON formatında döndür:
       "story": "Ali ormana girdi.",
       "question": "Hangi yolu seçmeli?",
       "choices": [
-        {"id": "a", "text": "🟢 Yeşil yol", "isCorrect": true},
-        {"id": "b", "text": "🔴 Kırmızı yol", "isCorrect": false},
-        {"id": "c", "text": "💎 Parlayan taş", "isCorrect": false, "isDistractor": true}
+        {"id": "a", "text": "🟢 Yeşil yol", "mood": "maceracı"},
+        {"id": "b", "text": "🔴 Kırmızı yol", "mood": "temkinli"}
       ]
     }
   ]
 }
 
+KULLANILACAK MOOD'LAR: "maceracı", "temkinli", "meraklı", "sakin", "cesur", "dikkatli"
 Sadece JSON döndür, başka açıklama yazma.`;
   }
 
@@ -434,12 +444,12 @@ Sadece JSON döndür, başka açıklama yazma.`;
             id: choice.id || String.fromCharCode(97 + choiceIndex), // 'a', 'b', 'c'...
             text: choice.text || `Seçenek ${choiceIndex + 1}`,
             color: choice.color,
-            isCorrect: choice.isCorrect || false,
+            mood: choice.mood || 'normal',
             isDistractor: choice.isDistractor || false,
             stroopConflict: choice.stroopConflict || false
           })) || [
-            { id: 'a', text: '🟢 Devam et', isCorrect: true, isDistractor: false, stroopConflict: false },
-            { id: 'b', text: '🔴 Dur', isCorrect: false, isDistractor: false, stroopConflict: false }
+            { id: 'a', text: '🟢 Devam et', mood: 'normal', isDistractor: false, stroopConflict: false },
+            { id: 'b', text: '🔴 Dur', mood: 'temkinli', isDistractor: false, stroopConflict: false }
           ],
           emergencyTask: scene.emergencyTask,
           backgroundTask: scene.backgroundTask
@@ -469,7 +479,7 @@ Sadece JSON döndür, başka açıklama yazma.`;
             id: choice.id || String.fromCharCode(97 + choiceIndex), // 'a', 'b', 'c'...
             text: choice.text || '',
             color: choice.color,
-            isCorrect: choice.isCorrect || false,
+            mood: choice.mood || 'normal',
             isDistractor: choice.isDistractor || false,
             stroopConflict: choice.stroopConflict || false
           })) || [],
@@ -499,7 +509,7 @@ Sadece JSON döndür, başka açıklama yazma.`;
       // Küçük çocuklar için basitleştir
       selectedScenes = selectedScenes.map(scene => ({
         ...scene,
-        choices: scene.choices.filter(choice => !choice.stroopConflict || choice.isCorrect),
+        choices: scene.choices.filter(choice => !choice.stroopConflict),
         emergencyTask: undefined // Acil görevleri kaldır
       }));
     }
