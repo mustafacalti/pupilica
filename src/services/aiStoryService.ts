@@ -136,13 +136,9 @@ class AIStoryService {
 
   // Dinamik sahne oluşturma - her seçimden sonra çağrılır
   async generateNextScene(request: DynamicSceneRequest): Promise<StoryScene> {
-    try {
-      const response = await this.callDynamicSceneService(request);
-      return response;
-    } catch (error) {
-      console.warn('Dynamic scene generation failed, using fallback:', error);
-      return this.generateFallbackScene(request);
-    }
+    // Model çok inatçı, direkt fallback kullan
+    console.log('Using fallback scene generation for reliable mood-based choices');
+    return this.generateFallbackScene(request);
   }
 
   private async callAIService(request: AIStoryRequest): Promise<AIStoryResponse> {
@@ -201,7 +197,7 @@ class AIStoryService {
           top_p: 0.6,
           top_k: 20,
           repeat_penalty: 1.2, // Tekrarı önlemek için artırıldı
-          stop: ["}]}", "```"],
+          // stop: ["}]}", "```"], // Stop token'ları kaldırıldı
           num_thread: 4,
           seed: Math.floor(Math.random() * 1000000) // Random seed - cache'i boz
         }
@@ -240,11 +236,8 @@ class AIStoryService {
                        moodGuide.includes('sakin') ? 'sakin,temkinli' :
                        moodGuide.includes('dikkatli') ? 'dikkatli,sakin' : 'meraklı,normal';
 
-    return `AYNEN BU JSON'I KOPYALA VE SADECE STORY/QUESTION DEĞİŞTİR:
-
-{"id":${request.sceneNumber},"story":"Ali ormanda yürüyor","question":"Ali ne yapmalı?","choices":[{"id":"a","text":"🟢 İleri git","mood":"${moodOptions.split(',')[0]}"},{"id":"b","text":"🔴 Geri dön","mood":"${moodOptions.split(',')[1]}"}]}
-
-BAŞKA HİÇBİR ŞEY YAZMA!`;
+    return `JSON yaz:
+{"id":${request.sceneNumber},"story":"Ali macera","question":"Ne yap?","choices":[{"id":"a","text":"İleri","mood":"cesur"},{"id":"b","text":"Geri","mood":"sakin"}]}`;
   }
 
   private parseDynamicSceneResponse(data: any, request: DynamicSceneRequest): StoryScene {
