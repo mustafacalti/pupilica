@@ -6,7 +6,7 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     proxy: {
-      '/python-api': 'http://localhost:5000'
+      '/api': 'http://localhost:5000'
     }
   },
 });
