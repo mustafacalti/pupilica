@@ -159,12 +159,13 @@ class AIStoryService {
         prompt: prompt,
         stream: false,
         options: {
-          num_ctx: 8192,
-          num_batch: 2048,
-          num_predict: 2000, // Maximum token limit
-          temperature: 0.7,
-          top_p: 0.9,
-          repeat_penalty: 1.1
+          num_ctx: 2048,
+          num_batch: 512,
+          num_predict: 200, // Daha uzun hikaye için biraz fazla
+          temperature: 0.6,
+          top_p: 0.8,
+          repeat_penalty: 1.1,
+          stop: ["}]}", "```"]
         }
       })
     });
@@ -193,12 +194,13 @@ class AIStoryService {
         prompt: prompt,
         stream: false,
         options: {
-          num_ctx: 8192,
-          num_batch: 2048,
-          num_predict: 2000, // Maximum token limit
-          temperature: 0.7,
-          top_p: 0.9,
-          repeat_penalty: 1.1
+          num_ctx: 2048,
+          num_batch: 512,
+          num_predict: 100, // Kısa JSON için
+          temperature: 0.5,
+          top_p: 0.7,
+          repeat_penalty: 1.1,
+          stop: ["}]}", "```"]
         }
       })
     });
@@ -215,48 +217,28 @@ class AIStoryService {
   }
 
   private constructDynamicPrompt(request: DynamicSceneRequest): string {
-    let prompt = `${request.studentAge} yaş çocuk için hikaye sahnesi.
+    let prompt = `Türkçe hikaye sahnesi ${request.sceneNumber}.
 
-Sahne ${request.sceneNumber}: ${request.theme}`;
+Tema: ${request.theme}`;
 
     if (request.previousStory && request.userChoice) {
       prompt += `
-Önceki: ${request.previousStory.substring(0, 80)}
-Seçim: ${request.userChoice}`;
+Önceki: ${request.previousStory.substring(0, 50)}`;
     }
 
-    // Emotion data - kısa versiyon
+    // Emotion data - çok kısa versiyon
     if (request.emotionData) {
       prompt += `
-
-DUYGU ANALİZİ: ${request.emotionData.substring(0, 200)}
-
-DUYGUya GÖRE MOOD BELİRLE:
-- Mutlu/Heyecanlı → seçeneklere "maceracı" ve "cesur" mood ver
-- Üzgün/Yorgun → seçeneklere "sakin" ve "temkinli" mood ver
-- Sinirli/Stresli → seçeneklere "dikkatli" ve "sakin" mood ver
-- Sıkılmış/İlgisiz → seçeneklere "meraklı" ve "maceracı" mood ver
-- Karışık/Belirsiz → seçeneklere "normal" ve "temkinli" mood ver
-- Korkmuş/Endişeli → seçeneklere "sakin" ve "dikkatli" mood ver
-
-YAPAY ZEKA: Yukarıdaki duygu analizini oku ve seçeneklerin mood değerlerini otomatik belirle.`;
+Duygu: ${request.emotionData.substring(0, 100)}
+Mutlu→maceracı,cesur | Üzgün→sakin,temkinli | Stresli→dikkatli`;
     }
 
     prompt += `
 
-JSON döndür (SADECE 2 seçenek):
-{
-  "id": ${request.sceneNumber},
-  "story": "Kısa hikaye",
-  "question": "Ne yapmalı?",
-  "choices": [
-    {"id": "a", "text": "🟢 Seçenek 1", "mood": "AI_BELIRLENEN_MOOD"},
-    {"id": "b", "text": "🔴 Seçenek 2", "mood": "AI_BELIRLENEN_MOOD"}
-  ]
-}
+JSON döndür (duyguya göre mood seç):
+{"id":${request.sceneNumber},"story":"Kısa hikaye","question":"Ne yapmalı?","choices":[{"id":"a","text":"🟢 Seçenek","mood":"DUYGUYA_UYGUN_MOOD"},{"id":"b","text":"🔴 Seçenek","mood":"DUYGUYA_UYGUN_MOOD"}]}
 
-KULLANILACAK MOOD'LAR: "maceracı", "temkinli", "meraklı", "sakin", "cesur", "dikkatli"
-ÖNEMLİ: Duygu analizine göre uygun mood'ları seç ve ata.`;
+Mood seçenekleri: maceracı,temkinli,meraklı,sakin,cesur,dikkatli`;
 
     return prompt;
   }
@@ -282,27 +264,33 @@ KULLANILACAK MOOD'LAR: "maceracı", "temkinli", "meraklı", "sakin", "cesur", "d
 
       let jsonText = jsonMatch[0];
 
-      // Eksik JSON'ı akıllıca tamamla
+      // Eksik JSON'ı akıllıca tamamla - artık sadece 2 choice var
       if (jsonText.includes('"choices": [')) {
-        // Eksik 3. choice'u tamamla
-        if (jsonText.includes('{"id": "c", "text') && !jsonText.includes('}, {\\"id\\": \\"c\\"') && !jsonText.includes('"isCorrect"')) {
-          // 3. choice başlamış ama tamamlanmamış - sil
-          const cChoiceStart = jsonText.indexOf('{"id": "c", "text');
-          if (cChoiceStart > 0) {
-            jsonText = jsonText.substring(0, cChoiceStart - 1); // Virgül de dahil sil
+        // Eksik ikinci choice'u tamamla
+        const choicesPattern = /"choices":\s*\[\s*{[^}]*}[^}\]]*$/;
+        if (choicesPattern.test(jsonText)) {
+          // İkinci choice eksik, basit bir tane ekle
+          const lastBraceIndex = jsonText.lastIndexOf('}');
+          if (lastBraceIndex > 0) {
+            jsonText = jsonText.substring(0, lastBraceIndex + 1);
+            jsonText += ',{"id":"b","text":"🔴 Devam et","mood":"sakin"}]';
           }
         }
 
         // Array'i kapat
         if (!jsonText.endsWith(']}')) {
           if (!jsonText.endsWith(']')) {
-            jsonText += '\n  ]';
+            jsonText += ']';
           }
           if (!jsonText.endsWith('}')) {
-            jsonText += '\n}';
+            jsonText += '}';
           }
         }
       }
+
+      // isCorrect varsa mood'a çevir
+      jsonText = jsonText.replace(/"isCorrect":\s*true/g, '"mood":"maceracı"');
+      jsonText = jsonText.replace(/"isCorrect":\s*false/g, '"mood":"temkinli"');
 
       // Trailing comma'ları temizle
       jsonText = jsonText.replace(/,(\s*[}\]])/g, '$1');
