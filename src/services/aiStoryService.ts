@@ -309,6 +309,18 @@ Sadece JSON döndür.`;
       }
 
       let jsonText = jsonMatch[0];
+
+      // Eksik choices array'i tamamla
+      if (jsonText.includes('"choices": [') && !jsonText.includes(']}')) {
+        // Son choice'tan sonra eksik kısımları ekle
+        const lastChoiceMatch = jsonText.match(/{"id": "[^"]+", "text": "[^"]+", "isCorrect": [^}]+}(?!.*"id":)/);
+        if (lastChoiceMatch) {
+          const position = jsonText.lastIndexOf(lastChoiceMatch[0]) + lastChoiceMatch[0].length;
+          jsonText = jsonText.substring(0, position) + '\n  ]\n}';
+        }
+      }
+
+      // Trailing comma'ları temizle
       jsonText = jsonText.replace(/,(\s*[}\]])/g, '$1');
       jsonText = jsonText.trim();
 
