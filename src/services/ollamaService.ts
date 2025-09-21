@@ -13,7 +13,7 @@ export interface OllamaResponse {
 }
 
 class OllamaService {
-  private modelName: string = 'alibayram/turkish-gemma-9b-v0.1:latest'; // Türkçe Gemma model
+  private modelName: string = 'qwen2:0.5b'; // Qwen2 0.5B model for Azure CPU
 
   /**
    * Ollama CLI üzerinden soru üretir
@@ -144,7 +144,8 @@ Birden çok doğru cevap.`;
    * Ollama API'yi çağırır (REST API üzerinden)
    */
   private async callOllama(prompt: string): Promise<string> {
-    const ollamaApiUrl = 'http://localhost:11434/api/generate';
+    // Backend proxy üzerinden Ollama'ya erişim
+    const ollamaApiUrl = '/ollama/generate';
 
     console.log('📡 [OLLAMA DEBUG] API çağrısı başlıyor...');
 
@@ -154,9 +155,10 @@ Birden çok doğru cevap.`;
       format: "json", // 🔒 JSON garantisi
       stream: false,
       options: {
-        temperature: 0.6, // JSON için optimal
+        temperature: 0.7, // Türkçe için optimize edildi
         top_p: 0.9,
-        num_predict: 300 // JSON için biraz daha fazla token
+        num_predict: 150, // Azure CPU için optimize edildi
+        top_k: 40 // CPU performansı için eklendi
       }
     };
 
@@ -288,7 +290,7 @@ Birden çok doğru cevap.`;
    */
   async checkOllamaStatus(): Promise<boolean> {
     try {
-      const response = await fetch('http://localhost:11434/api/tags', {
+      const response = await fetch('/ollama/tags', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json'
@@ -328,7 +330,7 @@ Birden çok doğru cevap.`;
 Örnek: "Mavi" veya "Kırmızı"`;
 
     try {
-      const ollamaApiUrl = 'http://localhost:11434/api/generate';
+      const ollamaApiUrl = '/ollama/generate';
 
       const requestBody = {
         model: this.modelName,
@@ -337,7 +339,8 @@ Birden çok doğru cevap.`;
         options: {
           temperature: 0.3, // Daha deterministik
           top_p: 0.5, // Daha fokuslu
-          num_predict: 10 // Çok kısa yanıt için
+          num_predict: 20, // CPU için optimize edildi
+          top_k: 20 // Daha hızlı yanıt için
         }
       };
 
