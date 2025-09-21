@@ -16,7 +16,7 @@ module.exports = {
     {
       name: 'peakfocus-frontend',
       script: 'npx',
-      args: 'vite preview --host 0.0.0.0 --port 5174',
+      args: 'vite preview --host 0.0.0.0 --port 80',
       cwd: '/home/erenazure/pupilica',
       env: {
         NODE_ENV: 'production'
