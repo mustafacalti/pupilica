@@ -14,7 +14,7 @@ export interface CameraEmotionData {
 class CameraEmotionService {
   private isActive = false;
   private isAnalysisActive = false; // Frame analizi aktif mi?
-  private pythonServerUrl = 'http://40.66.54.232:5000'; // Python server
+  private pythonServerUrl = '/api/emotion'; // Proxy üzerinden
   private pollInterval: NodeJS.Timeout | null = null;
   private onEmotionCallback?: (result: EmotionAnalysisResult) => void;
   private videoRef: React.RefObject<HTMLVideoElement> | null = null;
