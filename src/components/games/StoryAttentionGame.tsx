@@ -285,9 +285,8 @@ export const StoryAttentionGame: React.FC<StoryAttentionGameProps> = ({
         totalChoices: prev.totalChoices + 1
       };
 
-      if (choice.isCorrect) {
-        newData.correctChoices++;
-      }
+      // Mood-based scoring yerine artık tüm seçimler geçerli
+      newData.correctChoices++;
 
       if (choice.isDistractor) {
         newData.distractorClicks++;

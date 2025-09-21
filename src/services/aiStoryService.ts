@@ -196,12 +196,12 @@ class AIStoryService {
         options: {
           num_ctx: 1024,
           num_batch: 256,
-          num_predict: 80, // Çok kısa hikaye için
+          num_predict: 150, // JSON tamamlaması için artırıldı
           temperature: 0.4,
           top_p: 0.6,
           top_k: 20,
           repeat_penalty: 1.1,
-          stop: ["}]}", "```", "}"],
+          stop: ["}]}", "```"],
           num_thread: 4
         }
       })
@@ -241,6 +241,7 @@ class AIStoryService {
 
     return `${request.theme} sahne ${request.sceneNumber}. ${moodGuide}
 
+YASAK: isCorrect field kullanma! Sadece mood field!
 Kısa hikaye, mood seç (${moodOptions}):
 {"id":${request.sceneNumber},"story":"Ali macera","question":"Ne yap?","choices":[{"id":"a","text":"🟢 Git","mood":"MOOD_SEC"},{"id":"b","text":"🔴 Dur","mood":"MOOD_SEC"}]}`;
   }
@@ -290,9 +291,10 @@ Kısa hikaye, mood seç (${moodOptions}):
         }
       }
 
-      // isCorrect varsa mood'a çevir
-      jsonText = jsonText.replace(/"isCorrect":\s*true/g, '"mood":"maceracı"');
-      jsonText = jsonText.replace(/"isCorrect":\s*false/g, '"mood":"temkinli"');
+      // isCorrect varsa hata ver - artık mood kullanması gerekiyor
+      if (jsonText.includes('"isCorrect"')) {
+        throw new Error('Model hala isCorrect kullanıyor, mood kullanması gerekiyor');
+      }
 
       // Trailing comma'ları temizle
       jsonText = jsonText.replace(/,(\s*[}\]])/g, '$1');
