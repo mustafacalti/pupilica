@@ -220,27 +220,79 @@ class AIStoryService {
   }
 
   private constructDynamicPrompt(request: DynamicSceneRequest): string {
-    let moodGuide = "";
+    let prompt = `${request.studentAge} yaşındaki çocuk için ${request.theme} temalı hikaye devamı oluştur.
 
-    // Emotion data - mood rehberi
-    if (request.emotionData) {
-      const emotion = request.emotionData.substring(0, 50).toLowerCase();
-      if (emotion.includes('mutlu') || emotion.includes('heyecan')) {
-        moodGuide = "Mood: maceracı, cesur seçenekler";
-      } else if (emotion.includes('üzgün') || emotion.includes('yorgun')) {
-        moodGuide = "Mood: sakin, temkinli seçenekler";
-      } else if (emotion.includes('stres') || emotion.includes('sinir')) {
-        moodGuide = "Mood: dikkatli, sakin seçenekler";
-      } else {
-        moodGuide = "Mood: meraklı, normal seçenekler";
-      }
+Sahne ${request.sceneNumber}:`;
+
+    if (request.previousStory && request.userChoice) {
+      prompt += `
+Önceki durum: ${request.previousStory}
+Çocuğun seçimi: ${request.userChoice}
+
+Bu seçime göre hikayeyi devam ettir.`;
+    } else {
+      prompt += `
+Bu hikayenin başlangıç sahnesi. Çocuk için ilginç bir durumla başla.`;
     }
 
-    const moodOptions = moodGuide.includes('maceracı') ? 'maceracı,cesur' :
-                       moodGuide.includes('sakin') ? 'sakin,temkinli' :
-                       moodGuide.includes('dikkatli') ? 'dikkatli,sakin' : 'meraklı,normal';
+    // Emotion data integration
+    if (request.emotionData) {
+      prompt += `
 
-    return `{"id":${request.sceneNumber},"story":"Ali ormanda yürürken ilginç bir şeyle karşılaştı","question":"Ali ne yapmalı?","choices":[{"id":"a","text":"🟢 Araştır","mood":"${moodOptions.split(',')[0]}"},{"id":"b","text":"🔴 Uzaklaş","mood":"${moodOptions.split(',')[1]}"}]}`;
+KAMERA VERİSİ - ÇOCUĞUN DUYGUSAL DURUMU (Son sahne boyunca):
+${request.emotionData}
+
+DİKKAT: Bu emotion data'dan çok boyutlu analiz yap:
+
+DUYGUSAL DURUM ANALİZİ:
+- Hangi duygu baskın? Son trend nasıl?
+- Emotion stabilite: Sabit mi değişken mi?
+- Pozitif/negatif emotion dengesi?
+
+ÖĞRENME STİLİ ÇIKARIMI:
+- confused→happy geçişi = Yavaş öğrenen ama başarılı mı?
+- happy→bored pattern = Hızla sıkılan, challenge isteyen mi?
+- surprised spike'ları = Yenilikçi görevleri seven mi?
+
+MOTİVASYON/STRES ANALİZİ:
+- İçsel motivasyon: happy/neutral dominant mı?
+- Frustration tolerance: angry/confused nasıl?
+- Kaygı seviyesi: emotion volatility yüksek mi?
+
+HİKAYE ADAPTASYONU:
+Bu analizlere göre hikaye yolunu belirle:
+- Mutlu/heyecanlı ise: Momentum sürdürecek, biraz daha heyecanlı macera
+- Kafa karışık/yorgun ise: Basit, net hikaye, az seçenek
+- Odaklanmış ise: Bu durumu koruyacak dengeli macera
+- Stresli/sinirli ise: Sakinleştirici, pozitif, başarıya odaklı hikaye yolu
+
+Çocuğun mevcut duygusal durumuna uygun hikaye yolunu seç.`;
+    }
+
+    prompt += `
+
+MOOD BELİRLEME:
+Emotion analizine göre uygun mood'ları seç:
+- Mutlu/Heyecanlı → "maceracı", "cesur"
+- Sakin/Yorgun → "sakin", "temkinli"
+- Meraklı/Odaklı → "meraklı", "dikkatli"
+- Karışık/Stresli → "sakin", "temkinli"
+
+Tek bir sahne JSON'ı döndür:
+{
+  "id": ${request.sceneNumber},
+  "story": "Kısa hikaye (1-2 cümle)",
+  "question": "Çocuğa soru?",
+  "choices": [
+    {"id": "a", "text": "🟢 Seçenek 1", "mood": "EMOTION_ANALİZİNE_GÖRE_BELİRLE"},
+    {"id": "b", "text": "🔴 Seçenek 2", "mood": "EMOTION_ANALİZİNE_GÖRE_BELİRLE"}
+  ]
+}
+
+Mood seçenekleri: maceracı, temkinli, meraklı, sakin, cesur, dikkatli
+Sadece JSON döndür.`;
+
+    return prompt;
   }
 
   private parseDynamicSceneResponse(data: any, request: DynamicSceneRequest): StoryScene {
