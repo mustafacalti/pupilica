@@ -59,10 +59,4 @@ if (import.meta.env.VITE_USE_FIRESTORE_EMULATOR === '1') {
   }
 }
 
-// Debug log
-if (import.meta.env.DEV) {
-  const { projectId, authDomain, apiKey } = getApp().options
-  console.log('[Firebase] projectId =', projectId)
-  console.log('[Firebase] authDomain =', authDomain)
-  console.log('[Firebase] apiKey (head) =', String(apiKey).slice(0, 8))
-}
+// Firebase initialized

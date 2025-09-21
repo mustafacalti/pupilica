@@ -17,7 +17,7 @@ class CameraEmotionService {
   private pythonServerUrl = '/api'; // Proxy üzerinden
 
   constructor() {
-    console.log('🔧 [CONSTRUCTOR] CameraEmotionService başlatıldı - v2024-09-21-19:00, URL:', this.pythonServerUrl);
+    // Constructor initialized
   }
   private pollInterval: NodeJS.Timeout | null = null;
   private onEmotionCallback?: (result: EmotionAnalysisResult) => void;
@@ -45,14 +45,12 @@ class CameraEmotionService {
   async checkPythonServer(): Promise<boolean> {
     try {
       const url = `${this.pythonServerUrl}/health`;
-      console.log('🔍 [DEBUG] Health check URL:', url);
       const response = await fetch(url, {
         method: 'GET',
         timeout: 2000
       });
       return response.ok;
     } catch (error) {
-      console.log('🐍 [PYTHON] Python server erişilemiyor:', error);
       return false;
     }
   }

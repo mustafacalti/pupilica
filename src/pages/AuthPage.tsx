@@ -19,10 +19,10 @@ export const AuthPage: React.FC = () => {
               <Brain className="h-12 w-12 text-white" />
             </div>
             <h1 className="text-4xl font-bold text-gray-800 mb-4">
-              NeuroLearn AI
+              PeakFokus AI
             </h1>
             <p className="text-xl text-gray-600 mb-8">
-              Otizmli öğrenciler için yapay zeka destekli eğitim platformu
+              ADHD'li çocuklar için yapay zeka destekli eğitim platformu
             </p>
           </div>
 

@@ -82,7 +82,7 @@ const Sidebar: React.FC = () => {
           isHovered ? 'w-48 opacity-100' : 'w-0 opacity-0'
         }`}>
           <div className="whitespace-nowrap">
-            <div className="text-lg font-bold text-gray-800">NeuroLearn</div>
+            <div className="text-lg font-bold text-gray-800">PeakFokus</div>
             <div className="text-xs text-gray-500">AI Eğitim Platformu</div>
           </div>
         </div>

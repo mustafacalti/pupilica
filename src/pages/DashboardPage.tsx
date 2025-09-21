@@ -111,7 +111,7 @@ export const DashboardPage: React.FC = () => {
                     Hoş geldiniz, {currentUser?.name}! 👋
                   </h1>
                   <p className="text-blue-100 text-base mb-3">
-                    NeuroLearn AI ile çocuğunuzun gelişimini takip edin
+                    PeakFokus AI ile çocuğunuzun gelişimini takip edin
                   </p>
                   <div className="flex items-center space-x-3 text-sm">
                     <div className="flex items-center space-x-2 bg-white/10 px-2 py-1 rounded-full">
