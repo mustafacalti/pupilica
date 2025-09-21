@@ -13,7 +13,7 @@ export interface OllamaResponse {
 }
 
 class OllamaService {
-  private modelName: string = 'qwen2:0.5b'; // Qwen2 0.5B model for Azure CPU
+  private modelName: string = 'llama3.2:1b'; // Llama3.2 1B model for Azure CPU
 
   /**
    * Ollama CLI üzerinden soru üretir

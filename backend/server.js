@@ -85,7 +85,7 @@ app.post('/api/generate', async (req, res) => {
     };
 
     const requestBody = {
-      model: model || 'qwen2:0.5b',
+      model: model || 'llama3.2:1b',
       prompt,
       stream,
       options: defaultOptions
@@ -147,7 +147,7 @@ app.post('/api/chat', async (req, res) => {
     };
 
     const requestBody = {
-      model: model || 'qwen2:0.5b',
+      model: model || 'llama3.2:1b',
       messages,
       stream,
       options: defaultOptions
@@ -216,7 +216,7 @@ Türkçe Yanıt:`;
     };
 
     const requestBody = {
-      model: 'qwen2:0.5b',
+      model: 'llama3.2:1b',
       prompt: turkishPrompt,
       stream: false,
       options: optimizedOptions

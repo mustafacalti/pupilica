@@ -46,7 +46,7 @@ interface AIStoryResponse {
 }
 
 class AIStoryService {
-  private apiEndpoint = import.meta.env.VITE_AI_STORY_API || 'http://localhost:11434/api/generate';
+  private apiEndpoint = '/ollama/generate';
   private fallbackScenes: StoryScene[] = [
     {
       id: 1,
@@ -163,7 +163,7 @@ class AIStoryService {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'alibayram/turkish-gemma-9b-v0.1:latest', // Colab'daki model
+        model: 'llama3.2:1b',
         prompt: prompt,
         stream: false,
         options: {
@@ -196,7 +196,7 @@ class AIStoryService {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'alibayram/turkish-gemma-9b-v0.1:latest',
+        model: 'llama3.2:1b',
         prompt: prompt,
         stream: false,
         options: {

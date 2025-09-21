@@ -627,10 +627,10 @@ Genel Durum:
    * Ollama'ya API çağrısı
    */
   private async callOllama(prompt: string): Promise<string> {
-    const ollamaApiUrl = 'http://localhost:11434/api/generate';
+    const ollamaApiUrl = '/ollama/generate';
 
     const requestBody = {
-      model: 'hf.co/umutkkgz/Kaira-Turkish-Gemma-9B-T1-GGUF:Q3_K_M',
+      model: 'llama3.2:1b',
       prompt: prompt,
       format: "json",
       stream: false,
