@@ -196,12 +196,12 @@ class AIStoryService {
         options: {
           num_ctx: 1024,
           num_batch: 256,
-          num_predict: 120, // Yaratıcılık için artırıldı
-          temperature: 0.6, // Yaratıcılık için artırıldı
-          top_p: 0.7,
-          top_k: 30,
+          num_predict: 80, // Çok kısa hikaye için
+          temperature: 0.4,
+          top_p: 0.6,
+          top_k: 20,
           repeat_penalty: 1.1,
-          stop: ["}]}", "```"],
+          stop: ["}]}", "```", "}"],
           num_thread: 4
         }
       })
@@ -235,11 +235,14 @@ class AIStoryService {
       }
     }
 
-    return `Sahne ${request.sceneNumber}: ${request.theme}. ${moodGuide}
+    const moodOptions = moodGuide.includes('maceracı') ? 'maceracı,cesur' :
+                       moodGuide.includes('sakin') ? 'sakin,temkinli' :
+                       moodGuide.includes('dikkatli') ? 'dikkatli,sakin' : 'meraklı,normal';
 
-ÖNEMLİ: Sadece 2 choice, mood field kullan (isCorrect değil!)
+    return `${request.theme} sahne ${request.sceneNumber}. ${moodGuide}
 
-{"id":${request.sceneNumber},"story":"Hikaye metni","question":"Soru?","choices":[{"id":"a","text":"🟢 Birinci seçenek","mood":"maceracı"},{"id":"b","text":"🔴 İkinci seçenek","mood":"sakin"}]}`;
+Kısa hikaye, mood seç (${moodOptions}):
+{"id":${request.sceneNumber},"story":"Ali macera","question":"Ne yap?","choices":[{"id":"a","text":"🟢 Git","mood":"MOOD_SEC"},{"id":"b","text":"🔴 Dur","mood":"MOOD_SEC"}]}`;
   }
 
   private parseDynamicSceneResponse(data: any, request: DynamicSceneRequest): StoryScene {
