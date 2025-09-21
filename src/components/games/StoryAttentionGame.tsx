@@ -335,17 +335,9 @@ export const StoryAttentionGame: React.FC<StoryAttentionGameProps> = ({
     } else {
       console.log('Moving to next scene:', sceneNumber + 1);
       setSceneNumber(prev => prev + 1);
-
-      // Emotion data ile birlikte yeni sahne oluştur
-      if (sceneEmotionData) {
-        console.log('🎭 [STORY GAME] Emotion data ile yeni sahne oluşturuluyor...');
-        // Bir sonraki sahne için emotion data'yı sakla
-        setTimeout(() => {
-          generateNextScene(sceneEmotionData);
-        }, 100); // SceneNumber update'inden sonra çalışsın
-      }
+      // useEffect sceneNumber değiştiğinde generateNextScene'i çağıracak
     }
-  }, [sceneNumber, generateNextScene]);
+  }, [sceneNumber]);
 
   // Game end kontrolü - emotion tracking durdur
   useEffect(() => {
