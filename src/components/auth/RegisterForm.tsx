@@ -46,7 +46,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
         <div className="mx-auto w-16 h-16 bg-secondary rounded-full flex items-center justify-center mb-4">
           <UserPlus className="h-8 w-8 text-white" />
         </div>
-        <h2 className="text-2xl font-bold text-gray-800">Öğretmen Kaydı</h2>
+        <h2 className="text-2xl font-bold text-gray-800">Veli Kaydı</h2>
         <p className="text-gray-600 mt-2">Yeni hesap oluşturun</p>
       </div>
 
@@ -86,7 +86,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-secondary focus:border-transparent"
-              placeholder="ogretmen@email.com"
+              placeholder="veli@email.com"
               required
             />
           </div>

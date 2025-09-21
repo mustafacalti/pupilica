@@ -7,7 +7,7 @@ import { Brain, Sparkles } from 'lucide-react';
 
 export const AuthPage: React.FC = () => {
   const [isLogin, setIsLogin] = useState(true);
-  const [userRole, setUserRole] = useState<'teacher' | 'student'>('teacher');
+  const [userRole, setUserRole] = useState<'parent' | 'student'>('parent');
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center p-4">
@@ -64,14 +64,14 @@ export const AuthPage: React.FC = () => {
           {/* Role Toggle */}
           <div className="bg-white p-1 rounded-lg shadow-sm mb-6 flex">
             <button
-              onClick={() => setUserRole('teacher')}
+              onClick={() => setUserRole('parent')}
               className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                userRole === 'teacher'
+                userRole === 'parent'
                   ? 'bg-secondary text-white'
                   : 'text-gray-600 hover:text-gray-800'
               }`}
             >
-              Öğretmen
+              Veli
             </button>
             <button
               onClick={() => setUserRole('student')}
@@ -86,7 +86,7 @@ export const AuthPage: React.FC = () => {
           </div>
 
           {/* Auth Forms */}
-          {userRole === 'teacher' ? (
+          {userRole === 'parent' ? (
             isLogin ? (
               <LoginForm onToggleMode={() => setIsLogin(false)} />
             ) : (
@@ -96,12 +96,12 @@ export const AuthPage: React.FC = () => {
             isLogin ? (
               <StudentLoginForm
                 onToggleMode={() => setIsLogin(false)}
-                onToggleRole={() => setUserRole('teacher')}
+                onToggleRole={() => setUserRole('parent')}
               />
             ) : (
               <StudentRegisterForm
                 onToggleMode={() => setIsLogin(true)}
-                onToggleRole={() => setUserRole('teacher')}
+                onToggleRole={() => setUserRole('parent')}
               />
             )
           )}

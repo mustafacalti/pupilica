@@ -39,7 +39,7 @@ interface StoryAttentionGameData {
 }
 
 // User operations
-export const createUser = async (uid: string, data: { email: string; name: string; role: 'teacher' | 'student'; age?: number; teacherId?: string }) => {
+export const createUser = async (uid: string, data: { email: string; name: string; role: 'parent' | 'student'; age?: number; parentId?: string }) => {
   if (!uid) throw new Error("UID boş geldi");
   const ref = doc(db, "users", uid); // belge id = UID
   await setDoc(ref, { uid, ...data, createdAt: serverTimestamp() }, { merge: true });
@@ -70,10 +70,10 @@ export const createStudent = async (studentData: Omit<Student, 'id' | 'createdAt
   return docRef.id;
 };
 
-export const getStudentsByTeacher = async (teacherId: string): Promise<Student[]> => {
+export const getStudentsByParent = async (parentId: string): Promise<Student[]> => {
   const q = query(
     collection(db, 'students'),
-    where('teacherId', '==', teacherId),
+    where('parentId', '==', parentId),
     orderBy('createdAt', 'desc')
   );
 
@@ -143,10 +143,10 @@ export const getAIInsightsByStudent = async (studentId: string): Promise<AIInsig
 };
 
 // Real-time listeners
-export const subscribeToStudents = (teacherId: string, callback: (students: Student[]) => void) => {
+export const subscribeToStudents = (parentId: string, callback: (students: Student[]) => void) => {
   const q = query(
     collection(db, 'students'),
-    where('teacherId', '==', teacherId),
+    where('parentId', '==', parentId),
     orderBy('createdAt', 'desc')
   );
 

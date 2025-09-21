@@ -58,7 +58,7 @@ const DashboardRedirect: React.FC = () => {
   }
 
   // Role'e göre yönlendir
-  const dashboardPath = currentUser.role === 'teacher' ? '/dashboard/teacher' : '/dashboard/student';
+  const dashboardPath = currentUser.role === 'parent' ? '/dashboard/parent' : '/dashboard/student';
   return <Navigate to={dashboardPath} replace />;
 };
 
@@ -77,7 +77,7 @@ function App() {
               }
             />
             <Route
-              path="/dashboard/teacher"
+              path="/dashboard/parent"
               element={
                 <ProtectedRoute>
                   <DashboardPage />

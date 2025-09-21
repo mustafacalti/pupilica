@@ -47,7 +47,7 @@ export const Header: React.FC<HeaderProps> = ({ aiStatus = 'connected' }) => {
             </div>
             <div>
               <h1 className="text-xl font-bold text-gray-800">NeuroLearn AI</h1>
-              <p className="text-sm text-gray-600">Öğretmen Paneli</p>
+              <p className="text-sm text-gray-600">Veli Paneli</p>
             </div>
           </div>
         </div>
@@ -66,7 +66,7 @@ export const Header: React.FC<HeaderProps> = ({ aiStatus = 'connected' }) => {
           <div className="flex items-center space-x-4">
             <div className="text-right">
               <p className="text-sm font-medium text-gray-800">
-                {currentUser?.name || 'Öğretmen'}
+                {currentUser?.name || 'Veli'}
               </p>
               <p className="text-xs text-gray-600">
                 {currentUser?.email}
@@ -75,7 +75,7 @@ export const Header: React.FC<HeaderProps> = ({ aiStatus = 'connected' }) => {
 
             <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
               <span className="text-white font-medium text-sm">
-                {currentUser?.name?.charAt(0) || 'Ö'}
+                {currentUser?.name?.charAt(0) || 'V'}
               </span>
             </div>
 

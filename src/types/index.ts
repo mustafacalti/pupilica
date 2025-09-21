@@ -2,9 +2,9 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  role: 'teacher' | 'student';
+  role: 'parent' | 'student';
   age?: number; // sadece öğrenciler için
-  teacherId?: string; // öğrencinin hangi öğretmene bağlı olduğu
+  parentId?: string; // öğrencinin hangi veliye bağlı olduğu
   createdAt: Date;
 }
 
@@ -12,7 +12,7 @@ export interface Student {
   id: string;
   name: string;
   age: number;
-  teacherId: string;
+  parentId: string;
   notes?: string;
   createdAt: Date;
 }
