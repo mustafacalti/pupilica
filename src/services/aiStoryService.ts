@@ -240,11 +240,11 @@ class AIStoryService {
                        moodGuide.includes('sakin') ? 'sakin,temkinli' :
                        moodGuide.includes('dikkatli') ? 'dikkatli,sakin' : 'meraklı,normal';
 
-    return `Sahne ${request.sceneNumber}. ${moodGuide}
+    return `Bu JSON'ı tamamen doldur:
 
-MUTLAKA mood field kullan! isCorrect YASAK!
-Örnek format:
-{"id":${request.sceneNumber},"story":"Kısa hikaye","question":"Soru?","choices":[{"id":"a","text":"🟢 Seçenek","mood":"${moodOptions.split(',')[0]}"},{"id":"b","text":"🔴 Seçenek","mood":"${moodOptions.split(',')[1]}"}]}`;
+{"id":${request.sceneNumber},"story":"[${request.theme} kısa hikaye yaz]","question":"[soru yaz]","choices":[{"id":"a","text":"🟢 [seçenek]","mood":"${moodOptions.split(',')[0]}"},{"id":"b","text":"🔴 [seçenek]","mood":"${moodOptions.split(',')[1]}"}]}
+
+Sadece [...] kısımları doldur, geri kalanını aynen koru!`;
   }
 
   private parseDynamicSceneResponse(data: any, request: DynamicSceneRequest): StoryScene {
