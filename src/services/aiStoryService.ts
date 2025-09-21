@@ -390,6 +390,9 @@ HİKAYE STILI: Macera ve keşif`;
           }
         }
 
+        // Eksik mood field'ları ekle
+        jsonText = jsonText.replace(/"text":\s*"([^"]*)"(?![^}]*"mood")/g, '"text": "$1", "mood": "sakin"');
+
         // Array'i kapat
         if (!jsonText.endsWith(']}')) {
           if (!jsonText.endsWith(']')) {
@@ -409,6 +412,12 @@ HİKAYE STILI: Macera ve keşif`;
       // Trailing comma'ları temizle
       jsonText = jsonText.replace(/,(\s*[}\]])/g, '$1');
       jsonText = jsonText.trim();
+
+      // Eksik kapanış tırnaklarını ve parantezleri ekle
+      // Eğer son choice eksik kapatılmışsa tamamla
+      if (jsonText.match(/"text":\s*"[^"]*$/)) {
+        jsonText += '", "mood": "sakin"}]';
+      }
 
       // Extra karakterleri temizle
       jsonText = jsonText.replace(/\s*}]}\s*$/, '').trim();
