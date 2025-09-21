@@ -6,11 +6,11 @@ export default defineConfig({
   server: {
     open: true,
     proxy: {
-      '/api/emotion': {
+      '/python-api': {
         target: 'http://localhost:5000',
         changeOrigin: true,
         secure: false,
-        rewrite: (path) => path.replace(/^\/api\/emotion/, ''),
+        rewrite: (path) => path.replace(/^\/python-api/, ''),
         configure: (proxy, options) => {
           proxy.on('error', (err, req, res) => {
             console.log('Proxy error:', err);
@@ -21,6 +21,9 @@ export default defineConfig({
           });
           proxy.on('proxyRes', (proxyRes, req, res) => {
             console.log('Proxy response:', proxyRes.statusCode, req.url);
+            if (proxyRes.statusCode === 404) {
+              console.log('404 Error - Python server endpoint missing?');
+            }
           });
         }
       }
