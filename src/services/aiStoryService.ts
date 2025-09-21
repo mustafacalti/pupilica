@@ -291,12 +291,14 @@ Bu analizlere göre hikaye yolunu belirle:
 
     prompt += `
 
-MOOD BELİRLEME:
-Emotion analizine göre uygun mood'ları seç:
-- Mutlu/Heyecanlı → "maceracı", "cesur"
-- Sakin/Yorgun → "sakin", "temkinli"
-- Meraklı/Odaklı → "meraklı", "dikkatli"
-- Karışık/Stresli → "sakin", "temkinli"
+MOOD BELİRLEME KURALLARI:
+Emotion analizine göre her seçenek için uygun mood seç:
+- Mutlu/Heyecanlı çocuk → "maceracı", "cesur" mood'ları kullan
+- Sakin/Yorgun çocuk → "sakin", "temkinli" mood'ları kullan
+- Meraklı/Odaklı çocuk → "meraklı", "dikkatli" mood'ları kullan
+- Karışık/Stresli çocuk → "sakin", "temkinli" mood'ları kullan
+
+PLACEHOLDER KULLANMA! Direkt mood kelimesini yaz!
 
 ZORUNLU DİL KURALLARI:
 - Tüm metin Türkçe olacak
@@ -309,8 +311,8 @@ Tek bir sahne JSON'ı döndür:
   "story": "Türkçe kısa hikaye (1-2 cümle)",
   "question": "Türkçe çocuğa soru?",
   "choices": [
-    {"id": "a", "text": "🟢 Türkçe Seçenek 1", "mood": "EMOTION_ANALİZİNE_GÖRE_BELİRLE"},
-    {"id": "b", "text": "🔴 Türkçe Seçenek 2", "mood": "EMOTION_ANALİZİNE_GÖRE_BELİRLE"}
+    {"id": "a", "text": "🟢 Türkçe Seçenek 1", "mood": "maceracı"},
+    {"id": "b", "text": "🔴 Türkçe Seçenek 2", "mood": "sakin"}
   ]
 }
 
@@ -392,6 +394,13 @@ HİKAYE STILI: Macera ve keşif`;
 
         // Eksik mood field'ları ekle
         jsonText = jsonText.replace(/"text":\s*"([^"]*)"(?![^}]*"mood")/g, '"text": "$1", "mood": "sakin"');
+
+        // EMOTION_ANALİZİNE_GÖRE_BELİRLE placeholder'ı gerçek mood'larla değiştir
+        const moodOptions = ['maceracı', 'temkinli', 'meraklı', 'sakin', 'cesur', 'dikkatli'];
+        jsonText = jsonText.replace(/"mood":\s*"EMOTION_ANALİZİNE_GÖRE_BELİRLE"/g, () => {
+          const randomMood = moodOptions[Math.floor(Math.random() * moodOptions.length)];
+          return `"mood": "${randomMood}"`;
+        });
 
         // Array'i kapat
         if (!jsonText.endsWith(']}')) {
