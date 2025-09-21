@@ -107,6 +107,8 @@ export const StoryAttentionGame: React.FC<StoryAttentionGameProps> = ({
 
   // Dinamik sahne oluşturma
   const generateNextScene = useCallback(async (sceneEmotionData?: any) => {
+    console.log('🚨 [DEBUG] generateNextScene called:', { sceneNumber, isLoadingStory, currentSceneId: currentScene?.id });
+
     if (isLoadingStory) {
       console.log('Already loading story, skipping...');
       return;

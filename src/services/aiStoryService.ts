@@ -220,6 +220,13 @@ class AIStoryService {
   }
 
   private constructDynamicPrompt(request: DynamicSceneRequest): string {
+    console.log('🔍 [DEBUG] Scene request:', {
+      sceneNumber: request.sceneNumber,
+      theme: request.theme,
+      previousStory: request.previousStory?.substring(0, 50),
+      userChoice: request.userChoice
+    });
+
     let prompt = `${request.studentAge} yaşındaki çocuk için ${request.theme} temalı hikaye devamı oluştur.
 
 Sahne ${request.sceneNumber}:`;
