@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { BarChart3, TrendingUp, PieChart, Activity, Calendar, Target, Award, Zap } from 'lucide-react';
 import { mockActivities, mockStudents, getEmotionAnalysis, calculateGameStats, getWeeklyProgress } from '../../data/mockData';
 
@@ -9,6 +9,17 @@ interface AnalyticsDashboardProps {
 export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ students }) => {
   const [selectedPeriod, setSelectedPeriod] = useState<'week' | 'month' | 'all'>('week');
   const [selectedStudent, setSelectedStudent] = useState<string>('all');
+  const [openSections, setOpenSections] = useState<Set<string>>(new Set(['filters']));
+
+  const toggleSection = (sectionId: string) => {
+    const newOpenSections = new Set(openSections);
+    if (newOpenSections.has(sectionId)) {
+      newOpenSections.delete(sectionId);
+    } else {
+      newOpenSections.add(sectionId);
+    }
+    setOpenSections(newOpenSections);
+  };
 
   // Filtered data based on selection
   const getFilteredActivities = () => {
@@ -136,17 +147,82 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ students
     'sad': '😢 Üzgün'
   };
 
-  return (
-    <div className="space-y-6">
-      {/* Header Controls */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-bold text-gray-800 flex items-center">
-            <BarChart3 className="h-6 w-6 mr-2" />
-            Gelişim Analitiği
-          </h2>
-        </div>
+  const AccordionSection = ({ id, title, icon, children, defaultOpen = false }: {
+    id: string;
+    title: string;
+    icon: React.ReactNode;
+    children: React.ReactNode;
+    defaultOpen?: boolean;
+  }) => {
+    const isOpen = openSections.has(id);
+    const sectionRef = useRef<HTMLDivElement>(null);
 
+    const handleToggle = (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      // Scroll pozisyonunu kaydet
+      const currentScrollY = window.scrollY;
+      const viewportTop = currentScrollY;
+
+      // State'i değiştir
+      toggleSection(id);
+
+      // Scroll pozisyonunu koru - birden fazla frame boyunca kontrol et
+      const preserveScroll = () => {
+        requestAnimationFrame(() => {
+          if (Math.abs(window.scrollY - viewportTop) > 10) {
+            window.scrollTo(0, viewportTop);
+          }
+          // Bir kez daha kontrol et
+          requestAnimationFrame(() => {
+            if (Math.abs(window.scrollY - viewportTop) > 10) {
+              window.scrollTo(0, viewportTop);
+            }
+          });
+        });
+      };
+
+      preserveScroll();
+    };
+
+    return (
+      <div ref={sectionRef} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <button
+          type="button"
+          onClick={handleToggle}
+          className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset"
+        >
+          <div className="flex items-center">
+            {icon}
+            <h3 className="text-lg font-semibold text-gray-800 ml-2">{title}</h3>
+          </div>
+          <div className={`transform transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}>
+            <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+        </button>
+        <div className={`overflow-hidden transition-all duration-200 ease-in-out ${
+          isOpen ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
+        }`}>
+          <div className="p-4 border-t border-gray-100">
+            {children}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-4" style={{ scrollBehavior: 'smooth' }}>
+      {/* Filters Section */}
+      <AccordionSection
+        id="filters"
+        title="Filtreler ve Ayarlar"
+        icon={<BarChart3 className="h-5 w-5 text-blue-500" />}
+        defaultOpen
+      >
         <div className="flex flex-col sm:flex-row gap-4">
           {/* Student Filter */}
           <div className="flex-1">
@@ -183,14 +259,14 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ students
             </div>
           </div>
         </div>
-      </div>
+      </AccordionSection>
 
       {/* Performance Trend Chart */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-          <TrendingUp className="h-5 w-5 mr-2" />
-          Performans Trendi (Son 30 Gün)
-        </h3>
+      <AccordionSection
+        id="performance"
+        title="Performans Trendi (Son 30 Gün)"
+        icon={<TrendingUp className="h-5 w-5 text-green-500" />}
+      >
         <div className="h-64 flex items-end space-x-1">
           {performanceTrend.map((day, index) => (
             <div key={index} className="flex-1 flex flex-col items-center">
@@ -207,145 +283,140 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ students
             </div>
           ))}
         </div>
-      </div>
+      </AccordionSection>
 
-      {/* Game Distribution & Success Rates */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-        {/* Game Type Distribution */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-            <PieChart className="h-5 w-5 mr-2" />
-            Oyun Türü Dağılımı
-          </h3>
-          <div className="space-y-3">
-            {gameDistribution.map((game, index) => {
-              const colors = ['bg-blue-500', 'bg-green-500', 'bg-yellow-500', 'bg-purple-500'];
-              return (
-                <div key={game.name} className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className={`w-4 h-4 rounded ${colors[index % colors.length]}`}></div>
-                    <span className="text-sm font-medium">{game.name}</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-24 bg-gray-200 rounded-full h-2">
-                      <div
-                        className={`h-2 rounded-full ${colors[index % colors.length].replace('bg-', 'bg-')}`}
-                        style={{ width: `${game.percentage}%` }}
-                      ></div>
-                    </div>
-                    <span className="text-sm text-gray-600 w-8">{game.percentage}%</span>
-                  </div>
+      {/* Game Distribution */}
+      <AccordionSection
+        id="gameDistribution"
+        title="Oyun Türü Dağılımı"
+        icon={<PieChart className="h-5 w-5 text-purple-500" />}
+      >
+        <div className="space-y-3">
+          {gameDistribution.map((game, index) => {
+            const colors = ['bg-blue-500', 'bg-green-500', 'bg-yellow-500', 'bg-purple-500'];
+            return (
+              <div key={game.name} className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className={`w-4 h-4 rounded ${colors[index % colors.length]}`}></div>
+                  <span className="text-sm font-medium">{game.name}</span>
                 </div>
-              );
-            })}
-          </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-24 bg-gray-200 rounded-full h-2">
+                    <div
+                      className={`h-2 rounded-full ${colors[index % colors.length].replace('bg-', 'bg-')}`}
+                      style={{ width: `${game.percentage}%` }}
+                    ></div>
+                  </div>
+                  <span className="text-sm text-gray-600 w-8">{game.percentage}%</span>
+                </div>
+              </div>
+            );
+          })}
         </div>
+      </AccordionSection>
 
-        {/* Success Rate by Game */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-            <Target className="h-5 w-5 mr-2" />
-            Oyun Türüne Göre Başarı
-          </h3>
-          <div className="space-y-4">
-            {successRates.map((game, index) => (
-              <div key={game.type} className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="font-medium">{game.name}</span>
-                  <span className="text-gray-600">{game.score}% ({game.count} oyun)</span>
+      {/* Success Rate by Game */}
+      <AccordionSection
+        id="successRates"
+        title="Oyun Türüne Göre Başarı Oranları"
+        icon={<Target className="h-5 w-5 text-orange-500" />}
+      >
+        <div className="space-y-4">
+          {successRates.map((game, index) => (
+            <div key={game.type} className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="font-medium">{game.name}</span>
+                <span className="text-gray-600">{game.score}% ({game.count} oyun)</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-3">
+                <div
+                  className={`h-3 rounded-full transition-all duration-500 ${
+                    game.score >= 80 ? 'bg-green-500' :
+                    game.score >= 60 ? 'bg-yellow-500' : 'bg-red-500'
+                  }`}
+                  style={{ width: `${game.score}%` }}
+                ></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </AccordionSection>
+
+      {/* Attention Span Tracking */}
+      <AccordionSection
+        id="attention"
+        title="Dikkat Süresi Analizi"
+        icon={<Activity className="h-5 w-5 text-indigo-500" />}
+      >
+        <div className="space-y-4">
+          {Array.from({ length: 7 }, (_, i) => {
+            const day = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'][i];
+            const attention = Math.floor(Math.random() * 15) + 5; // 5-20 dakika
+            const distractions = Math.floor(Math.random() * 8) + 2; // 2-10 dikkat dağılması
+            return (
+              <div key={i} className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <span className="text-sm font-medium w-8">{day}</span>
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-32 bg-gray-200 rounded-full h-2">
+                        <div
+                          className={`h-2 rounded-full ${
+                            attention >= 15 ? 'bg-green-500' :
+                            attention >= 10 ? 'bg-yellow-500' : 'bg-red-500'
+                          }`}
+                          style={{ width: `${(attention / 20) * 100}%` }}
+                        ></div>
+                      </div>
+                      <span className="text-sm text-gray-600">{attention} dk</span>
+                    </div>
+                  </div>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-3">
+                <div className="text-xs text-gray-500">
+                  {distractions} dikkat dağılması
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </AccordionSection>
+
+      {/* Emotion Performance Correlation */}
+      <AccordionSection
+        id="emotion"
+        title="Duygu-Performans İlişkisi"
+        icon={<Activity className="h-5 w-5 text-pink-500" />}
+      >
+        <div className="space-y-3">
+          {[
+            { emotion: '😊 Mutlu', score: 85, color: 'bg-green-500' },
+            { emotion: '🎯 Odaklanmış', score: 92, color: 'bg-blue-500' },
+            { emotion: '😐 Nötr', score: 72, color: 'bg-gray-500' },
+            { emotion: '😕 Şaşkın', score: 58, color: 'bg-yellow-500' },
+            { emotion: '😢 Üzgün', score: 45, color: 'bg-red-500' }
+          ].map((item, index) => (
+            <div key={index} className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <span className="text-sm w-20">{item.emotion}</span>
+                <div className="w-32 bg-gray-200 rounded-full h-3">
                   <div
-                    className={`h-3 rounded-full transition-all duration-500 ${
-                      game.score >= 80 ? 'bg-green-500' :
-                      game.score >= 60 ? 'bg-yellow-500' : 'bg-red-500'
-                    }`}
-                    style={{ width: `${game.score}%` }}
+                    className={`h-3 rounded-full ${item.color}`}
+                    style={{ width: `${item.score}%` }}
                   ></div>
                 </div>
               </div>
-            ))}
-          </div>
+              <span className="text-sm font-medium">{item.score}%</span>
+            </div>
+          ))}
         </div>
-      </div>
-
-      {/* Attention & Emotion Analysis */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Attention Span Tracking */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-            <Activity className="h-5 w-5 mr-2" />
-            Dikkat Süresi Analizi
-          </h3>
-          <div className="space-y-4">
-            {Array.from({ length: 7 }, (_, i) => {
-              const day = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'][i];
-              const attention = Math.floor(Math.random() * 15) + 5; // 5-20 dakika
-              const distractions = Math.floor(Math.random() * 8) + 2; // 2-10 dikkat dağılması
-              return (
-                <div key={i} className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <span className="text-sm font-medium w-8">{day}</span>
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-2">
-                        <div className="w-32 bg-gray-200 rounded-full h-2">
-                          <div
-                            className={`h-2 rounded-full ${
-                              attention >= 15 ? 'bg-green-500' :
-                              attention >= 10 ? 'bg-yellow-500' : 'bg-red-500'
-                            }`}
-                            style={{ width: `${(attention / 20) * 100}%` }}
-                          ></div>
-                        </div>
-                        <span className="text-sm text-gray-600">{attention} dk</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    {distractions} dikkat dağılması
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Emotion Performance Correlation */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">
-            Duygu-Performans İlişkisi
-          </h3>
-          <div className="space-y-3">
-            {[
-              { emotion: '😊 Mutlu', score: 85, color: 'bg-green-500' },
-              { emotion: '🎯 Odaklanmış', score: 92, color: 'bg-blue-500' },
-              { emotion: '😐 Nötr', score: 72, color: 'bg-gray-500' },
-              { emotion: '😕 Şaşkın', score: 58, color: 'bg-yellow-500' },
-              { emotion: '😢 Üzgün', score: 45, color: 'bg-red-500' }
-            ].map((item, index) => (
-              <div key={index} className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <span className="text-sm w-20">{item.emotion}</span>
-                  <div className="w-32 bg-gray-200 rounded-full h-3">
-                    <div
-                      className={`h-3 rounded-full ${item.color}`}
-                      style={{ width: `${item.score}%` }}
-                    ></div>
-                  </div>
-                </div>
-                <span className="text-sm font-medium">{item.score}%</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+      </AccordionSection>
 
       {/* Hyperfocus vs Normal Attention */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">
-          Hiperfokus vs Normal Dikkat Analizi
-        </h3>
+      <AccordionSection
+        id="hyperfocus"
+        title="Hiperfokus vs Normal Dikkat Analizi"
+        icon={<Zap className="h-5 w-5 text-yellow-500" />}
+      >
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="text-center">
             <div className="text-3xl font-bold text-purple-600 mb-2">4</div>
@@ -363,13 +434,14 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ students
             <div className="text-xs text-gray-500 mt-1">Normal: %65</div>
           </div>
         </div>
-      </div>
+      </AccordionSection>
 
       {/* Reaction Time Variability */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">
-          Tepki Süresi Değişkenliği
-        </h3>
+      <AccordionSection
+        id="reactionTime"
+        title="Tepki Süresi Değişkenliği"
+        icon={<Target className="h-5 w-5 text-red-500" />}
+      >
         <div className="h-32 flex items-end space-x-1">
           {Array.from({ length: 20 }, (_, i) => {
             const reactionTime = Math.floor(Math.random() * 800) + 200; // 200-1000ms
@@ -403,14 +475,14 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ students
             <div className="text-xs text-gray-500">Değişkenlik Katsayısı</div>
           </div>
         </div>
-      </div>
+      </AccordionSection>
 
       {/* Daily Activity Pattern */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-          <Calendar className="h-5 w-5 mr-2" />
-          Günlük Aktivite Deseni
-        </h3>
+      <AccordionSection
+        id="dailyPattern"
+        title="Günlük Aktivite Deseni"
+        icon={<Calendar className="h-5 w-5 text-cyan-500" />}
+      >
         <div className="h-32 flex items-end space-x-1">
           {dailyPattern.filter(hour => hour.hour >= 8 && hour.hour <= 20).map((hour) => (
             <div key={hour.hour} className="flex-1 flex flex-col items-center">
@@ -427,56 +499,62 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ students
         <div className="mt-2 text-sm text-gray-600 text-center">
           En aktif saatler: 14:00-16:00 arası
         </div>
-      </div>
+      </AccordionSection>
 
       {/* Quick Stats Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-4 text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-2xl font-bold">{filteredActivities.length}</div>
-              <div className="text-blue-100 text-sm">Toplam Oyun</div>
-            </div>
-            <Award className="h-8 w-8 text-blue-200" />
-          </div>
-        </div>
-
-        <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-lg p-4 text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-2xl font-bold">
-                {Math.round(filteredActivities.reduce((sum, act) => sum + act.score, 0) / filteredActivities.length) || 0}%
+      <AccordionSection
+        id="quickStats"
+        title="Hızlı İstatistikler"
+        icon={<Award className="h-5 w-5 text-emerald-500" />}
+      >
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-4 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold">{filteredActivities.length}</div>
+                <div className="text-blue-100 text-sm">Toplam Oyun</div>
               </div>
-              <div className="text-green-100 text-sm">Ortalama Başarı</div>
+              <Award className="h-8 w-8 text-blue-200" />
             </div>
-            <TrendingUp className="h-8 w-8 text-green-200" />
           </div>
-        </div>
 
-        <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg p-4 text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-2xl font-bold">
-                {Math.round(filteredActivities.reduce((sum, act) => sum + act.duration, 0) / 60)} dk
+          <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-lg p-4 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold">
+                  {Math.round(filteredActivities.reduce((sum, act) => sum + act.score, 0) / filteredActivities.length) || 0}%
+                </div>
+                <div className="text-green-100 text-sm">Ortalama Başarı</div>
               </div>
-              <div className="text-purple-100 text-sm">Toplam Süre</div>
+              <TrendingUp className="h-8 w-8 text-green-200" />
             </div>
-            <Calendar className="h-8 w-8 text-purple-200" />
           </div>
-        </div>
 
-        <div className="bg-gradient-to-r from-yellow-500 to-yellow-600 rounded-lg p-4 text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-2xl font-bold">
-                {selectedStudent === 'all' ? students.length : 1}
+          <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg p-4 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold">
+                  {Math.round(filteredActivities.reduce((sum, act) => sum + act.duration, 0) / 60)} dk
+                </div>
+                <div className="text-purple-100 text-sm">Toplam Süre</div>
               </div>
-              <div className="text-yellow-100 text-sm">Aktif Çocuk</div>
+              <Calendar className="h-8 w-8 text-purple-200" />
             </div>
-            <Zap className="h-8 w-8 text-yellow-200" />
+          </div>
+
+          <div className="bg-gradient-to-r from-yellow-500 to-yellow-600 rounded-lg p-4 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold">
+                  {selectedStudent === 'all' ? students.length : 1}
+                </div>
+                <div className="text-yellow-100 text-sm">Aktif Çocuk</div>
+              </div>
+              <Zap className="h-8 w-8 text-yellow-200" />
+            </div>
           </div>
         </div>
-      </div>
+      </AccordionSection>
     </div>
   );
 };
