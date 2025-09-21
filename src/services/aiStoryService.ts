@@ -196,7 +196,7 @@ class AIStoryService {
         options: {
           num_ctx: 512, // Küçültüldü - eski context'i unutsun
           num_batch: 256,
-          num_predict: 100, // Hızlı yanıt için azaltıldı
+          num_predict: 250, // JSON tamamlanması için artırıldı
           temperature: 0.4,
           top_p: 0.6,
           top_k: 20,
