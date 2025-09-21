@@ -630,7 +630,7 @@ Genel Durum:
     const ollamaApiUrl = '/ollama/generate';
 
     const requestBody = {
-      model: 'llama3.2:1b',
+      model: 'gemma2:2b',
       prompt: prompt,
       format: "json",
       stream: false,

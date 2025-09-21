@@ -85,7 +85,7 @@ app.post('/api/generate', async (req, res) => {
     };
 
     const requestBody = {
-      model: model || 'llama3.2:1b',
+      model: model || 'gemma2:2b',
       prompt,
       stream,
       options: defaultOptions
@@ -147,7 +147,7 @@ app.post('/api/chat', async (req, res) => {
     };
 
     const requestBody = {
-      model: model || 'llama3.2:1b',
+      model: model || 'gemma2:2b',
       messages,
       stream,
       options: defaultOptions
@@ -196,11 +196,11 @@ app.post('/api/turkish-generate', async (req, res) => {
     }
 
     // Türkçe yanıt için optimize edilmiş prompt
-    const turkishPrompt = `Sen Türkçe konuşan bir yapay zeka asistanısın. Aşağıdaki talebe SADECE TÜRKÇE olarak kısa ve net bir şekilde cevap ver. İngilizce kelime kullanma.
+    const turkishPrompt = `Sen Türkçe konuşan bir öğretmensin. Lütfen aşağıdaki soruya sadece Türkçe cevap ver. Başka dil kullanma.
 
-Talep: ${prompt}
+Soru: ${prompt}
 
-Türkçe Yanıt:`;
+Cevap (sadece Türkçe):`;
 
     console.log(`🇹🇷 [TURKISH] Türkçe generate isteği:`, {
       originalPrompt: prompt.substring(0, 50) + '...',
@@ -216,7 +216,7 @@ Türkçe Yanıt:`;
     };
 
     const requestBody = {
-      model: 'llama3.2:1b',
+      model: 'gemma2:2b',
       prompt: turkishPrompt,
       stream: false,
       options: optimizedOptions
