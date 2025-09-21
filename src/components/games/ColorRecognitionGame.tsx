@@ -395,13 +395,13 @@ export const ColorRecognitionGame: React.FC<ColorRecognitionGameProps> = ({
           target: `rgb(${targetRgb.r}, ${targetRgb.g}, ${targetRgb.b})`,
           targetName: targetColor.name,
           distance: distance.toFixed(1),
-          threshold: 120,
-          match: distance < 120
+          threshold: 150,
+          match: distance < 150
         });
       }
 
-      // Eşik değeri optimize edildi - daha hassas tanıma için
-      return distance < 120;
+      // Eşik değeri optimize edildi - dengeli tolerans için
+      return distance < 150;
     } catch (error) {
       console.error('❌ Renk algılama hatası:', error);
       return false;
@@ -437,7 +437,7 @@ export const ColorRecognitionGame: React.FC<ColorRecognitionGameProps> = ({
         console.log('✅ Renk eşleşti!');
         setColorDetected(true);
         setColorHoldTime(prev => {
-          const newTime = prev + 0.1; // Her 100ms'de 0.1 saniye ekle
+          const newTime = prev + 0.2; // Her 200ms'de 0.2 saniye ekle
 
           if (newTime >= 5) {
             // 5 saniye rengi tuttu - başarı!
@@ -477,7 +477,7 @@ export const ColorRecognitionGame: React.FC<ColorRecognitionGameProps> = ({
         setColorDetected(false);
         setColorHoldTime(0); // Renk kaybolduğunda sıfırla
       }
-    }, 100); // 100ms'de bir kontrol et
+    }, 200); // 200ms'de bir kontrol et (daha az sık tarama)
 
     console.log('✅ Renk algılama interval başlatıldı');
   }, [detectColor, onEmotionDetected, gameTimeLeft, targetColor, colorDetected]);
