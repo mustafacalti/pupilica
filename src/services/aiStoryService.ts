@@ -196,7 +196,7 @@ class AIStoryService {
         options: {
           num_ctx: 512, // Küçültüldü - eski context'i unutsun
           num_batch: 256,
-          num_predict: 200, // Artırıldı
+          num_predict: 300, // Daha da artırıldı
           temperature: 0.4,
           top_p: 0.6,
           top_k: 20,
@@ -240,9 +240,11 @@ class AIStoryService {
                        moodGuide.includes('sakin') ? 'sakin,temkinli' :
                        moodGuide.includes('dikkatli') ? 'dikkatli,sakin' : 'meraklı,normal';
 
-    return `JSON doldur (mood kullan):
+    return `AYNEN BU JSON'I KOPYALA VE SADECE STORY/QUESTION DEĞİŞTİR:
 
-{"id":${request.sceneNumber},"story":"Ali ormanda","question":"Ne yap?","choices":[{"id":"a","text":"🟢 Devam","mood":"${moodOptions.split(',')[0]}"},{"id":"b","text":"🔴 Dur","mood":"${moodOptions.split(',')[1]}"}]}`;
+{"id":${request.sceneNumber},"story":"Ali ormanda yürüyor","question":"Ali ne yapmalı?","choices":[{"id":"a","text":"🟢 İleri git","mood":"${moodOptions.split(',')[0]}"},{"id":"b","text":"🔴 Geri dön","mood":"${moodOptions.split(',')[1]}"}]}
+
+BAŞKA HİÇBİR ŞEY YAZMA!`;
   }
 
   private parseDynamicSceneResponse(data: any, request: DynamicSceneRequest): StoryScene {
