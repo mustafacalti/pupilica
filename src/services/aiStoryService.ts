@@ -197,10 +197,10 @@ class AIStoryService {
           num_ctx: 512, // Küçültüldü - eski context'i unutsun
           num_batch: 256,
           num_predict: 250, // JSON tamamlanması için artırıldı
-          temperature: 0.4,
-          top_p: 0.6,
-          top_k: 20,
-          repeat_penalty: 1.2, // Tekrarı önlemek için artırıldı
+          temperature: 0.9, // Yaratıcılık için artırıldı
+          top_p: 0.95, // Daha geniş kelime seçimi
+          top_k: 50, // Daha fazla seçenek
+          repeat_penalty: 1.3, // Tekrarı daha güçlü önle
           // stop: ["}]}", "```"], // Stop token'ları kaldırıldı
           num_thread: 4,
           seed: Math.floor(Math.random() * 1000000) // Random seed - cache'i boz
