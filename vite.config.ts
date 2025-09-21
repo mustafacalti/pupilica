@@ -7,7 +7,7 @@ export default defineConfig({
     open: true,
     proxy: {
       '/api/emotion': {
-        target: 'http://40.66.54.232:5000',
+        target: 'http://localhost:5000',
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path.replace(/^\/api\/emotion/, ''),
@@ -17,6 +17,10 @@ export default defineConfig({
           });
           proxy.on('proxyReq', (proxyReq, req, res) => {
             console.log('Proxying request:', req.url, '→', proxyReq.path);
+            console.log('Target:', proxyReq.host + ':' + proxyReq.port);
+          });
+          proxy.on('proxyRes', (proxyRes, req, res) => {
+            console.log('Proxy response:', proxyRes.statusCode, req.url);
           });
         }
       }
