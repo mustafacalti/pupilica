@@ -300,26 +300,22 @@ Sadece JSON döndür.`;
       const responseText = data.response || '';
       console.log('Dynamic scene response text:', responseText);
 
-      // JSON temizleme - sadece ilk JSON'ı al
+      // JSON temizleme - sadece valid JSON'ı al
       let cleanedText = responseText;
 
       // ```json ve ``` temizle
       cleanedText = cleanedText.replace(/```json\s*/g, '');
       cleanedText = cleanedText.replace(/```[\s\S]*/g, '');
 
-      // JSON objesini bul - nested arrays için geliştirildi
-      const jsonMatch = cleanedText.match(/\{[\s\S]*?\}\s*$/);
-      if (!jsonMatch) {
-        throw new Error('No JSON found in dynamic scene response');
+      // İlk { ile son } arasındaki JSON'ı al
+      const startIndex = cleanedText.indexOf('{');
+      const lastIndex = cleanedText.lastIndexOf('}');
+
+      if (startIndex === -1 || lastIndex === -1 || startIndex >= lastIndex) {
+        throw new Error('No valid JSON found in dynamic scene response');
       }
 
-      let jsonText = jsonMatch[0];
-
-      // JSON'dan sonraki açıklamaları temizle
-      const jsonEndIndex = jsonText.lastIndexOf('}');
-      if (jsonEndIndex > 0) {
-        jsonText = jsonText.substring(0, jsonEndIndex + 1);
-      }
+      let jsonText = cleanedText.substring(startIndex, lastIndex + 1);
 
       // Eksik JSON'ı akıllıca tamamla - artık sadece 2 choice var
       if (jsonText.includes('"choices": [')) {
