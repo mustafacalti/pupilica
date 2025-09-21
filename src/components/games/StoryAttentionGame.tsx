@@ -127,9 +127,12 @@ export const StoryAttentionGame: React.FC<StoryAttentionGameProps> = ({
 
       // Emotion data'yı AI'ya gönder
       let emotionDataString = '';
-      if (emotionDataToUse && emotionDataToUse.emotions && emotionDataToUse.emotions.length > 0) {
-        emotionDataString = emotionDataToUse.emotions.map((emotion: any, index: number) =>
-          `${index + 1}. ${emotion.timestamp}: ${emotion.dominantEmotion} (${emotion.confidence?.toFixed(2) || 'N/A'})`
+      // emotionDataToUse direkt array (endRoundSession'dan geliyor) veya emotions property'si olan obje olabilir
+      const emotionsArray = Array.isArray(emotionDataToUse) ? emotionDataToUse : emotionDataToUse?.emotions;
+
+      if (emotionsArray && emotionsArray.length > 0) {
+        emotionDataString = emotionsArray.map((emotion: any, index: number) =>
+          `${index + 1}. ${emotion.timestamp}: ${emotion.emotion} (${(emotion.confidence * 100).toFixed(1)}%)`
         ).join('\n');
       }
 
@@ -146,7 +149,8 @@ export const StoryAttentionGame: React.FC<StoryAttentionGameProps> = ({
       console.log('🎭 [EMOTION DEBUG] Ham sceneEmotionData:', sceneEmotionData);
       console.log('🎭 [EMOTION DEBUG] PendingEmotionData:', pendingEmotionData);
       console.log('🎭 [EMOTION DEBUG] EmotionDataToUse:', emotionDataToUse);
-      console.log('🎭 [EMOTION DEBUG] Emotion array uzunluğu:', emotionDataToUse?.emotions?.length || 0);
+      console.log('🎭 [EMOTION DEBUG] Emotion array uzunluğu:', emotionsArray?.length || 0);
+      console.log('🎭 [EMOTION DEBUG] Emotions array:', emotionsArray);
       console.log('🎭 [EMOTION DEBUG] AI\'ya gönderilen emotion string:');
       console.log(emotionDataString || 'BOŞ - Emotion data yok');
       console.log('🎭 [EMOTION DEBUG] Request object:', request);
