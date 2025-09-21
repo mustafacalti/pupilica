@@ -227,7 +227,14 @@ class AIStoryService {
       userChoice: request.userChoice
     });
 
-    let prompt = `${request.studentAge} yaşındaki çocuk için ${request.theme} temalı hikaye devamı oluştur.
+    // Tema bazında karakter ve ortam detayları
+    const themeDetails = this.getThemeDetails(request.theme);
+
+    let prompt = `TÜRKÇE ZORUNLU: ${request.studentAge} yaşındaki çocuk için ${request.theme} temalı hikaye devamı oluştur.
+
+DİL KURALI: Sadece Türkçe kullan. İngilizce, İspanyolca veya başka dil YASAK!
+
+${themeDetails}
 
 Sahne ${request.sceneNumber}:`;
 
@@ -291,21 +298,61 @@ Emotion analizine göre uygun mood'ları seç:
 - Meraklı/Odaklı → "meraklı", "dikkatli"
 - Karışık/Stresli → "sakin", "temkinli"
 
+ZORUNLU DİL KURALLARI:
+- Tüm metin Türkçe olacak
+- İngilizce, İspanyolca, Fransızca kelime kullanma
+- Sadece Türkçe karakterler ve kelimeler
+
 Tek bir sahne JSON'ı döndür:
 {
   "id": ${request.sceneNumber},
-  "story": "Kısa hikaye (1-2 cümle)",
-  "question": "Çocuğa soru?",
+  "story": "Türkçe kısa hikaye (1-2 cümle)",
+  "question": "Türkçe çocuğa soru?",
   "choices": [
-    {"id": "a", "text": "🟢 Seçenek 1", "mood": "EMOTION_ANALİZİNE_GÖRE_BELİRLE"},
-    {"id": "b", "text": "🔴 Seçenek 2", "mood": "EMOTION_ANALİZİNE_GÖRE_BELİRLE"}
+    {"id": "a", "text": "🟢 Türkçe Seçenek 1", "mood": "EMOTION_ANALİZİNE_GÖRE_BELİRLE"},
+    {"id": "b", "text": "🔴 Türkçe Seçenek 2", "mood": "EMOTION_ANALİZİNE_GÖRE_BELİRLE"}
   ]
 }
 
+UYARI: Başka dil kullanırsan hata olur!
 Mood seçenekleri: maceracı, temkinli, meraklı, sakin, cesur, dikkatli
-Sadece JSON döndür.`;
+Sadece Türkçe JSON döndür.`;
 
     return prompt;
+  }
+
+  /**
+   * Tema bazında karakter ve ortam detayları
+   */
+  private getThemeDetails(theme: string): string {
+    switch (theme) {
+      case 'Orman Macerası':
+        return `
+KARAKTER: Ali - Cesur ve meraklı çocuk
+ORTAM: Büyülü orman, ağaçlar, hayvanlar, gizli yollar
+HİKAYE STILI: Doğa macerası, keşif, dostluk
+ÖZELLİKLER: 🌳 Ağaçlar, 🦋 Kelebekler, 🐿️ Sincaplar, 🌸 Çiçekler`;
+
+      case 'Uzay Keşfi':
+        return `
+KARAKTER: Aylin - Zeki ve cesur uzay kaşifi
+ORTAM: Uzay gemisi, gezegenler, yıldızlar, uzay istasyonu
+HİKAYE STILI: Bilim kurgu macerası, teknoloji, keşif
+ÖZELLİKLER: 🚀 Uzay gemisi, 🌟 Yıldızlar, 🛸 Uzay aracı, 🪐 Gezegenler`;
+
+      case 'Deniz Altı Maceraları':
+        return `
+KARAKTER: Cem - Denizci ve cesur dalış uzmanı
+ORTAM: Okyanusun derinlikleri, mercan resifleri, su altı mağaraları
+HİKAYE STILI: Su altı keşfi, deniz canlıları, hazine avcılığı
+ÖZELLİKLER: 🐠 Balıklar, 🐙 Ahtapot, 🏝️ Ada, 💎 Hazine`;
+
+      default:
+        return `
+KARAKTER: Ali - Cesur ve meraklı çocuk
+ORTAM: Fantastik dünya
+HİKAYE STILI: Macera ve keşif`;
+    }
   }
 
   private parseDynamicSceneResponse(data: any, request: DynamicSceneRequest): StoryScene {
