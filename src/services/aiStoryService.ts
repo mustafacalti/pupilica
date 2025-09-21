@@ -230,9 +230,12 @@ class AIStoryService {
     // Tema bazında karakter ve ortam detayları
     const themeDetails = this.getThemeDetails(request.theme);
 
-    let prompt = `TÜRKÇE ZORUNLU: ${request.studentAge} yaşındaki çocuk için ${request.theme} temalı hikaye devamı oluştur.
+    let prompt = `CRITICAL: ONLY TURKISH LANGUAGE! ESPAÑOL PROHIBIDO!
 
-DİL KURALI: Sadece Türkçe kullan. İngilizce, İspanyolca veya başka dil YASAK!
+TÜRKÇE ZORUNLU: ${request.studentAge} yaşındaki çocuk için ${request.theme} temalı hikaye devamı oluştur.
+
+DİL KURALI: Sadece Türkçe kullan. İngilizce, İspanyolca, Fransızca YASAK!
+SPANISH FORBIDDEN! NO ESPAÑOL! ONLY TURKISH!
 
 ${themeDetails}
 
@@ -304,19 +307,21 @@ ZORUNLU DİL KURALLARI:
 - Tüm metin Türkçe olacak
 - İngilizce, İspanyolca, Fransızca kelime kullanma
 - Sadece Türkçe karakterler ve kelimeler
+- SORU TÜRKÇE OLMALI! ¿ kullanma!
 
 Tek bir sahne JSON'ı döndür:
 {
   "id": ${request.sceneNumber},
   "story": "Türkçe kısa hikaye (1-2 cümle)",
-  "question": "Türkçe çocuğa soru?",
+  "question": "Ali ne yapmalı? (TÜRKÇE SORU)",
   "choices": [
     {"id": "a", "text": "🟢 Türkçe Seçenek 1", "mood": "maceracı"},
     {"id": "b", "text": "🔴 Türkçe Seçenek 2", "mood": "sakin"}
   ]
 }
 
-UYARI: Başka dil kullanırsan hata olur!
+UYARI: İspanyolca soru yazarsan sistem çökecek!
+NO SPANISH QUESTIONS! TÜRKÇE SORU YAZ!
 Mood seçenekleri: maceracı, temkinli, meraklı, sakin, cesur, dikkatli
 Sadece Türkçe JSON döndür.`;
 
