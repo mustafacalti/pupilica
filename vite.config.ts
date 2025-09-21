@@ -5,6 +5,8 @@ export default defineConfig({
   plugins: [react()],
   server: {
     open: true,
+    host: '0.0.0.0',
+    port: 3000,
     proxy: {
       '/python-api': {
         target: 'http://localhost:5000',
