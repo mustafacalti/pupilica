@@ -194,13 +194,15 @@ class AIStoryService {
         prompt: prompt,
         stream: false,
         options: {
-          num_ctx: 2048,
-          num_batch: 512,
-          num_predict: 100, // Kısa JSON için
-          temperature: 0.5,
+          num_ctx: 1024,
+          num_batch: 256,
+          num_predict: 120, // Yaratıcılık için artırıldı
+          temperature: 0.6, // Yaratıcılık için artırıldı
           top_p: 0.7,
+          top_k: 30,
           repeat_penalty: 1.1,
-          stop: ["}]}", "```"]
+          stop: ["}]}", "```"],
+          num_thread: 4
         }
       })
     });
@@ -217,30 +219,27 @@ class AIStoryService {
   }
 
   private constructDynamicPrompt(request: DynamicSceneRequest): string {
-    let prompt = `Türkçe hikaye sahnesi ${request.sceneNumber}.
+    let moodGuide = "";
 
-Tema: ${request.theme}`;
-
-    if (request.previousStory && request.userChoice) {
-      prompt += `
-Önceki: ${request.previousStory.substring(0, 50)}`;
-    }
-
-    // Emotion data - çok kısa versiyon
+    // Emotion data - mood rehberi
     if (request.emotionData) {
-      prompt += `
-Duygu: ${request.emotionData.substring(0, 100)}
-Mutlu→maceracı,cesur | Üzgün→sakin,temkinli | Stresli→dikkatli`;
+      const emotion = request.emotionData.substring(0, 50).toLowerCase();
+      if (emotion.includes('mutlu') || emotion.includes('heyecan')) {
+        moodGuide = "Mood: maceracı, cesur seçenekler";
+      } else if (emotion.includes('üzgün') || emotion.includes('yorgun')) {
+        moodGuide = "Mood: sakin, temkinli seçenekler";
+      } else if (emotion.includes('stres') || emotion.includes('sinir')) {
+        moodGuide = "Mood: dikkatli, sakin seçenekler";
+      } else {
+        moodGuide = "Mood: meraklı, normal seçenekler";
+      }
     }
 
-    prompt += `
+    return `Sahne ${request.sceneNumber}: ${request.theme}. ${moodGuide}
 
-JSON döndür (duyguya göre mood seç):
-{"id":${request.sceneNumber},"story":"Kısa hikaye","question":"Ne yapmalı?","choices":[{"id":"a","text":"🟢 Seçenek","mood":"DUYGUYA_UYGUN_MOOD"},{"id":"b","text":"🔴 Seçenek","mood":"DUYGUYA_UYGUN_MOOD"}]}
+ÖNEMLİ: Sadece 2 choice, mood field kullan (isCorrect değil!)
 
-Mood seçenekleri: maceracı,temkinli,meraklı,sakin,cesur,dikkatli`;
-
-    return prompt;
+{"id":${request.sceneNumber},"story":"Hikaye metni","question":"Soru?","choices":[{"id":"a","text":"🟢 Birinci seçenek","mood":"maceracı"},{"id":"b","text":"🔴 İkinci seçenek","mood":"sakin"}]}`;
   }
 
   private parseDynamicSceneResponse(data: any, request: DynamicSceneRequest): StoryScene {
@@ -359,32 +358,15 @@ Mood seçenekleri: maceracı,temkinli,meraklı,sakin,cesur,dikkatli`;
   }
 
   private constructPrompt(request: AIStoryRequest): string {
-    return `${request.studentAge} yaşındaki bir çocuk için Türkçe hikaye oyunu oluştur. ${request.sceneCount || 4} sahne olsun.
+    return `${request.studentAge} yaş çocuk için hikaye. ${request.sceneCount || 4} sahne.
 
-Tema: ${request.theme || 'Ali\'nin maceraları'}
+Tema: ${request.theme || 'Ali macera'}
 
-Her sahne için:
-- Kısa hikaye (1-2 cümle)
-- Soru
-- 2 seçenek (farklı mood'larla)
+ÖNEMLİ: mood field kullan, isCorrect kullanma!
 
-JSON formatında döndür:
-{
-  "scenes": [
-    {
-      "id": 1,
-      "story": "Ali ormana girdi.",
-      "question": "Hangi yolu seçmeli?",
-      "choices": [
-        {"id": "a", "text": "🟢 Yeşil yol", "mood": "maceracı"},
-        {"id": "b", "text": "🔴 Kırmızı yol", "mood": "temkinli"}
-      ]
-    }
-  ]
-}
+{"scenes":[{"id":1,"story":"Hikaye","question":"Soru?","choices":[{"id":"a","text":"🟢 Seçenek","mood":"maceracı"},{"id":"b","text":"🔴 Seçenek","mood":"sakin"}]}]}
 
-KULLANILACAK MOOD'LAR: "maceracı", "temkinli", "meraklı", "sakin", "cesur", "dikkatli"
-Sadece JSON döndür, başka açıklama yazma.`;
+Mood: maceracı,temkinli,meraklı,sakin,cesur,dikkatli`;
   }
 
   private parseOllamaResponse(ollamaData: any, request: AIStoryRequest): AIStoryResponse {
