@@ -194,15 +194,16 @@ class AIStoryService {
         prompt: prompt,
         stream: false,
         options: {
-          num_ctx: 1024,
+          num_ctx: 512, // Küçültüldü - eski context'i unutsun
           num_batch: 256,
-          num_predict: 150, // JSON tamamlaması için artırıldı
+          num_predict: 150,
           temperature: 0.4,
           top_p: 0.6,
           top_k: 20,
-          repeat_penalty: 1.1,
+          repeat_penalty: 1.2, // Tekrarı önlemek için artırıldı
           stop: ["}]}", "```"],
-          num_thread: 4
+          num_thread: 4,
+          seed: Math.floor(Math.random() * 1000000) // Random seed - cache'i boz
         }
       })
     });
@@ -239,11 +240,11 @@ class AIStoryService {
                        moodGuide.includes('sakin') ? 'sakin,temkinli' :
                        moodGuide.includes('dikkatli') ? 'dikkatli,sakin' : 'meraklı,normal';
 
-    return `${request.theme} sahne ${request.sceneNumber}. ${moodGuide}
+    return `Sahne ${request.sceneNumber}. ${moodGuide}
 
-YASAK: isCorrect field kullanma! Sadece mood field!
-Kısa hikaye, mood seç (${moodOptions}):
-{"id":${request.sceneNumber},"story":"Ali macera","question":"Ne yap?","choices":[{"id":"a","text":"🟢 Git","mood":"MOOD_SEC"},{"id":"b","text":"🔴 Dur","mood":"MOOD_SEC"}]}`;
+MUTLAKA mood field kullan! isCorrect YASAK!
+Örnek format:
+{"id":${request.sceneNumber},"story":"Kısa hikaye","question":"Soru?","choices":[{"id":"a","text":"🟢 Seçenek","mood":"${moodOptions.split(',')[0]}"},{"id":"b","text":"🔴 Seçenek","mood":"${moodOptions.split(',')[1]}"}]}`;
   }
 
   private parseDynamicSceneResponse(data: any, request: DynamicSceneRequest): StoryScene {
