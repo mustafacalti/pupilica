@@ -40,7 +40,9 @@ class CameraEmotionService {
    */
   async checkPythonServer(): Promise<boolean> {
     try {
-      const response = await fetch(`${this.pythonServerUrl}/health`, {
+      const url = `${this.pythonServerUrl}/health`;
+      console.log('🔍 [DEBUG] Health check URL:', url);
+      const response = await fetch(url, {
         method: 'GET',
         timeout: 2000
       });
