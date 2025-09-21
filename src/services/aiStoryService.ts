@@ -196,7 +196,7 @@ class AIStoryService {
         options: {
           num_ctx: 512, // Küçültüldü - eski context'i unutsun
           num_batch: 256,
-          num_predict: 300, // Daha da artırıldı
+          num_predict: 100, // Hızlı yanıt için azaltıldı
           temperature: 0.4,
           top_p: 0.6,
           top_k: 20,
@@ -240,8 +240,7 @@ class AIStoryService {
                        moodGuide.includes('sakin') ? 'sakin,temkinli' :
                        moodGuide.includes('dikkatli') ? 'dikkatli,sakin' : 'meraklı,normal';
 
-    return `JSON yaz:
-{"id":${request.sceneNumber},"story":"Ali macera","question":"Ne yap?","choices":[{"id":"a","text":"İleri","mood":"cesur"},{"id":"b","text":"Geri","mood":"sakin"}]}`;
+    return `{"id":${request.sceneNumber},"story":"Ali ormanda yürürken ilginç bir şeyle karşılaştı","question":"Ali ne yapmalı?","choices":[{"id":"a","text":"🟢 Araştır","mood":"${moodOptions.split(',')[0]}"},{"id":"b","text":"🔴 Uzaklaş","mood":"${moodOptions.split(',')[1]}"}]}`;
   }
 
   private parseDynamicSceneResponse(data: any, request: DynamicSceneRequest): StoryScene {
@@ -249,21 +248,26 @@ class AIStoryService {
       const responseText = data.response || '';
       console.log('Dynamic scene response text:', responseText);
 
-      // JSON temizleme
+      // JSON temizleme - sadece ilk JSON'ı al
       let cleanedText = responseText;
-      if (cleanedText.includes('```json')) {
-        cleanedText = cleanedText.replace(/```json\s*/, '');
-      }
-      if (cleanedText.includes('```')) {
-        cleanedText = cleanedText.replace(/```\s*$/, '');
-      }
 
-      const jsonMatch = cleanedText.match(/\{[\s\S]*\}/);
+      // ```json ve ``` temizle
+      cleanedText = cleanedText.replace(/```json\s*/g, '');
+      cleanedText = cleanedText.replace(/```[\s\S]*/g, '');
+
+      // İlk JSON objesini bul
+      const jsonMatch = cleanedText.match(/\{[^{}]*\{[^{}]*\}[^{}]*\}/);
       if (!jsonMatch) {
         throw new Error('No JSON found in dynamic scene response');
       }
 
       let jsonText = jsonMatch[0];
+
+      // JSON'dan sonraki açıklamaları temizle
+      const jsonEndIndex = jsonText.lastIndexOf('}');
+      if (jsonEndIndex > 0) {
+        jsonText = jsonText.substring(0, jsonEndIndex + 1);
+      }
 
       // Eksik JSON'ı akıllıca tamamla - artık sadece 2 choice var
       if (jsonText.includes('"choices": [')) {
