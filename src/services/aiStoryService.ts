@@ -136,16 +136,13 @@ class AIStoryService {
 
   // Dinamik sahne oluşturma - her seçimden sonra çağrılır
   async generateNextScene(request: DynamicSceneRequest): Promise<StoryScene> {
-    console.log('🔥 FORCED FALLBACK - NO AI CALL');
-    return {
-      id: request.sceneNumber,
-      story: `Test sahne ${request.sceneNumber}: Ali maceraya devam ediyor.`,
-      question: 'Ali ne yapmalı?',
-      choices: [
-        { id: 'a', text: '🟢 İleri git', mood: 'cesur' },
-        { id: 'b', text: '🔴 Geri dön', mood: 'sakin' }
-      ]
-    };
+    try {
+      const response = await this.callDynamicSceneService(request);
+      return response;
+    } catch (error) {
+      console.warn('Dynamic scene generation failed, using fallback:', error);
+      return this.generateFallbackScene(request);
+    }
   }
 
   private async callAIService(request: AIStoryRequest): Promise<AIStoryResponse> {
