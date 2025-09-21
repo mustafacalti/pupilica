@@ -33,7 +33,7 @@ export const AuthPage: React.FC = () => {
                 <h3 className="font-semibold text-gray-800">AI Destekli İçerik</h3>
               </div>
               <p className="text-gray-600">
-                Yapay zeka ile öğrenciye özel sorular ve aktiviteler üretilir
+                Yapay zeka ile çocuğa özel sorular ve aktiviteler üretilir
               </p>
             </div>
 
@@ -43,7 +43,7 @@ export const AuthPage: React.FC = () => {
                 <h3 className="font-semibold text-gray-800">Duygu Analizi</h3>
               </div>
               <p className="text-gray-600">
-                Gerçek zamanlı duygu tanıma ile öğrencinin durumu takip edilir
+                Gerçek zamanlı duygu tanıma ile çocuğun durumu takip edilir
               </p>
             </div>
 
@@ -53,7 +53,7 @@ export const AuthPage: React.FC = () => {
                 <h3 className="font-semibold text-gray-800">Akıllı Raporlama</h3>
               </div>
               <p className="text-gray-600">
-                Detaylı analitik ve öğrenci gelişim raporları
+                Detaylı analitik ve çocuk gelişim raporları
               </p>
             </div>
           </div>

@@ -103,12 +103,12 @@ export const StudentLoginForm: React.FC<StudentLoginFormProps> = ({
           </button>
         </p>
         <p className="text-gray-600">
-          Öğretmen misiniz?{' '}
+          Veli misiniz?{' '}
           <button
             onClick={onToggleRole}
             className="text-secondary font-medium hover:text-purple-700"
           >
-            Öğretmen girişi
+            Veli girişi
           </button>
         </p>
       </div>

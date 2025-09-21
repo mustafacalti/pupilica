@@ -9,7 +9,7 @@ interface StudentRegisterFormProps {
   onToggleRole: () => void;
 }
 
-interface Teacher {
+interface Parent {
   id: string;
   name: string;
   email: string;
@@ -24,31 +24,31 @@ export const StudentRegisterForm: React.FC<StudentRegisterFormProps> = ({
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [age, setAge] = useState('');
-  const [teacherId, setTeacherId] = useState('');
-  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [parentId, setTeacherId] = useState('');
+  const [parents, setTeachers] = useState<Teacher[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { register } = useAuth();
 
-  // Öğretmenleri yükle
+  // Velileri yükle
   useEffect(() => {
     const loadTeachers = async () => {
       try {
-        const teachersQuery = query(
+        const parentsQuery = query(
           collection(db, 'users'),
-          where('role', '==', 'teacher')
+          where('role', '==', 'parent')
         );
-        const querySnapshot = await getDocs(teachersQuery);
-        const teachersList: Teacher[] = [];
+        const querySnapshot = await getDocs(parentsQuery);
+        const parentsList: Teacher[] = [];
         querySnapshot.forEach((doc) => {
           const data = doc.data();
-          teachersList.push({
+          parentsList.push({
             id: doc.id,
             name: data.name,
             email: data.email
           });
         });
-        setTeachers(teachersList);
+        setTeachers(parentsList);
       } catch (error) {
         console.error('Öğretmenler yüklenirken hata:', error);
       }
@@ -71,7 +71,7 @@ export const StudentRegisterForm: React.FC<StudentRegisterFormProps> = ({
       return;
     }
 
-    if (!teacherId) {
+    if (!parentId) {
       setError('Lütfen bir öğretmen seçin');
       return;
     }
@@ -85,7 +85,7 @@ export const StudentRegisterForm: React.FC<StudentRegisterFormProps> = ({
     setLoading(true);
 
     try {
-      await register(email, password, name, 'student', studentAge, teacherId);
+      await register(email, password, name, 'student', studentAge, parentId);
     } catch (err: any) {
       setError(err.message || 'Kayıt olurken bir hata oluştu');
     }
@@ -154,13 +154,13 @@ export const StudentRegisterForm: React.FC<StudentRegisterFormProps> = ({
           <div className="relative">
             <Users className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
             <select
-              value={teacherId}
+              value={parentId}
               onChange={(e) => setTeacherId(e.target.value)}
               className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent appearance-none bg-white"
               required
             >
               <option value="">Öğretmen seçin...</option>
-              {teachers.map((teacher) => (
+              {parents.map((teacher) => (
                 <option key={teacher.id} value={teacher.id}>
                   {teacher.name} ({teacher.email})
                 </option>
@@ -240,7 +240,7 @@ export const StudentRegisterForm: React.FC<StudentRegisterFormProps> = ({
           </button>
         </p>
         <p className="text-gray-600">
-          Öğretmen misiniz?{' '}
+          Veli misiniz?{' '}
           <button
             onClick={onToggleRole}
             className="text-secondary font-medium hover:text-purple-700"

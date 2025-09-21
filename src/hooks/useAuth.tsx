@@ -14,7 +14,7 @@ interface AuthContextType {
   currentUser: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, name: string, role?: 'teacher' | 'student', age?: number, teacherId?: string) => Promise<void>;
+  register: (email: string, password: string, name: string, role?: 'teacher' | 'student', age?: number, parentId?: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -70,7 +70,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     name: string,
     role: 'teacher' | 'student' = 'teacher',
     age?: number,
-    teacherId?: string
+    parentId?: string
   ) => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const uid = userCredential.user?.uid;
@@ -81,7 +81,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       name,
       role,
       ...(age && { age }),
-      ...(teacherId && { teacherId })
+      ...(parentId && { parentId })
     };
 
     await createUser(uid, userData);
@@ -92,7 +92,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       email,
       role,
       ...(age && { age }),
-      ...(teacherId && { teacherId }),
+      ...(parentId && { parentId }),
       createdAt: new Date()
     });
   };

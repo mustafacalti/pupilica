@@ -395,13 +395,13 @@ export const ColorRecognitionGame: React.FC<ColorRecognitionGameProps> = ({
           target: `rgb(${targetRgb.r}, ${targetRgb.g}, ${targetRgb.b})`,
           targetName: targetColor.name,
           distance: distance.toFixed(1),
-          threshold: 150,
-          match: distance < 150
+          threshold: 130,
+          match: distance < 130
         });
       }
 
-      // Eşik değeri optimize edildi - dengeli tolerans için
-      return distance < 150;
+      // Eşik değeri optimize edildi - orta hassaslık için
+      return distance < 130;
     } catch (error) {
       console.error('❌ Renk algılama hatası:', error);
       return false;
