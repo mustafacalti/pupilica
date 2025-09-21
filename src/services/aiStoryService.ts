@@ -350,7 +350,13 @@ Sadece JSON döndür.`;
       jsonText = jsonText.replace(/,(\s*[}\]])/g, '$1');
       jsonText = jsonText.trim();
 
-      console.log('Parsed dynamic scene JSON:', jsonText);
+      // Extra karakterleri temizle
+      jsonText = jsonText.replace(/\s*}]}\s*$/, '').trim();
+      if (!jsonText.endsWith('}')) {
+        jsonText += '}';
+      }
+
+      console.log('Cleaned JSON for parsing:', jsonText);
 
       const scene = JSON.parse(jsonText);
 
