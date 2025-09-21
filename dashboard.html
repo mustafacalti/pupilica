@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Giriş Sayfası</title>
+    <style>
+        body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f4f4f4; }
+        .login-container { background-color: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); text-align: center; }
+        input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px; }
+        button { width: 100%; padding: 10px; background-color: #007BFF; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
+        .error-message { color: red; margin-top: 10px; }
+    </style>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+        import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBj5D2I-LSzekgRUF6w164G5xawAbqKV58",
+            authDomain: "neurolearn-c8df8.firebaseapp.com",
+            projectId: "neurolearn-c8df8",
+            storageBucket: "neurolearn-c8df8.appspot.com",
+            messagingSenderId: "1060414258301",
+            appId: "1:1060414258301:web:86a11e8b84e7d05de10514",
+            measurementId: "G-ZBX8RCHB1X"
+        };
+        initializeApp(firebaseConfig);
+        const db = getFirestore();
+
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const emailInput = document.getElementById('email').value.trim();
+            const errorMessageDiv = document.getElementById('error-message');
+            errorMessageDiv.textContent = '';
+
+            if (!emailInput) {
+                errorMessageDiv.textContent = 'Lütfen e-posta adresinizi girin.';
+                return;
+            }
+
+            try {
+                const usersCollection = collection(db, "users");
+                const q = query(usersCollection, where("email", "==", emailInput));
+                const querySnapshot = await getDocs(q);
+
+                if (querySnapshot.empty) {
+                    errorMessageDiv.textContent = 'Kullanıcı bulunamadı.';
+                } else {
+                    const userData = querySnapshot.docs[0].data();
+                    const userRole = userData.role.toLowerCase();
+
+                    if (userRole === "teacher") {
+                        window.location.href = `teacher-dashboard.html?email=${emailInput}`;
+                    } else if (userRole === "student") {
+                        window.location.href = `student-dashboard.html?email=${emailInput}`;
+                    } else {
+                        errorMessageDiv.textContent = 'Tanımlanamayan kullanıcı rolü.';
+                    }
+                }
+            } catch (error) {
+                errorMessageDiv.textContent = 'Giriş yapılırken bir hata oluştu. Lütfen tekrar deneyin.';
+                console.error("Giriş hatası:", error);
+            }
+        });
+    </script>
+</head>
+<body>
+    <div class="login-container">
+        <h2>Giriş Yap</h2>
+        <form id="login-form">
+            <input type="email" id="email" placeholder="E-posta" required>
+            <button type="submit">Giriş Yap</button>
+        </form>
+        <div id="error-message" class="error-message"></div>
+    </div>
+</body>
+</html>

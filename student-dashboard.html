@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Öğrenci Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            color: #333;
+            padding: 20px;
+        }
+        .user-card {
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 5px solid #007BFF;
+        }
+        h1, h2 {
+            text-align: center;
+            color: #0056b3;
+        }
+        h3 {
+            color: #007BFF;
+            border-bottom: 2px solid #f4f4f4;
+            padding-bottom: 5px;
+        }
+        p {
+            margin: 5px 0;
+        }
+        .chart-container {
+            width: 100%;
+            max-width: 600px;
+            margin: 20px auto;
+        }
+        .user-chart-container {
+            width: 100%;
+            max-width: 400px;
+            margin: 20px auto;
+        }
+        .no-data-message {
+            text-align: center;
+            color: #888;
+            margin-top: 20px;
+            font-style: italic;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+    <h1>Öğrenci Dashboard</h1>
+    <div id="student-data-container"></div>
+
+    <script type="module">
+        const firebaseConfig = {
+            apiKey: "AIzaSyBj5D2I-LSzekgRUF6w164G5xawAbqKV58",
+            authDomain: "neurolearn-c8df8.firebaseapp.com",
+            projectId: "neurolearn-c8df8",
+            storageBucket: "neurolearn-c8df8.appspot.com",
+            messagingSenderId: "1060414258301",
+            appId: "1:1060414258301:web:86a11e8b84e7d05de10514",
+            measurementId: "G-ZBX8RCHB1X"
+        };
+
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+        import { getFirestore, collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // URL'den öğrencinin e-posta adresini al
+        const urlParams = new URLSearchParams(window.location.search);
+        const studentEmail = urlParams.get('email');
+
+        if (!studentEmail) {
+            document.getElementById('student-data-container').innerHTML = '<p class="no-data-message">Kullanıcı bilgisi bulunamadı.</p>';
+        } else {
+            fetchStudentData(studentEmail);
+        }
+
+        async function fetchStudentData(email) {
+            const studentDataContainer = document.getElementById("student-data-container");
+
+            try {
+                const usersCollection = collection(db, "users");
+                const q = query(usersCollection, where("email", "==", email));
+                const userSnapshot = await getDocs(q);
+
+                if (userSnapshot.empty) {
+                    studentDataContainer.innerHTML = '<p class="no-data-message">Kullanıcı verisi bulunamadı.</p>';
+                    return;
+                }
+                
+                const userDoc = userSnapshot.docs[0];
+                const userData = userDoc.data();
+                const userId = userDoc.id;
+
+                const userDiv = document.createElement("div");
+                userDiv.innerHTML = `
+                    <div class="user-card">
+                        <h2>${userData.name}</h2>
+                        <p><strong>E-mail:</strong> ${userData.email}</p>
+                        <p><strong>Rol:</strong> ${userData.role}</p>
+                        <p><strong>Odaklanma Süresi:</strong> ${userData.focusTime}</p>
+                        <p><strong>Bakma Süresi:</strong> ${userData.gazeDuration}</p>
+                        <p><strong>Başarı Puanı:</strong> ${userData.score}</p>
+                        <h3>Geçmiş Oyun Analizi</h3>
+                        <div id="chart-container-${userId}"></div>
+                    </div>
+                `;
+                studentDataContainer.appendChild(userDiv);
+
+                const sessionsCollection = collection(db, "users", userId, "sessions");
+                const sessionsSnapshot = await getDocs(sessionsCollection);
+
+                const feelingCounts = {};
+                sessionsSnapshot.forEach(sessionDoc => {
+                    const sessionData = sessionDoc.data();
+                    if (sessionData.feelings && Array.isArray(sessionData.feelings)) {
+                        sessionData.feelings.forEach(feeling => {
+                            const normalizedFeeling = String(feeling).toLowerCase().trim();
+                            if (normalizedFeeling) {
+                                feelingCounts[normalizedFeeling] = (feelingCounts[normalizedFeeling] || 0) + 1;
+                            }
+                        });
+                    }
+                });
+
+                const userChartContainer = document.getElementById(`chart-container-${userId}`);
+                const canvasDiv = document.createElement("div");
+                canvasDiv.className = "user-chart-container";
+
+                if (Object.keys(feelingCounts).length > 0) {
+                    canvasDiv.innerHTML = `
+                        <h4>Duygu Analizi (Toplam Oyunda)</h4>
+                        <canvas id="feelingsChart-${userId}"></canvas>
+                    `;
+                    userChartContainer.appendChild(canvasDiv);
+
+                    const ctx = document.getElementById(`feelingsChart-${userId}`);
+                    new Chart(ctx, {
+                        type: 'pie',
+                        data: {
+                            labels: Object.keys(feelingCounts),
+                            datasets: [{
+                                data: Object.values(feelingCounts),
+                                backgroundColor: [
+                                    'rgba(255, 99, 132, 0.7)',
+                                    'rgba(54, 162, 235, 0.7)',
+                                    'rgba(255, 206, 86, 0.7)',
+                                    'rgba(75, 192, 192, 0.7)',
+                                    'rgba(153, 102, 255, 0.7)',
+                                    'rgba(255, 159, 64, 0.7)',
+                                    'rgba(199, 199, 199, 0.7)'
+                                ],
+                                borderColor: '#fff',
+                                borderWidth: 2
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: {
+                                legend: {
+                                    position: 'top',
+                                },
+                                title: {
+                                    display: false
+                                }
+                            }
+                        }
+                    });
+                } else {
+                    canvasDiv.innerHTML = `
+                        <h4>Duygu Analizi (Toplam Oyunda)</h4>
+                        <p class="no-data-message">Henüz oyun verisi veya duygu verisi bulunmuyor.</p>
+                    `;
+                    userChartContainer.appendChild(canvasDiv);
+                }
+
+            } catch (error) {
+                studentDataContainer.innerHTML = `<p class="no-data-message">Veri alınırken bir hata oluştu: ${error.message}</p>`;
+                console.error("Hata:", error);
+            }
+        }
+    </script>
+</body>
+</html>

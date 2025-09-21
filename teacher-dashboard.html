@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Kullanıcı Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            color: #333;
+            padding: 20px;
+        }
+        .user-card {
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 5px solid #007BFF;
+        }
+        h1, h2 {
+            text-align: center;
+            color: #0056b3;
+        }
+        h3 {
+            color: #007BFF;
+            border-bottom: 2px solid #f4f4f4;
+            padding-bottom: 5px;
+        }
+        p {
+            margin: 5px 0;
+        }
+        .chart-container {
+            width: 100%;
+            max-width: 600px;
+            margin: 20px auto;
+        }
+        .user-chart-container {
+            width: 100%;
+            max-width: 400px;
+            margin: 20px auto;
+        }
+        .no-data-message {
+            text-align: center;
+            color: #888;
+            margin-top: 20px;
+            font-style: italic;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+    <h1>Kullanıcı Dashboard</h1>
+    <div id="users-list"></div>
+    <div id="main-chart-container"></div>
+
+    <script type="module">
+        const firebaseConfig = {
+            apiKey: "AIzaSyBj5D2I-LSzekgRUF6w164G5xawAbqKV58",
+            authDomain: "neurolearn-c8df8.firebaseapp.com",
+            projectId: "neurolearn-c8df8",
+            storageBucket: "neurolearn-c8df8.appspot.com",
+            messagingSenderId: "1060414258301",
+            appId: "1:1060414258301:web:86a11e8b84e7d05de10514",
+            measurementId: "G-ZBX8RCHB1X"
+        };
+
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+        import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        async function getUsers() {
+            const usersCollection = collection(db, "users");
+            const usersSnapshot = await getDocs(usersCollection);
+            const usersListDiv = document.getElementById("users-list");
+            const mainChartContainerDiv = document.getElementById("main-chart-container");
+
+            const userNames = [];
+            const userScores = [];
+
+            for (const doc of usersSnapshot.docs) {
+                const userData = doc.data(); 
+                const userDiv = document.createElement("div"); 
+                
+                userDiv.innerHTML = `
+                    <div class="user-card">
+                        <h2>${userData.name}</h2>
+                        <p><strong>E-mail:</strong> ${userData.email}</p>
+                        <p><strong>Rol:</strong> ${userData.role}</p>
+                        <p><strong>Odaklanma Süresi:</strong> ${userData.focusTime}</p>
+                        <p><strong>Bakma Süresi:</strong> ${userData.gazeDuration}</p>
+                        <p><strong>Başarı Puanı:</strong> ${userData.score}</p>
+                        <h3>Geçmiş Oyun Analizi</h3>
+                        <div id="chart-container-${doc.id}"></div>
+                    </div>
+                `;
+                usersListDiv.appendChild(userDiv);
+
+                userNames.push(userData.name);
+                userScores.push(parseInt(userData.score));
+                
+                const sessionsCollection = collection(db, "users", doc.id, "sessions");
+                const sessionsSnapshot = await getDocs(sessionsCollection);
+
+                const feelingCounts = {};
+                sessionsSnapshot.forEach(sessionDoc => {
+                    const sessionData = sessionDoc.data();
+                    if (sessionData.feelings && Array.isArray(sessionData.feelings)) {
+                        sessionData.feelings.forEach(feeling => {
+                            const normalizedFeeling = String(feeling).toLowerCase().trim();
+                            if (normalizedFeeling) {
+                                feelingCounts[normalizedFeeling] = (feelingCounts[normalizedFeeling] || 0) + 1;
+                            }
+                        });
+                    }
+                });
+                
+                const userChartContainer = document.getElementById(`chart-container-${doc.id}`);
+                const canvasDiv = document.createElement("div");
+                canvasDiv.className = "user-chart-container";
+
+                if (Object.keys(feelingCounts).length > 0) {
+                    canvasDiv.innerHTML = `
+                        <h4>Duygu Analizi (Toplam Oyunda)</h4>
+                        <canvas id="feelingsChart-${doc.id}"></canvas>
+                    `;
+                    userChartContainer.appendChild(canvasDiv);
+
+                    const ctx = document.getElementById(`feelingsChart-${doc.id}`);
+                    new Chart(ctx, {
+                        type: 'pie',
+                        data: {
+                            labels: Object.keys(feelingCounts),
+                            datasets: [{
+                                data: Object.values(feelingCounts),
+                                backgroundColor: [
+                                    'rgba(255, 99, 132, 0.7)',
+                                    'rgba(54, 162, 235, 0.7)',
+                                    'rgba(255, 206, 86, 0.7)',
+                                    'rgba(75, 192, 192, 0.7)',
+                                    'rgba(153, 102, 255, 0.7)',
+                                    'rgba(255, 159, 64, 0.7)',
+                                    'rgba(199, 199, 199, 0.7)'
+                                ],
+                                borderColor: '#fff',
+                                borderWidth: 2
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: {
+                                legend: {
+                                    position: 'top',
+                                },
+                                title: {
+                                    display: false
+                                }
+                            }
+                        }
+                    });
+                } else {
+                    canvasDiv.innerHTML = `
+                        <h4>Duygu Analizi (Toplam Oyunda)</h4>
+                        <p class="no-data-message">Henüz oyun verisi veya duygu verisi bulunmuyor.</p>
+                    `;
+                    userChartContainer.appendChild(canvasDiv);
+                }
+            }
+            
+            const mainChartDiv = document.createElement("div");
+            mainChartDiv.className = "chart-container";
+            mainChartDiv.innerHTML = '<canvas id="scoreChart"></canvas>';
+            mainChartContainerDiv.appendChild(mainChartDiv);
+
+            const scoreCtx = document.getElementById('scoreChart');
+            new Chart(scoreCtx, {
+                type: 'bar',
+                data: {
+                    labels: userNames,
+                    datasets: [{
+                        label: 'Başarı Puanı',
+                        data: userScores,
+                        backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Kullanıcıların Genel Başarı Puanları',
+                            font: { size: 18 }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+        getUsers();
+    </script>
+</body>
+</html>
