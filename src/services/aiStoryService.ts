@@ -307,8 +307,8 @@ Sadece JSON döndür.`;
       cleanedText = cleanedText.replace(/```json\s*/g, '');
       cleanedText = cleanedText.replace(/```[\s\S]*/g, '');
 
-      // İlk JSON objesini bul
-      const jsonMatch = cleanedText.match(/\{[^{}]*\{[^{}]*\}[^{}]*\}/);
+      // JSON objesini bul - nested arrays için geliştirildi
+      const jsonMatch = cleanedText.match(/\{[\s\S]*?\}\s*$/);
       if (!jsonMatch) {
         throw new Error('No JSON found in dynamic scene response');
       }
