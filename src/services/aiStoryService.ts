@@ -168,7 +168,8 @@ class AIStoryService {
         stream: false,
         options: {
           num_ctx: 2048,
-          num_batch: 256,
+          num_batch: 512,
+          num_predict: 500, // Daha uzun yanıt için
           temperature: 0.7,
           top_p: 0.9,
           repeat_penalty: 1.1
@@ -200,9 +201,10 @@ class AIStoryService {
         prompt: prompt,
         stream: false,
         options: {
-          num_ctx: 1024,
-          num_batch: 256,
-          temperature: 0.8, // Biraz daha yaratıcı olsun
+          num_ctx: 2048,
+          num_batch: 512,
+          num_predict: 400, // Daha uzun yanıt için
+          temperature: 0.7,
           top_p: 0.9,
           repeat_penalty: 1.1
         }
