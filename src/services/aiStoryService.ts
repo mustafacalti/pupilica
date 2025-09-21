@@ -223,70 +223,40 @@ class AIStoryService {
   }
 
   private constructDynamicPrompt(request: DynamicSceneRequest): string {
-    let prompt = `${request.studentAge} yaşındaki çocuk için ${request.theme} temalı hikaye devamı oluştur.
+    let prompt = `${request.studentAge} yaş çocuk için hikaye sahnesi.
 
-Sahne ${request.sceneNumber}:`;
+Sahne ${request.sceneNumber}: ${request.theme}`;
 
     if (request.previousStory && request.userChoice) {
       prompt += `
-Önceki durum: ${request.previousStory}
-Çocuğun seçimi: ${request.userChoice}
-
-Bu seçime göre hikayeyi devam ettir.`;
-    } else {
-      prompt += `
-Bu hikayenin başlangıç sahnesi. Çocuk için ilginç bir durumla başla.`;
+Önceki: ${request.previousStory.substring(0, 80)}
+Seçim: ${request.userChoice}`;
     }
 
-    // Emotion data integration - like ConflictGame
+    // Emotion data - kısa versiyon
     if (request.emotionData) {
       prompt += `
 
-KAMERA VERİSİ - ÇOCUĞUN DUYGUSAL DURUMU (Son sahne boyunca):
-${request.emotionData}
+DUYGU: ${request.emotionData.substring(0, 200)}
 
-DİKKAT: Bu emotion data'dan çok boyutlu analiz yap:
-
-DUYGUSAL DURUM ANALİZİ:
-- Hangi duygu baskın? Son trend nasıl?
-- Emotion stabilite: Sabit mi değişken mi?
-- Pozitif/negatif emotion dengesi?
-
-ÖĞRENME STİLİ ÇIKARIMI:
-- confused→happy geçişi = Yavaş öğrenen ama başarılı mı?
-- happy→bored pattern = Hızla sıkılan, challenge isteyen mi?
-- surprised spike'ları = Yenilikçi görevleri seven mi?
-
-MOTİVASYON/STRES ANALİZİ:
-- İçsel motivasyon: happy/neutral dominant mı?
-- Frustration tolerance: angry/confused nasıl?
-- Kaygı seviyesi: emotion volatility yüksek mi?
-
-HİKAYE ADAPTASYONU:
-Bu analizlere göre hikaye yolunu belirle:
-- Mutlu/heyecanlı ise: Momentum sürdürecek, biraz daha heyecanlı macera
-- Kafa karışık/yorgun ise: Basit, net hikaye, az seçenek
-- Odaklanmış ise: Bu durumu koruyacak dengeli macera
-- Stresli/sinirli ise: Sakinleştirici, pozitif, başarıya odaklı hikaye yolu
-
-Çocuğun mevcut duygusal durumuna uygun hikaye yolunu seç.`;
+Duygusal duruma göre hikaye yap:
+- Mutlu → heyecanlı macera
+- Sıkılmış → ilginç sürpriz
+- Karışık → basit seçenekler`;
     }
 
     prompt += `
 
-Tek bir sahne JSON'ı döndür:
+JSON döndür:
 {
   "id": ${request.sceneNumber},
-  "story": "Kısa hikaye (1-2 cümle)",
-  "question": "Çocuğa soru?",
+  "story": "Kısa hikaye",
+  "question": "Ne yapmalı?",
   "choices": [
     {"id": "a", "text": "🟢 Seçenek 1", "isCorrect": true},
-    {"id": "b", "text": "🔴 Seçenek 2", "isCorrect": false},
-    {"id": "c", "text": "💎 Çeldirici seçenek", "isCorrect": false, "isDistractor": true}
+    {"id": "b", "text": "🔴 Seçenek 2", "isCorrect": false}
   ]
-}
-
-Sadece JSON döndür.`;
+}`;
 
     return prompt;
   }
