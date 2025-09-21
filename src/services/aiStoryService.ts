@@ -244,6 +244,10 @@ Bu hikayenin başlangıç sahnesi. Çocuk için ilginç bir durumla başla.`;
 
     // Emotion data integration
     if (request.emotionData) {
+      console.log('🎭 [AI SERVICE DEBUG] Emotion data AI prompt\'a ekleniyor:');
+      console.log('🎭 [AI SERVICE DEBUG] Emotion data uzunluğu:', request.emotionData.length);
+      console.log('🎭 [AI SERVICE DEBUG] Emotion data içeriği:', request.emotionData);
+
       prompt += `
 
 KAMERA VERİSİ - ÇOCUĞUN DUYGUSAL DURUMU (Son sahne boyunca):
@@ -274,6 +278,8 @@ Bu analizlere göre hikaye yolunu belirle:
 - Stresli/sinirli ise: Sakinleştirici, pozitif, başarıya odaklı hikaye yolu
 
 Çocuğun mevcut duygusal durumuna uygun hikaye yolunu seç.`;
+    } else {
+      console.log('🎭 [AI SERVICE DEBUG] Emotion data yok - genel hikaye modu kullanılacak');
     }
 
     prompt += `

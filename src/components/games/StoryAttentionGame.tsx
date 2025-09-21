@@ -139,7 +139,12 @@ export const StoryAttentionGame: React.FC<StoryAttentionGameProps> = ({
         emotionData: emotionDataString || undefined
       };
 
-      console.log('🤖 [STORY AI] Emotion data AI\'ya gönderiliyor:', emotionDataString);
+      console.log('🎭 [EMOTION DEBUG] Sahne emotion verisi detayı:');
+      console.log('🎭 [EMOTION DEBUG] Ham sceneEmotionData:', sceneEmotionData);
+      console.log('🎭 [EMOTION DEBUG] Emotion array uzunluğu:', sceneEmotionData?.emotions?.length || 0);
+      console.log('🎭 [EMOTION DEBUG] AI\'ya gönderilen emotion string:');
+      console.log(emotionDataString || 'BOŞ - Emotion data yok');
+      console.log('🎭 [EMOTION DEBUG] Request object:', request);
 
       const newScene = await aiStoryService.generateNextScene(request);
       setCurrentScene(newScene);
