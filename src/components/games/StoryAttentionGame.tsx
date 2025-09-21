@@ -49,6 +49,7 @@ export const StoryAttentionGame: React.FC<StoryAttentionGameProps> = ({
   const [backgroundSymbolVisible, setBackgroundSymbolVisible] = useState(false);
   const [emergencyActive, setEmergencyActive] = useState(false);
   const [showFinalReport, setShowFinalReport] = useState(false);
+  const [pendingEmotionData, setPendingEmotionData] = useState<any>(null);
 
   // Emotion analysis states
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -107,6 +108,8 @@ export const StoryAttentionGame: React.FC<StoryAttentionGameProps> = ({
 
   // Dinamik sahne oluşturma
   const generateNextScene = useCallback(async (sceneEmotionData?: any) => {
+    // Önce pending emotion data'yı kullan, yoksa parametre olarak gelen veriyi kullan
+    const emotionDataToUse = sceneEmotionData || pendingEmotionData;
     console.log('🚨 [DEBUG] generateNextScene called:', { sceneNumber, isLoadingStory, currentSceneId: currentScene?.id });
 
     if (isLoadingStory) {
@@ -124,8 +127,8 @@ export const StoryAttentionGame: React.FC<StoryAttentionGameProps> = ({
 
       // Emotion data'yı AI'ya gönder
       let emotionDataString = '';
-      if (sceneEmotionData && sceneEmotionData.emotions && sceneEmotionData.emotions.length > 0) {
-        emotionDataString = sceneEmotionData.emotions.map((emotion: any, index: number) =>
+      if (emotionDataToUse && emotionDataToUse.emotions && emotionDataToUse.emotions.length > 0) {
+        emotionDataString = emotionDataToUse.emotions.map((emotion: any, index: number) =>
           `${index + 1}. ${emotion.timestamp}: ${emotion.dominantEmotion} (${emotion.confidence?.toFixed(2) || 'N/A'})`
         ).join('\n');
       }
@@ -141,7 +144,9 @@ export const StoryAttentionGame: React.FC<StoryAttentionGameProps> = ({
 
       console.log('🎭 [EMOTION DEBUG] Sahne emotion verisi detayı:');
       console.log('🎭 [EMOTION DEBUG] Ham sceneEmotionData:', sceneEmotionData);
-      console.log('🎭 [EMOTION DEBUG] Emotion array uzunluğu:', sceneEmotionData?.emotions?.length || 0);
+      console.log('🎭 [EMOTION DEBUG] PendingEmotionData:', pendingEmotionData);
+      console.log('🎭 [EMOTION DEBUG] EmotionDataToUse:', emotionDataToUse);
+      console.log('🎭 [EMOTION DEBUG] Emotion array uzunluğu:', emotionDataToUse?.emotions?.length || 0);
       console.log('🎭 [EMOTION DEBUG] AI\'ya gönderilen emotion string:');
       console.log(emotionDataString || 'BOŞ - Emotion data yok');
       console.log('🎭 [EMOTION DEBUG] Request object:', request);
@@ -153,12 +158,17 @@ export const StoryAttentionGame: React.FC<StoryAttentionGameProps> = ({
       console.log('🎭 [STORY GAME] Yeni sahne başladı, emotion session başlatılıyor...');
       emotionAnalysisService.startRoundSession();
 
+      // Emotion data kullanıldı, pending'i temizle
+      if (emotionDataToUse) {
+        setPendingEmotionData(null);
+      }
+
     } catch (error) {
       console.error('Dynamic scene generation failed:', error);
     } finally {
       setIsLoadingStory(false);
     }
-  }, [studentAge, storyTheme, lastChoice, isLoadingStory, currentScene?.story, sceneNumber]);
+  }, [studentAge, storyTheme, lastChoice, isLoadingStory, currentScene?.story, sceneNumber, pendingEmotionData]);
 
   // SceneNumber değiştiğinde yeni sahne oluştur (sadece emotion data olmadan)
   useEffect(() => {
@@ -285,6 +295,9 @@ export const StoryAttentionGame: React.FC<StoryAttentionGameProps> = ({
     const sceneEmotionData = emotionAnalysisService.endRoundSession();
     console.log('🎭 [STORY GAME] Sahne emotion verisi:', sceneEmotionData);
 
+    // Emotion data'yı pending state'e kaydet - useEffect tarafından kullanılacak
+    setPendingEmotionData(sceneEmotionData);
+
     setAttentionData(prev => {
       const newData = {
         ...prev,
@@ -307,7 +320,7 @@ export const StoryAttentionGame: React.FC<StoryAttentionGameProps> = ({
       return newData;
     });
 
-    handleNextScene(sceneEmotionData);
+    handleNextScene();
   }, [currentScene, sceneStartTime, emergencyActive]);
 
   const handleBackgroundSymbolClick = useCallback(() => {
@@ -329,11 +342,11 @@ export const StoryAttentionGame: React.FC<StoryAttentionGameProps> = ({
     handleNextScene();
   }, [sceneStartTime]);
 
-  const handleNextScene = useCallback((sceneEmotionData?: any) => {
+  const handleNextScene = useCallback(() => {
     console.log('Handling next scene. Current scene number:', sceneNumber);
 
-    // Maksimum 10 sahne sonra oyunu bitir
-    if (sceneNumber >= 10) {
+    // Maksimum 5 sahne sonra oyunu bitir
+    if (sceneNumber >= 5) {
       console.log('Game ending - reached max scenes');
       setGameEnded(true);
       setShowFinalReport(true);
@@ -341,6 +354,7 @@ export const StoryAttentionGame: React.FC<StoryAttentionGameProps> = ({
       console.log('Moving to next scene:', sceneNumber + 1);
       setSceneNumber(prev => prev + 1);
       // useEffect sceneNumber değiştiğinde generateNextScene'i çağıracak
+      // pendingEmotionData otomatik olarak kullanılacak
     }
   }, [sceneNumber]);
 
@@ -613,16 +627,16 @@ export const StoryAttentionGame: React.FC<StoryAttentionGameProps> = ({
         <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
           <div className="flex justify-between items-center mb-2">
             <span className="text-sm font-medium text-gray-700">
-              Sahne {sceneNumber} / 10
+              Sahne {sceneNumber} / 5
             </span>
             <span className="text-sm text-gray-500">
-              {Math.round((sceneNumber / 10) * 100)}%
+              {Math.round((sceneNumber / 5) * 100)}%
             </span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-3">
             <div
               className="bg-purple-600 h-3 rounded-full transition-all duration-500"
-              style={{ width: `${(sceneNumber / 10) * 100}%` }}
+              style={{ width: `${(sceneNumber / 5) * 100}%` }}
             />
           </div>
         </div>
