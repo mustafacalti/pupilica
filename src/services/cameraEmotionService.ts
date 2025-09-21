@@ -14,7 +14,7 @@ export interface CameraEmotionData {
 class CameraEmotionService {
   private isActive = false;
   private isAnalysisActive = false; // Frame analizi aktif mi?
-  private pythonServerUrl = 'http://localhost:3001'; // Direkt bağlantı
+  private pythonServerUrl = '/api'; // Proxy üzerinden
 
   constructor() {
     console.log('🔧 [CONSTRUCTOR] CameraEmotionService başlatıldı - v2024-09-21-19:00, URL:', this.pythonServerUrl);

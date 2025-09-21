@@ -6,9 +6,10 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 5173,
+    allowedHosts: ['teamytu.francecentral.cloudapp.azure.com', 'localhost', '172.16.0.4'],
     proxy: {
       '^/api/.*': {
-        target: 'http://localhost:5000',
+        target: 'http://localhost:5001',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, '')
       }
