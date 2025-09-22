@@ -52,11 +52,11 @@ DEHB'li (ADHD) öğrenciler için yapay zeka destekli eğitim platformu. Bu plat
 
    Oyun, kullanıcının performansını değerlendirmek için çeşitli veriler toplar:
 
-* **Toplam Puan**: Oyun sonunda elde edilen nihai skor.
-         * **Doğruluk Oranı**: Doğru cevapların toplam denemeye oranı.
-         * **En İyi Seri**: Ardı ardına verilen en yüksek doğru cevap sayısı.
-         * **Ortalama Reaksiyon Süresi**: Oyuncunun bir komutun ardından tepki verme süresinin ortalaması.
-         * **Duygu Analizi**: Oyun sırasında kameradan toplanan duygusal veriler, oyuncunun ne kadar odaklandığını ve oyuna olan tepkilerini anlamak için kullanılır.
+  * **Toplam Puan**: Oyun sonunda elde edilen nihai skor.
+  * **Doğruluk Oranı**: Doğru cevapların toplam denemeye oranı.
+  * **En İyi Seri**: Ardı ardına verilen en yüksek doğru cevap sayısı.
+  * **Ortalama Reaksiyon Süresi**: Oyuncunun bir komutun ardından tepki verme süresinin ortalaması.
+  * **Duygu Analizi**: Oyun sırasında kameradan toplanan duygusal veriler, oyuncunun ne kadar odaklandığını ve oyuna olan tepkilerini anlamak için kullanılır.
 
    Bu oyun, sadece reaksiyon hızını değil, aynı zamanda bilişsel esnekliği ve dikkat becerilerini de ölçmeyi ve geliştirmeyi amaçlamaktadır.
 
