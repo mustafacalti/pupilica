@@ -102,7 +102,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ students
 
   // Success Rate by Game Type
   const getSuccessRateByGame = () => {
-    const gameTypes = ['click', 'count', 'dynamic', 'conflict', 'colorRecognition'];
+    const gameTypes = ['count', 'dynamic', 'conflict', 'colorRecognition'];
     return gameTypes.map(type => {
       const typeActivities = filteredActivities.filter(act => act.gameType === type);
       const avgScore = typeActivities.length > 0

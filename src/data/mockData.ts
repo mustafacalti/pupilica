@@ -107,7 +107,7 @@ export const mockActivities: Activity[] = [
   {
     id: 'mustafa-act4',
     studentId: 'mustafa-child-2', // Ayşe Deneme
-    gameType: 'click',
+    gameType: 'count',
     score: 82,
     duration: 390,
     emotions: [
@@ -122,7 +122,7 @@ export const mockActivities: Activity[] = [
   {
     id: 'act1',
     studentId: '1',
-    gameType: 'click',
+    gameType: 'dynamic',
     score: 85,
     duration: 450,
     emotions: [
@@ -197,7 +197,7 @@ export const mockActivities: Activity[] = [
   {
     id: 'act5',
     studentId: '3',
-    gameType: 'click',
+    gameType: 'conflict',
     score: 94,
     duration: 350,
     emotions: [
