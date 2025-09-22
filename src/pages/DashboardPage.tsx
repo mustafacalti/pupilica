@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Header } from '../components/dashboard/Header';
 import { StatsCards } from '../components/dashboard/StatsCards';
 import { ParentStudentList } from '../components/dashboard/ParentStudentList';
@@ -14,6 +14,7 @@ import { mockStudents, mockAIInsights, calculateGameStats } from '../data/mockDa
 export const DashboardPage: React.FC = () => {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [students, setStudents] = useState<Student[]>([]);
   const [insights, setInsights] = useState<AIInsight[]>([]);
   const [loading, setLoading] = useState(true);
@@ -82,6 +83,16 @@ export const DashboardPage: React.FC = () => {
       loadData();
     }
   }, [currentUser, loadData]);
+
+  // URL parametresini kontrol et ve calendar modal'ını aç
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search);
+    if (urlParams.get('calendar') === 'true') {
+      setShowCalendar(true);
+      // URL'den parametreyi temizle
+      navigate('/dashboard', { replace: true });
+    }
+  }, [location.search, navigate]);
 
   const handleViewStudent = (student: Student) => {
     console.log('View student:', student);

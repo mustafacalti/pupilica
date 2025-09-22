@@ -61,8 +61,13 @@ const Sidebar: React.FC = () => {
     }
   ];
 
-  const handleNavigation = (path: string) => {
-    navigate(path);
+  const handleNavigation = (path: string, itemId: string) => {
+    if (itemId === 'calendar') {
+      // Calendar için dashboard'a yönlendir ve modal'ı aç
+      navigate('/dashboard?calendar=true');
+    } else {
+      navigate(path);
+    }
   };
 
   return (
@@ -97,7 +102,7 @@ const Sidebar: React.FC = () => {
           return (
             <button
               key={item.id}
-              onClick={() => handleNavigation(item.path)}
+              onClick={() => handleNavigation(item.path, item.id)}
               className={`w-full flex items-center py-3 mx-2 rounded-lg transition-all duration-200 group ${
                 isActive
                   ? 'bg-blue-50 text-blue-600'

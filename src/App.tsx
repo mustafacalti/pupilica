@@ -5,7 +5,6 @@ import { AuthPage } from './pages/AuthPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { StudentDashboardPage } from './pages/StudentDashboardPage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
-import { CalendarPage } from './pages/CalendarPage';
 import { StudentsPage } from './pages/StudentsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import Sidebar from './components/navigation/Sidebar';
@@ -135,14 +134,6 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={['parent']}>
                   <AnalyticsPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/calendar"
-              element={
-                <ProtectedRoute allowedRoles={['parent']}>
-                  <CalendarPage />
                 </ProtectedRoute>
               }
             />
