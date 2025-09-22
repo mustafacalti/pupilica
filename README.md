@@ -107,7 +107,7 @@ Oyun, kullanıcının performansını ölçmek için çeşitli metrikler toplar 
 
 ### 🤖 AI Özellikleri
 
-#### İçerik Üretimi (Hugging Face API)
+#### İçerik Üretimi (Ollama Üzerinden Çeşitli Modeller)
 - Otomatik soru üretimi
 - Kişiselleştirilmiş içerik
 - Yaş ve zorluk seviyesine göre uyarlama
@@ -164,8 +164,6 @@ REACT_APP_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
 REACT_APP_FIREBASE_APP_ID=your_app_id
 REACT_APP_FIREBASE_MEASUREMENT_ID=your_measurement_id
 
-# Hugging Face API
-REACT_APP_HUGGINGFACE_API_KEY=your_huggingface_api_key_here
 ```
 
 ### 3. Uygulamayı Başlatın
