@@ -7,9 +7,18 @@ interface AnalyticsDashboardProps {
 }
 
 export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ students }) => {
-  const [selectedPeriod, setSelectedPeriod] = useState<'week' | 'month' | 'all'>('week');
+  const [globalSelectedPeriod, setGlobalSelectedPeriod] = useState<'week' | 'month' | 'all'>('week');
   const [selectedStudent, setSelectedStudent] = useState<string>('all');
   const [openSections, setOpenSections] = useState<Set<string>>(new Set(['filters']));
+
+  // Her section için ayrı period state'leri
+  const [sectionPeriods, setSectionPeriods] = useState<Record<string, 'week' | 'month' | 'all'>>({
+    performance: 'week',
+    gameTypes: 'week',
+    emotions: 'week',
+    success: 'week',
+    attention: 'week'
+  });
 
   const toggleSection = (sectionId: string) => {
     const newOpenSections = new Set(openSections);
@@ -21,19 +30,21 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ students
     setOpenSections(newOpenSections);
   };
 
-  // Filtered data based on selection
-  const getFilteredActivities = () => {
+  // Filtered data based on selection - section'a özel
+  const getFilteredActivities = (sectionId?: string) => {
     let activities = mockActivities;
 
     if (selectedStudent !== 'all') {
       activities = activities.filter(act => act.studentId === selectedStudent);
     }
 
+    // Period Filter - section'a özel
+    const period = sectionId ? sectionPeriods[sectionId] : globalSelectedPeriod;
     const now = new Date();
-    if (selectedPeriod === 'week') {
+    if (period === 'week') {
       const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
       activities = activities.filter(act => act.createdAt >= weekAgo);
-    } else if (selectedPeriod === 'month') {
+    } else if (period === 'month') {
       const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
       activities = activities.filter(act => act.createdAt >= monthAgo);
     }
@@ -41,7 +52,32 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ students
     return activities;
   };
 
-  const filteredActivities = getFilteredActivities();
+  // Section period update fonksiyonu
+  const updateSectionPeriod = (sectionId: string, period: 'week' | 'month' | 'all') => {
+    setSectionPeriods(prev => ({
+      ...prev,
+      [sectionId]: period
+    }));
+  };
+
+  // Period selector bileşeni
+  const PeriodSelector = ({ sectionId }: { sectionId: string }) => (
+    <div className="flex bg-gray-100 rounded-lg p-1">
+      {(['week', 'month', 'all'] as const).map(period => (
+        <button
+          key={period}
+          onClick={() => updateSectionPeriod(sectionId, period)}
+          className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+            sectionPeriods[sectionId] === period
+              ? 'bg-primary text-white'
+              : 'text-gray-600 hover:text-gray-800'
+          }`}
+        >
+          {{ week: 'Son 7 Gün', month: 'Son 30 Gün', all: 'Tüm Zamanlar' }[period]}
+        </button>
+      ))}
+    </div>
+  );
 
   // Performance Trend Data (30 günlük)
   const getPerformanceTrend = () => {
@@ -58,8 +94,9 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ students
   };
 
   // Game Type Distribution
-  const getGameTypeDistribution = () => {
-    const gameTypes = filteredActivities.reduce((acc, activity) => {
+  const getGameTypeDistribution = (sectionId: string) => {
+    const activities = getFilteredActivities(sectionId);
+    const gameTypes = activities.reduce((acc, activity) => {
       acc[activity.gameType] = (acc[activity.gameType] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
@@ -74,7 +111,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ students
     return Object.entries(gameTypes).map(([type, count]) => ({
       name: gameTypeLabels[type] || type,
       value: count,
-      percentage: Math.round((count / filteredActivities.length) * 100)
+      percentage: Math.round((count / activities.length) * 100)
     }));
   };
 
@@ -101,10 +138,11 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ students
   };
 
   // Success Rate by Game Type
-  const getSuccessRateByGame = () => {
+  const getSuccessRateByGame = (sectionId: string) => {
+    const activities = getFilteredActivities(sectionId);
     const gameTypes = ['count', 'dynamic', 'conflict', 'colorRecognition'];
     return gameTypes.map(type => {
-      const typeActivities = filteredActivities.filter(act => act.gameType === type);
+      const typeActivities = activities.filter(act => act.gameType === type);
       const avgScore = typeActivities.length > 0
         ? typeActivities.reduce((sum, act) => sum + act.score, 0) / typeActivities.length
         : 0;
@@ -124,10 +162,8 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ students
   };
 
   const performanceTrend = getPerformanceTrend();
-  const gameDistribution = getGameTypeDistribution();
   const emotionTrend = getEmotionTrend();
   const dailyPattern = getDailyPattern();
-  const successRates = getSuccessRateByGame();
 
   const emotionColors: Record<string, string> = {
     'happy': '#10B981',
@@ -144,6 +180,10 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ students
     'confused': '😕 Şaşkın',
     'sad': '😢 Üzgün'
   };
+
+  // Get filtered activities and other derived data
+  const filteredActivities = getFilteredActivities();
+  const gameDistribution = getGameTypeDistribution('gameTypes');
 
   const AccordionSection = ({ id, title, icon, children, defaultOpen = false }: {
     id: string;
@@ -244,9 +284,9 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ students
               {(['week', 'month', 'all'] as const).map(period => (
                 <button
                   key={period}
-                  onClick={() => setSelectedPeriod(period)}
+                  onClick={() => setGlobalSelectedPeriod(period)}
                   className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                    selectedPeriod === period
+                    globalSelectedPeriod === period
                       ? 'bg-primary text-white'
                       : 'text-gray-600 hover:text-gray-800'
                   }`}
@@ -289,27 +329,33 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ students
         title="Oyun Türü Dağılımı"
         icon={<PieChart className="h-5 w-5 text-purple-500" />}
       >
-        <div className="space-y-3">
-          {gameDistribution.map((game, index) => {
-            const colors = ['bg-blue-500', 'bg-green-500', 'bg-yellow-500', 'bg-purple-500'];
-            return (
-              <div key={game.name} className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className={`w-4 h-4 rounded ${colors[index % colors.length]}`}></div>
-                  <span className="text-sm font-medium">{game.name}</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-24 bg-gray-200 rounded-full h-2">
-                    <div
-                      className={`h-2 rounded-full ${colors[index % colors.length].replace('bg-', 'bg-')}`}
-                      style={{ width: `${game.percentage}%` }}
-                    ></div>
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <h4 className="text-sm font-medium text-gray-700">Oyun Türü Dağılımı</h4>
+            <PeriodSelector sectionId="gameTypes" />
+          </div>
+          <div className="space-y-3">
+            {getGameTypeDistribution('gameTypes').map((game, index) => {
+              const colors = ['bg-blue-500', 'bg-green-500', 'bg-yellow-500', 'bg-purple-500'];
+              return (
+                <div key={game.name} className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className={`w-4 h-4 rounded ${colors[index % colors.length]}`}></div>
+                    <span className="text-sm font-medium">{game.name}</span>
                   </div>
-                  <span className="text-sm text-gray-600 w-8">{game.percentage}%</span>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-24 bg-gray-200 rounded-full h-2">
+                      <div
+                        className={`h-2 rounded-full ${colors[index % colors.length]}`}
+                        style={{ width: `${game.percentage}%` }}
+                      ></div>
+                    </div>
+                    <span className="text-sm text-gray-600 w-8">{game.percentage}%</span>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       </AccordionSection>
 
@@ -320,7 +366,11 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ students
         icon={<Target className="h-5 w-5 text-orange-500" />}
       >
         <div className="space-y-4">
-          {successRates.map((game, index) => (
+          <div className="flex justify-between items-center">
+            <h4 className="text-sm font-medium text-gray-700">Başarı Oranları</h4>
+            <PeriodSelector sectionId="success" />
+          </div>
+          {getSuccessRateByGame('success').map((game, index) => (
             <div key={game.type} className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="font-medium">{game.name}</span>
@@ -347,6 +397,10 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ students
         icon={<Activity className="h-5 w-5 text-indigo-500" />}
       >
         <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <h4 className="text-sm font-medium text-gray-700">Dikkat Süresi Dağılımı</h4>
+            <PeriodSelector sectionId="attention" />
+          </div>
           {Array.from({ length: 7 }, (_, i) => {
             const day = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'][i];
             const attention = Math.floor(Math.random() * 15) + 5; // 5-20 dakika
@@ -386,6 +440,10 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ students
         icon={<Activity className="h-5 w-5 text-pink-500" />}
       >
         <div className="space-y-3">
+          <div className="flex justify-between items-center">
+            <h4 className="text-sm font-medium text-gray-700">Duygu Durumu Analizi</h4>
+            <PeriodSelector sectionId="emotions" />
+          </div>
           {[
             { emotion: '😊 Mutlu', score: 85, color: 'bg-green-500' },
             { emotion: '🎯 Odaklanmış', score: 92, color: 'bg-blue-500' },
@@ -509,7 +567,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ students
           <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-4 text-white">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-2xl font-bold">{filteredActivities.length}</div>
+                <div className="text-2xl font-bold">{getFilteredActivities().length}</div>
                 <div className="text-blue-100 text-sm">Toplam Oyun</div>
               </div>
               <Award className="h-8 w-8 text-blue-200" />
