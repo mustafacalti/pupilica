@@ -36,10 +36,18 @@ DEHB'li (ADHD) öğrenciler için yapay zeka destekli eğitim platformu. Bu plat
     * **Odaklanma Metrikleri:** Bu duygusal verilere dayanarak, oyuncunun odaklanma süresi (`focusTime`) ve ekrana bakma süresi (`gazeDuration`) gibi metrikler hesaplanır.
     * **Hızlı Tıklama Analizi:** Özellikle 3 saniyenin altındaki hızlı tıklamalar (`fastClicks`) analiz edilerek, hızlı tıklama oranı ve doğruluğu gibi daha derin metrikler elde edilir.
 
-#### 3. AI Renk Tanıma
-- Renk kartlarını eşleştirme
-- Drag & drop interaction
-- Progress feedback
+#### 3. Dikkat Sayma Oyunu
+
+* **Amaç:** Kullanıcının hızlı tepki verme ve odaklanma becerisini geliştirmeyi amaçlar.
+* **Oyun Mekaniği:** Ekranda beliren duygu isimleri karşısında, 60 saniye içinde doğru zamanda boşluk tuşuna basmaya dayanır.
+* **Özellikler:** Yapay zeka ile otomatik soru üretimi, 4 seçenekli çoktan seçmeli, 45 saniyelik bir zamanlayıcı, sesli geri bildirim ve emoji/resim kartları içerir.
+  
+* **Veri Toplama:**
+  
+* **Toplanan Veriler:** Oyun süresince puan, duygular (mutlu, üzgün, sıkılmış vb.), odaklanma süresi (`focusTime`), ekrana bakma süresi (`gazeDuration`) ve başarı puanı toplanır.
+* **Kullanıcı Verileri:** Kullanıcılar için ad, e-posta, rol (öğrenci/öğretmen) ve doğum tarihi gibi bilgiler saklanır.
+* **Veritabanı:** Oyun oturumları ve kullanıcı bilgileri bir veritabanında (Google Cloud'da olduğu görülüyor) kaydedilir.
+* **Analiz:** Kullanıcı paneli, genel başarı puanlarını (grafik olarak) ve oyun sırasında hissedilen duyguların analizini (pasta grafiği olarak) gösterir.
 
 ### 🤖 AI Özellikleri
 
