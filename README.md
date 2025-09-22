@@ -112,15 +112,70 @@ Oyun, kullanıcının performansını ölçmek için çeşitli metrikler toplar 
 - Local Ortam (Colab): alibayram/turkish-gemma-9b-v0.1:latest - 9.2 milyar parametreli Türkçe optimize edilmiş Gemma model
 - Azure Ortamı: gemma2:2b - 2 milyar parametreli hafif model
 - Otomatik soru üretimi
-- Kişiselleştirilmiş içerik
-- Model Seçimi Stratejisi
-   -Neden 9B Model (Colab)?
-   Colab Pro'nun sunduğu T4/V100 GPU desteği sayesinde 9 milyar parametreli alibayram/turkish-gemma-9b-v0.1 modelini kullanabiliyoruz. Bu model özellikle Türkçe dil işleme için fine-tune edilmiş olup, ADHD
-  çocukları için uygun sorular ve hikayeler üretmede superior performans sergiliyor. Local ortamda bu modelle beraber uygulama çalıştırılıyor.
+- Kişiselleştirilmiş içerik# 🚀 Model Seçimi Stratejisi  
 
-  -Neden 2B Model (Azure)?
-  Azure'un CPU-only konfigürasyonu nedeniyle production ortamında gemma2:2b kullanılıyor. GPU yokluğu büyük modellerin inference süresini artırdığından, real-time oyun deneyimi için optimize edilmiş küçük
-  model tercih ediliyor. 2B model hala yeterli kalitede Türkçe content üretiyor ancak 9B modelin zenginliğine sahip değil.
+Uygulamada **iki farklı ortam** ve **iki farklı model** stratejik olarak kullanılmaktadır.  
+Amaç: **Geliştirme sırasında maksimum doğruluk**, **production ortamında maksimum hız ve düşük maliyet!** ⚡  
+
+---
+
+## 🎯 1. Neden **9B Model (Colab)**?  
+
+- **Model:** `alibayram/turkish-gemma-9b-v0.1`  
+- **Altyapı:** Google Colab Pro (GPU: T4 / V100)  
+- **Kullanım Amacı:** Geliştirme & Test aşaması  
+
+💡 **Avantajları:**
+- **T4/V100 GPU** gücü sayesinde **9 milyar parametreli** dev bir model rahatlıkla çalıştırılabilir.  
+- Türkçe dil işleme için **özel olarak fine-tune edilmiş** bir modeldir.  
+- **ADHD (Dikkat Eksikliği ve Hiperaktivite Bozukluğu)** olan çocuklar için uygun **sorular ve hikayeler** üretmede **üstün performans** gösterir.  
+- Eğitim ve geliştirme sürecinde **zengin içerik üretimi** sağlar.  
+
+🔥 **Özetle:**  
+Colab, büyük model için mükemmel bir test ortamıdır.  
+Burada **maksimum doğruluk ve içerik kalitesi** hedeflenir! ✅
+
+---
+
+## 🌐 2. Neden **2B Model (Azure)**?  
+
+- **Model:** `gemma2:2b`  
+- **Altyapı:** Azure Cloud (CPU-only)  
+- **Kullanım Amacı:** Production ortamında gerçek zamanlı kullanım  
+
+💡 **Azure CPU ortamının kısıtları:**
+- GPU bulunmadığı için büyük modellerin **inference süresi çok uzun** ⏳  
+- Gerçek zamanlı oyun deneyiminde **gecikmeye yol açar** ❌  
+- GPU’lu bir sunucu kiralamak ise **yüksek maliyetlidir** 💰  
+
+⚡ **Çözüm: `gemma2:2b`**
+- Daha **hafif ve optimize edilmiş** bir model.  
+- **Gerçek zamanlı kullanım** için ideal hız sağlar.  
+- Yeterli **Türkçe içerik üretimi** yapabilir.  
+- **Maliyet ve performans dengesi** kurar.  
+
+🌍 **Production ortamı:**  
+[https://teamytu.francecentral.cloudapp.azure.com](https://teamytu.francecentral.cloudapp.azure.com)
+
+---
+
+## 📝 Genel Özet  
+
+| Ortam       | Model                        | Altyapı       | Amaç                               |
+|-------------|------------------------------|---------------|------------------------------------|
+| **Colab**   | `alibayram/turkish-gemma-9b-v0.1` | GPU (T4/V100) | Geliştirme / Test (Yüksek doğruluk) |
+| **Azure**   | `gemma2:2b`                  | CPU-only      | Production (Gerçek zamanlı hız)     |
+
+💡 **Stratejinin Mantığı:**  
+- **Colab → Büyük model**, en iyi içerik ve doğruluk ✅  
+- **Azure → Küçük model**, hızlı ve düşük maliyetli ✅  
+
+Bu sayede **geliştirme aşamasında kalite**, **canlı ortamda performans** ve **maliyet kontrolü** aynı anda sağlanır! 🚀  
+
+---
+
+> **Not:** Gelecekte GPU destekli bir production sunucusuna geçiş yapıldığında, 9B model de canlı ortamda kullanılabilecek.  
+> Bu, **içerik kalitesini daha da yükseltecek** ve kullanıcı deneyimini geliştirecek! 💪
 - Yaş ve zorluk seviyesine göre uyarlama
 
 #### Duygu Analizi (TensorFlow.js)
