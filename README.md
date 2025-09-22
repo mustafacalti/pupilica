@@ -49,6 +49,25 @@ DEHB'li (ADHD) öğrenciler için yapay zeka destekli eğitim platformu. Bu plat
 * **Veritabanı:** Oyun oturumları ve kullanıcı bilgileri bir veritabanında (Google Cloud'da olduğu görülüyor) kaydedilir.
 * **Analiz:** Kullanıcı paneli, genel başarı puanlarını (grafik olarak) ve oyun sırasında hissedilen duyguların analizini (pasta grafiği olarak) gösterir.
 
+* ### Renk Tanıma Oyunu
+* **Oyun Amacı**: Kullanıcıların hızlı tepki verme ve odaklanma yeteneklerini geliştirmeyi amaçlar.
+* **Oyun Mekaniği**: Ekranda rastgele beliren duygu isimleri karşısında, 60 saniye içinde doğru zamanda boşluk tuşuna basmaya dayanır.
+* **Teknik Yapı**: Oyun, AI ile otomatik soru üretimi yapar.
+    * 4 seçenekli çoktan seçmeli formatı vardır.
+    * 45 saniyelik bir zamanlayıcı kullanır.
+    * Sesli geri bildirim ve emoji/resim kartları içerir.
+
+    * ** Veri Toplama ve Analiz **
+
+* **Toplanan Veriler**: Oyun sırasında kullanıcının performansına ve davranışına ilişkin veriler toplanır.
+    * **Puan**: Doğru tepki sayısını gösteren nihai skor.
+    * **Duygular**: Oyun boyunca ekranda gösterilen duygu isimleri listesi, duygu analizi için kullanılır.
+    * **Metrikler**: Kullanıcının ne kadar odaklandığını (`focusTime`) ve ekrana ne kadar süre baktığını (`gazeDuration`) gösterir.
+    * **Başarı Puanı**: Kullanıcının genel performansını yansıtan ve ana dashboard'da gösterilen genel skorudur.
+* **Kullanıcı Dashboard'u**: Kullanıcılar için toplanan verileri gösteren bir arayüzdür.
+    * **Genel Başarı Puanı**: Kullanıcıların genel başarı puanları bir çubuk grafikte gösterilir.
+    * **Duygu Analizi**: Oyun sırasındaki duygular, bir pasta grafiği ile analiz edilir.
+
 ### 🤖 AI Özellikleri
 
 #### İçerik Üretimi (Hugging Face API)
