@@ -10,9 +10,14 @@ import { StudentsPage } from './pages/StudentsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import Sidebar from './components/navigation/Sidebar';
 
-const ProtectedRoute: React.FC<{ children: React.ReactNode; showSidebar?: boolean }> = ({
+const ProtectedRoute: React.FC<{
+  children: React.ReactNode;
+  showSidebar?: boolean;
+  allowedRoles?: ('parent' | 'student')[];
+}> = ({
   children,
-  showSidebar = true
+  showSidebar = true,
+  allowedRoles = ['parent', 'student']
 }) => {
   const { currentUser, loading } = useAuth();
 
@@ -29,6 +34,16 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; showSidebar?: boolea
 
   if (!currentUser) {
     return <Navigate to="/auth" replace />;
+  }
+
+  // Role-based access control
+  if (!allowedRoles.includes(currentUser.role)) {
+    // Redirect to appropriate dashboard based on role
+    if (currentUser.role === 'student') {
+      return <Navigate to="/dashboard/student" replace />;
+    } else {
+      return <Navigate to="/dashboard" replace />;
+    }
   }
 
   return (
@@ -55,9 +70,43 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     );
   }
 
-  return currentUser ? <Navigate to="/dashboard" replace /> : <>{children}</>;
+  if (currentUser) {
+    // Role-based redirection
+    if (currentUser.role === 'student') {
+      return <Navigate to="/dashboard/student" replace />;
+    } else {
+      return <Navigate to="/dashboard" replace />;
+    }
+  }
+
+  return <>{children}</>;
 };
 
+const RoleBasedRedirect: React.FC = () => {
+  const { currentUser, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Yükleniyor...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!currentUser) {
+    return <Navigate to="/auth" replace />;
+  }
+
+  // Redirect based on user role
+  if (currentUser.role === 'student') {
+    return <Navigate to="/dashboard/student" replace />;
+  } else {
+    return <Navigate to="/dashboard" replace />;
+  }
+};
 
 function App() {
   return (
@@ -76,7 +125,7 @@ function App() {
             <Route
               path="/dashboard"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute allowedRoles={['parent']}>
                   <DashboardPage />
                 </ProtectedRoute>
               }
@@ -84,7 +133,7 @@ function App() {
             <Route
               path="/analytics"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute allowedRoles={['parent']}>
                   <AnalyticsPage />
                 </ProtectedRoute>
               }
@@ -92,7 +141,7 @@ function App() {
             <Route
               path="/calendar"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute allowedRoles={['parent']}>
                   <CalendarPage />
                 </ProtectedRoute>
               }
@@ -100,7 +149,7 @@ function App() {
             <Route
               path="/students"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute allowedRoles={['parent']}>
                   <StudentsPage />
                 </ProtectedRoute>
               }
@@ -108,7 +157,7 @@ function App() {
             <Route
               path="/settings"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute allowedRoles={['parent']}>
                   <SettingsPage />
                 </ProtectedRoute>
               }
@@ -116,12 +165,12 @@ function App() {
             <Route
               path="/dashboard/student"
               element={
-                <ProtectedRoute showSidebar={false}>
+                <ProtectedRoute showSidebar={false} allowedRoles={['student']}>
                   <StudentDashboardPage />
                 </ProtectedRoute>
               }
             />
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/" element={<RoleBasedRedirect />} />
           </Routes>
         </div>
       </Router>

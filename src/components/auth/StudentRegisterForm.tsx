@@ -24,22 +24,22 @@ export const StudentRegisterForm: React.FC<StudentRegisterFormProps> = ({
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [age, setAge] = useState('');
-  const [parentId, setTeacherId] = useState('');
-  const [parents, setTeachers] = useState<Teacher[]>([]);
+  const [parentId, setParentId] = useState('');
+  const [parents, setParents] = useState<Parent[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { register } = useAuth();
 
   // Velileri yükle
   useEffect(() => {
-    const loadTeachers = async () => {
+    const loadParents = async () => {
       try {
         const parentsQuery = query(
           collection(db, 'users'),
           where('role', '==', 'parent')
         );
         const querySnapshot = await getDocs(parentsQuery);
-        const parentsList: Teacher[] = [];
+        const parentsList: Parent[] = [];
         querySnapshot.forEach((doc) => {
           const data = doc.data();
           parentsList.push({
@@ -48,13 +48,13 @@ export const StudentRegisterForm: React.FC<StudentRegisterFormProps> = ({
             email: data.email
           });
         });
-        setTeachers(parentsList);
+        setParents(parentsList);
       } catch (error) {
-        console.error('Öğretmenler yüklenirken hata:', error);
+        console.error('Veliler yüklenirken hata:', error);
       }
     };
 
-    loadTeachers();
+    loadParents();
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -72,7 +72,7 @@ export const StudentRegisterForm: React.FC<StudentRegisterFormProps> = ({
     }
 
     if (!parentId) {
-      setError('Lütfen bir öğretmen seçin');
+      setError('Lütfen bir veli seçin');
       return;
     }
 
@@ -155,14 +155,14 @@ export const StudentRegisterForm: React.FC<StudentRegisterFormProps> = ({
             <Users className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
             <select
               value={parentId}
-              onChange={(e) => setTeacherId(e.target.value)}
+              onChange={(e) => setParentId(e.target.value)}
               className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent appearance-none bg-white"
               required
             >
-              <option value="">Öğretmen seçin...</option>
-              {parents.map((teacher) => (
-                <option key={teacher.id} value={teacher.id}>
-                  {teacher.name} ({teacher.email})
+              <option value="">Veli seçin...</option>
+              {parents.map((parent) => (
+                <option key={parent.id} value={parent.id}>
+                  {parent.name} ({parent.email})
                 </option>
               ))}
             </select>

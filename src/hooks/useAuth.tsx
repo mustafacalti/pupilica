@@ -14,7 +14,7 @@ interface AuthContextType {
   currentUser: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, name: string, role?: 'teacher' | 'student', age?: number, parentId?: string) => Promise<void>;
+  register: (email: string, password: string, name: string, role?: 'parent' | 'student', age?: number, parentId?: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -47,7 +47,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             id: firebaseUser.uid,
             name: firebaseUser.displayName || '',
             email: firebaseUser.email || '',
-            role: 'teacher',
+            role: 'parent',
             createdAt: new Date()
           });
         }
@@ -68,7 +68,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     email: string,
     password: string,
     name: string,
-    role: 'teacher' | 'student' = 'teacher',
+    role: 'parent' | 'student' = 'parent',
     age?: number,
     parentId?: string
   ) => {
