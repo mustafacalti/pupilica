@@ -65,6 +65,25 @@ export const GameCalendar: React.FC<GameCalendarProps> = ({ isOpen, onClose, stu
     }
   }, [externalSessions]);
 
+  // ESC tuşuyla kapama
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'hidden'; // Background scroll'u engelle
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const gameTypes = {
@@ -182,14 +201,14 @@ export const GameCalendar: React.FC<GameCalendarProps> = ({ isOpen, onClose, stu
 
   return (
     <div
-      className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
       onClick={handleBackdropClick}
     >
-      <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl"
+      <div className="bg-white rounded-xl max-w-7xl w-full max-h-[95vh] overflow-y-auto shadow-2xl"
            onClick={(e) => e.stopPropagation()}>
 
         {/* Header */}
-        <div className="bg-gradient-to-r from-primary to-secondary text-white p-6 rounded-t-lg">
+        <div className="bg-gradient-to-r from-primary to-secondary text-white p-8 rounded-t-xl">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <Calendar className="h-6 w-6" />
@@ -207,12 +226,12 @@ export const GameCalendar: React.FC<GameCalendarProps> = ({ isOpen, onClose, stu
           </div>
         </div>
 
-        <div className="p-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="p-8">
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
 
             {/* Takvim */}
-            <div className="lg:col-span-2">
-              <div className="bg-white border border-gray-200 rounded-lg p-4">
+            <div className="xl:col-span-2">
+              <div className="bg-white border border-gray-200 rounded-lg p-6">
 
                 {/* Takvim Navigation */}
                 <div className="flex items-center justify-between mb-4">
@@ -243,7 +262,7 @@ export const GameCalendar: React.FC<GameCalendarProps> = ({ isOpen, onClose, stu
                 </div>
 
                 {/* Takvim günleri */}
-                <div className="grid grid-cols-7 gap-1">
+                <div className="grid grid-cols-7 gap-2">
                   {days.map(({ date, isCurrentMonth }, index) => {
                     const daySessions = getSessionsForDate(date);
                     const isToday = date.toDateString() === new Date().toDateString();
@@ -254,10 +273,10 @@ export const GameCalendar: React.FC<GameCalendarProps> = ({ isOpen, onClose, stu
                         key={index}
                         onClick={() => setSelectedDate(date)}
                         className={`
-                          p-2 h-20 border border-gray-100 cursor-pointer transition-colors
-                          ${!isCurrentMonth ? 'text-gray-300 bg-gray-50' : 'hover:bg-blue-50'}
-                          ${isToday ? 'bg-blue-100 border-blue-300' : ''}
-                          ${isSelected ? 'bg-primary/10 border-primary' : ''}
+                          p-3 h-24 border border-gray-100 cursor-pointer transition-all duration-200 rounded-lg
+                          ${!isCurrentMonth ? 'text-gray-300 bg-gray-50' : 'hover:bg-blue-50 hover:shadow-sm'}
+                          ${isToday ? 'bg-blue-100 border-blue-300 shadow-sm' : ''}
+                          ${isSelected ? 'bg-primary/10 border-primary shadow-md' : ''}
                         `}
                       >
                         <div className={`text-sm ${isToday ? 'font-bold text-blue-600' : ''}`}>
@@ -302,7 +321,7 @@ export const GameCalendar: React.FC<GameCalendarProps> = ({ isOpen, onClose, stu
               />
 
               {/* Yeni Seans Ekle */}
-              <div className="bg-white border border-gray-200 rounded-lg p-4">
+              <div className="bg-white border border-gray-200 rounded-lg p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h5 className="font-semibold flex items-center">
                     <Plus className="h-4 w-4 mr-2" />
@@ -424,7 +443,7 @@ export const GameCalendar: React.FC<GameCalendarProps> = ({ isOpen, onClose, stu
 
               {/* Seçilen Günün Seansları */}
               {selectedDate && (
-                <div className="bg-white border border-gray-200 rounded-lg p-4">
+                <div className="bg-white border border-gray-200 rounded-lg p-6">
                   <h5 className="font-semibold mb-3">
                     {selectedDate.toLocaleDateString('tr-TR')} - Oyun Seansları
                   </h5>
@@ -467,7 +486,7 @@ export const GameCalendar: React.FC<GameCalendarProps> = ({ isOpen, onClose, stu
               )}
 
               {/* Hızlı İstatistikler */}
-              <div className="bg-gradient-to-br from-green-50 to-blue-50 border border-green-200 rounded-lg p-4">
+              <div className="bg-gradient-to-br from-green-50 to-blue-50 border border-green-200 rounded-lg p-6">
                 <h5 className="font-semibold text-green-800 mb-3">Bu Hafta</h5>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
