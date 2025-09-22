@@ -39,6 +39,15 @@ export const StudentLoginForm: React.FC<StudentLoginFormProps> = ({
         </div>
         <h2 className="text-2xl font-bold text-gray-800">Öğrenci Girişi</h2>
         <p className="text-gray-600 mt-2">Hesabınıza giriş yapın</p>
+
+        {/* Demo Account Info */}
+        <div className="bg-green-50 border border-green-200 rounded-lg p-3 mt-4 text-left">
+          <p className="text-xs font-medium text-green-800 mb-1">📝 Demo Hesap Bilgileri:</p>
+          <p className="text-xs text-green-700">
+            <strong>E-mail:</strong> mustafadeneme@hotmail.com<br/>
+            <strong>Şifre:</strong> mustafadeneme
+          </p>
+        </div>
       </div>
 
       {error && (

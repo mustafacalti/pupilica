@@ -35,6 +35,15 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode }) => {
         </div>
         <h2 className="text-2xl font-bold text-gray-800">Veli Girişi</h2>
         <p className="text-gray-600 mt-2">PeakFocus AI Platformuna hoş geldiniz</p>
+
+        {/* Demo Account Info */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-4 text-left">
+          <p className="text-xs font-medium text-blue-800 mb-1">📝 Demo Hesap Bilgileri:</p>
+          <p className="text-xs text-blue-700">
+            <strong>E-mail:</strong> mustafaveli@hotmail.com<br/>
+            <strong>Şifre:</strong> veliss
+          </p>
+        </div>
       </div>
 
       {error && (
