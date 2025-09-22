@@ -22,11 +22,19 @@ DEHB'li (ADHD) öğrenciler için yapay zeka destekli eğitim platformu. Bu plat
     * **Metrikler:** Oyuncunun oyuna ne kadar odaklandığını (`focusTime`) ve ekrana ne kadar süre baktığını (`gazeDuration`) gösterir.
     * **Başarı Puanı:** Kullanıcının genel performansını yansıtan ve ana dashboard'da gösterilen genel başarı skoru.
 
-#### 2. Dinamik Dikkat
-- "Kaç tane [nesne] var?" soruları
-- Görsel nesneler (emoji'ler)
-- Sayı butonları (1-10)
-- Sesli cevap verme özelliği
+#### 2. Dinamik Dikkat (Dynamic Attention Game)
+
+* **Oyunun Amacı:** Kullanıcının seçici dikkatini, reaksiyon süresini ve bilişsel esnekliğini dinamik bir ortamda ölçer ve geliştirir.
+* **Oyun Mekaniği:**
+    * Oyun, farklı renk ve şekillerdeki hedeflerin ekranda rastgele belirdiği dinamik bir alandır.
+    * Oyuncu, yapay zeka tarafından belirlenen kurala (örneğin: "tüm mavi kareleri tıkla") uymak zorundadır.
+    * Oyunun zorluğu, oyuncunun performansı ve duygusal durumu gibi metriklerle gerçek zamanlı olarak ayarlanır. Bu, oyun hızının ve hedef-yanıltıcı oranı gibi parametrelerin değişmesiyle gerçekleşir.
+* **Veri Toplama:** Oyun, oyuncunun performansını ve davranışını anlamak için ayrıntılı veriler toplar:
+    * **Puan ve Doğruluk:** Doğru ve yanlış tıklama sayıları (`correctClicks`, `wrongClicks`) ile genel başarı oranı (`basariOrani`) kaydedilir.
+    * **Reaksiyon Süresi:** Oyuncunun bir hedefe ne kadar sürede tıkladığı (`reactionTime`, `avgReactionTimeMs`) milisaniye cinsinden takip edilir.
+    * **Duygu Analizi:** Kamera aracılığıyla kullanıcının oyun sırasındaki duyguları (`emotions`) analiz edilir ve kaydedilir`].
+    * **Odaklanma Metrikleri:** Bu duygusal verilere dayanarak, oyuncunun odaklanma süresi (`focusTime`) ve ekrana bakma süresi (`gazeDuration`) gibi metrikler hesaplanır.
+    * **Hızlı Tıklama Analizi:** Özellikle 3 saniyenin altındaki hızlı tıklamalar (`fastClicks`) analiz edilerek, hızlı tıklama oranı ve doğruluğu gibi daha derin metrikler elde edilir.
 
 #### 3. AI Renk Tanıma
 - Renk kartlarını eşleştirme
