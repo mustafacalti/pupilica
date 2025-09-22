@@ -6,7 +6,7 @@ DEHB'li (ADHD) öğrenciler için yapay zeka destekli eğitim platformu. Bu plat
 
 ### 🎯 Ana Özellikler
 - **Öğretmen Dashboard'u** - Öğrenci yönetimi ve AI insights ile güçlü takip
-- **Öğrenci Oyun Arayüzü** - 5 eğitim oyunu (kelime-resim, sayı, renk)
+- **Öğrenci Oyun Arayüzü** - 5 eğitim oyunu 
 - **AI Entegrasyonları** - İçerik üretimi, duygu analizi, ses tanıma, zorluk belirleme
 - **Analytics Dashboard** - Gerçek zamanlı raporlama
 
@@ -38,29 +38,29 @@ DEHB'li (ADHD) öğrenciler için yapay zeka destekli eğitim platformu. Bu plat
 
 #### 3. Çatışma Oyunu
 
-* **Zamana Karşı Yarış**: Oyuncunun 60 saniye içinde en yüksek skoru yapması hedeflenir.
-* **İki Komut Tipi**: Oyun, iki farklı komut tipi kullanarak oyuncuyu zorlar:
+* **Oyunun Amacı**: Oyuncunun 60 saniye içinde en yüksek skoru yapması hedeflenir.
+* **Oyun Mekaniği**: Oyun, iki farklı komut tipi kullanarak oyuncuyu zorlar:
     1.  **Renk Komutu**: "KIRMIZI renkli yazana tıkla" gibi bir komutla oyuncudan belirtilen renge odaklanması istenir. Bu durumda, kutunun içindeki kelimenin ne olduğu önemli değildir.
     2.  **Kelime Komutu**: "KIRMIZI yazısını seç" gibi bir komutla oyuncudan belirtilen kelimeye odaklanması istenir. Bu durumda, kelimenin rengi önemli değildir.
 * **Kutu Seçimi**: Oyuncu, ekranda beliren ve farklı renklerde yazılmış kelimelerin bulunduğu kutulardan doğru olanı seçmelidir.
-* **Puanlama**:
+* **Veri Toplama ve Puanlama**:
     * **Doğru Cevap**: +100 puan kazanılır.
     * **Yanlış Cevap**: -50 puan kaybedilir ve kalan süreden 2 saniye düşülür.
 * **AI Desteği**: Oyun, oyuncunun performansına göre zorluk seviyesini dinamik olarak ayarlayan bir yapay zeka (AI) içerir. AI, oyuncunun doğru/yanlış cevap sayılarını, reaksiyon süresini ve hatta kameradan gelen duygu analizlerini kullanarak oyunu kolaylaştırabilir veya zorlaştırabilir.
 
-### Oyun Metrikleri
+* **Oyun Metrikleri**
 
 Oyun, kullanıcının performansını değerlendirmek için çeşitli veriler toplar:
 
-* **Toplam Puan**: Oyun sonunda elde edilen nihai skor.
-* **Doğruluk Oranı**: Doğru cevapların toplam denemeye oranı.
-* **En İyi Seri**: Ardı ardına verilen en yüksek doğru cevap sayısı.
-* **Ortalama Reaksiyon Süresi**: Oyuncunun bir komutun ardından tepki verme süresinin ortalaması.
-* **Duygu Analizi**: Oyun sırasında kameradan toplanan duygusal veriler, oyuncunun ne kadar odaklandığını ve oyuna olan tepkilerini anlamak için kullanılır.
+   * **Toplam Puan**: Oyun sonunda elde edilen nihai skor.
+   * **Doğruluk Oranı**: Doğru cevapların toplam denemeye oranı.
+   * **En İyi Seri**: Ardı ardına verilen en yüksek doğru cevap sayısı.
+   * **Ortalama Reaksiyon Süresi**: Oyuncunun bir komutun ardından tepki verme süresinin ortalaması.
+   * **Duygu Analizi**: Oyun sırasında kameradan toplanan duygusal veriler, oyuncunun ne kadar odaklandığını ve oyuna olan tepkilerini anlamak için kullanılır.
 
 Bu oyun, sadece reaksiyon hızını değil, aynı zamanda bilişsel esnekliği ve dikkat becerilerini de ölçmeyi ve geliştirmeyi amaçlamaktadır.
 
-* ### 4. Renk Tanıma Oyunu
+### 4. Renk Tanıma Oyunu
 * **Oyun Amacı**: Kullanıcıların hızlı tepki verme ve odaklanma yeteneklerini geliştirmeyi amaçlar.
 * **Oyun Mekaniği**: Ekranda rastgele beliren duygu isimleri karşısında, 60 saniye içinde doğru zamanda boşluk tuşuna basmaya dayanır.
 * **Teknik Yapı**: Oyun, AI ile otomatik soru üretimi yapar.
@@ -89,20 +89,20 @@ Bu oyun, sadece reaksiyon hızını değil, aynı zamanda bilişsel esnekliği v
     * **Arka Plan Görevi (`backgroundTask`)**: Ekranda periyodik olarak beliren bir sembolü yakalamayı gerektirir. Bu, kullanıcının **bölünmüş dikkatini** ölçer. Sembole tıklama (`handleBackgroundSymbolClick`), "çeldirici tıklama" (`distractorClicks`) olarak kaydedilir.
     * **Acil Durum Görevi (`emergencyTask`)**: Aniden ortaya çıkan ve kullanıcının hızlı tepki vermesini gerektiren bir görevdir. Bu, kullanıcının **dürtü kontrolünü** ve **tepki süresini** test eder.
 
-### Dikkat Metriklerinin Hesaplanması
+* **Dikkat Metriklerinin Hesaplanması**
 
 Oyun, kullanıcının performansını ölçmek için çeşitli metrikler toplar ve bunları `attentionData` state'inde saklar. Oyun bittiğinde, `calculateFinalScores` fonksiyonu bu verileri kullanarak son dikkat puanlarını hesaplar.
 
-* **Seçici Dikkat**: Çeldirici tıklamaların sayısına göre hesaplanır (`100 - (distractorClicks * 20)`). Çeldiricilere ne kadar az tıklanırsa puan o kadar yüksek olur.
-* **Sürekli Dikkat**: Yanlış cevaplar ve tepki süresine göre hesaplanır (`100 - ((reactionTime.length - correctChoices) * 10)`). Dikkatin devamlılığını ölçer.
-* **Bölünmüş Dikkat**: Yine çeldirici tıklamaların sayısına göre hesaplanır (`100 - (distractorClicks * 15)`). Çoklu görev yeteneğini değerlendirir.
-* **Dürtü Kontrolü**: Çok hızlı tıklamaların sayısına göre hesaplanır (`reactionTime < 500ms`). Hızlı ve düşünmeden yapılan tıklamalar puanı düşürür.
+   * **Seçici Dikkat**: Çeldirici tıklamaların sayısına göre hesaplanır (`100 - (distractorClicks * 20)`). Çeldiricilere ne kadar az tıklanırsa puan o kadar yüksek olur.
+   * **Sürekli Dikkat**: Yanlış cevaplar ve tepki süresine göre hesaplanır (`100 - ((reactionTime.length - correctChoices) * 10)`). Dikkatin devamlılığını ölçer.
+   * **Bölünmüş Dikkat**: Yine çeldirici tıklamaların sayısına göre hesaplanır (`100 - (distractorClicks * 15)`). Çoklu görev yeteneğini değerlendirir.
+   * **Dürtü Kontrolü**: Çok hızlı tıklamaların sayısına göre hesaplanır (`reactionTime < 500ms`). Hızlı ve düşünmeden yapılan tıklamalar puanı düşürür.
 
-### Duygu Analizi ve Veritabanı Kaydı
+* **Duygu Analizi ve Veritabanı Kaydı**
 
-* **Kamera Entegrasyonu**: Oyun, kullanıcıların duygu durumlarını analiz etmek için kamera erişimi ister ve `cameraEmotionService` ile bir Python sunucusuna bağlanır. `startEmotionTracking` fonksiyonu bu süreci başlatır.
-* **Duygu Verileri**: `emotionAnalysisService` her sahne için duygu verilerini toplar ve bu veriler daha sonra hikayenin akışını dinamik olarak etkilemek için yapay zekaya gönderilir.
-* **Veri Saklama**: Oyun tamamlandığında, hesaplanan tüm dikkat metrikleri (`selectiveAttention`, `sustainedAttention`, `dividedAttention`, `impulseControl` vb.) ve diğer oyun bilgileri (`score`, `duration`, `studentId` gibi), `saveStoryAttentionGameData` fonksiyonu aracılığıyla **Firestore** veritabanına kaydedilir. Bu, öğrencinin performansının izlenmesini sağlar.
+   * **Kamera Entegrasyonu**: Oyun, kullanıcıların duygu durumlarını analiz etmek için kamera erişimi ister ve `cameraEmotionService` ile bir Python sunucusuna bağlanır. `startEmotionTracking` fonksiyonu bu süreci başlatır.
+   * **Duygu Verileri**: `emotionAnalysisService` her sahne için duygu verilerini toplar ve bu veriler daha sonra hikayenin akışını dinamik olarak etkilemek için yapay zekaya gönderilir.
+   * **Veri Saklama**: Oyun tamamlandığında, hesaplanan tüm dikkat metrikleri (`selectiveAttention`, `sustainedAttention`, `dividedAttention`, `impulseControl` vb.) ve diğer oyun bilgileri (`score`, `duration`, `studentId` gibi), `saveStoryAttentionGameData` fonksiyonu aracılığıyla **Firestore** veritabanına kaydedilir. Bu, öğrencinin performansının izlenmesini sağlar.
 
 
 ### 🤖 AI Özellikleri
