@@ -107,9 +107,20 @@ Oyun, kullanıcının performansını ölçmek için çeşitli metrikler toplar 
 
 ### 🤖 AI Özellikleri
 
-#### İçerik Üretimi (Ollama Üzerinden Çeşitli Modeller)
+#### İçerik Üretimi (Çeşitli Modeller)
+ 
+- Local Ortam (Colab): alibayram/turkish-gemma-9b-v0.1:latest - 9.2 milyar parametreli Türkçe optimize edilmiş Gemma model
+- Azure Ortamı: gemma2:2b - 2 milyar parametreli hafif model
 - Otomatik soru üretimi
 - Kişiselleştirilmiş içerik
+- Model Seçimi Stratejisi
+   -Neden 9B Model (Colab)?
+   Colab Pro'nun sunduğu T4/V100 GPU desteği sayesinde 9 milyar parametreli alibayram/turkish-gemma-9b-v0.1 modelini kullanabiliyoruz. Bu model özellikle Türkçe dil işleme için fine-tune edilmiş olup, ADHD
+  çocukları için uygun sorular ve hikayeler üretmede superior performans sergiliyor. Local ortamda bu modelle beraber uygulama çalıştırılıyor.
+
+  -Neden 2B Model (Azure)?
+  Azure'un CPU-only konfigürasyonu nedeniyle production ortamında gemma2:2b kullanılıyor. GPU yokluğu büyük modellerin inference süresini artırdığından, real-time oyun deneyimi için optimize edilmiş küçük
+  model tercih ediliyor. 2B model hala yeterli kalitede Türkçe content üretiyor ancak 9B modelin zenginliğine sahip değil.
 - Yaş ve zorluk seviyesine göre uyarlama
 
 #### Duygu Analizi (TensorFlow.js)
@@ -121,6 +132,7 @@ Oyun, kullanıcının performansını ölçmek için çeşitli metrikler toplar 
 - Sesli cevap verme
 - Türkçe dil desteği
 - Oyun içi etkileşim
+- 
 
 ## 🛠️ Teknik Stack
 
