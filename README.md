@@ -1,31 +1,31 @@
-# NeuroLearn AI - Otizm Eğitim Platformu
+# PeakFokus AI - DEHB'li (ADHD) Öğrenciler İçin Eğitim Platformu
 
-Otizmli öğrenciler için yapay zeka destekli eğitim platformu. Bu platform, öğretmenlerin öğrencilerini takip etmesini sağlar ve AI teknolojileri ile kişiselleştirilmiş öğrenme deneyimi sunar.
+DEHB'li (ADHD) öğrenciler için yapay zeka destekli eğitim platformu. Bu platform, öğretmenlerin öğrencilerini takip etmesini sağlar ve AI teknolojileri ile kişiselleştirilmiş öğrenme deneyimi sunar.
 
 ## 🚀 Özellikler
 
 ### 🎯 Ana Özellikler
-- **Öğretmen Dashboard'u** - Öğrenci yönetimi ve AI insights
-- **Öğrenci Oyun Arayüzü** - 3 eğitim oyunu (kelime-resim, sayı, renk)
-- **AI Entegrasyonları** - İçerik üretimi, duygu analizi, ses tanıma
+- **Öğretmen Dashboard'u** - Öğrenci yönetimi ve AI insights ile güçlü takip
+- **Öğrenci Oyun Arayüzü** - 5 eğitim oyunu (kelime-resim, sayı, renk)
+- **AI Entegrasyonları** - İçerik üretimi, duygu analizi, ses tanıma, zorluk belirleme
 - **Analytics Dashboard** - Gerçek zamanlı raporlama
 
 ### 🎮 Eğitim Oyunları
 
-#### 1. Kelime-Resim Eşleştirme
+#### 1. Dikkat Sayma Oyunu
 - AI ile otomatik soru üretimi
 - 4 seçenekli multiple choice
 - Timer (45 saniye)
 - Sesli feedback
 - Emoji/resim kartları
 
-#### 2. Sayı Öğrenme
+#### 2. Dinamik Dikkat
 - "Kaç tane [nesne] var?" soruları
 - Görsel nesneler (emoji'ler)
 - Sayı butonları (1-10)
 - Sesli cevap verme özelliği
 
-#### 3. Renk Eşleştirme
+#### 3. AI Renk Tanıma
 - Renk kartlarını eşleştirme
 - Drag & drop interaction
 - Progress feedback
@@ -40,7 +40,7 @@ Otizmli öğrenciler için yapay zeka destekli eğitim platformu. Bu platform, �
 #### Duygu Analizi (TensorFlow.js)
 - Gerçek zamanlı duygu tanıma
 - Kamera tabanlı analiz
-- 6 farklı duygu durumu (mutlu, üzgün, kızgın, nötr, odaklanmış, kafası karışık)
+- 6 farklı duygu durumu (mutlu, üzgün, kızgın, nötr, kafası karışık, şaşırmış)
 
 #### Ses Tanıma (Web Speech API)
 - Sesli cevap verme
@@ -163,4 +163,4 @@ firebase deploy
 
 ---
 
-**NeuroLearn AI** - Otizmli öğrenciler için yapay zeka destekli eğitim platformu 🧠✨
+**PeakFokus AI** - DEHB'li (ADHD) öğrenciler için yapay zeka destekli eğitim platformu 🧠✨
