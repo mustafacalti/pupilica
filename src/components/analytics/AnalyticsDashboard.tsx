@@ -54,10 +54,23 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ students
 
   // Section period update fonksiyonu
   const updateSectionPeriod = (sectionId: string, period: 'week' | 'month' | 'all') => {
+    // Scroll pozisyonunu kaydet
+    const currentScrollY = window.scrollY;
+    const viewportTop = currentScrollY;
+
     setSectionPeriods(prev => ({
       ...prev,
       [sectionId]: period
     }));
+
+    // Scroll pozisyonunu koru
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (Math.abs(window.scrollY - viewportTop) > 10) {
+          window.scrollTo(0, viewportTop);
+        }
+      });
+    });
   };
 
   // Period selector bileşeni
