@@ -432,90 +432,38 @@ class AttentionSprintGenerator {
     const performansMetni = this.formatPerformanceForPrompt(performans);
     const tipOrnekleri = this.getTaskExamplesForType(onerilenTip, difficulty);
 
-    const fullPrompt = `ADHD'li 12 yaş çocuk için Dikkat Sprintleri görevi üret. SADECE JSON döndür.
+    const fullPrompt = `12 yaş ADHD çocuk için görev üret. SADECE JSON döndür.
 
-ÖNERİLEN GÖREV TİPİ: ${onerilenTip} (çeşitlilik için)
+TİP: ${onerilenTip}
+ZORLUK: ${difficulty}
 
-TİP BAZLI ÖRNEKLER:
-${tipOrnekleri}
+${emotionData ? `EMOTION DATA: ${emotionData}
 
-HEDEF KITLE:
-- Yaş: 12 (ortaokul seviyesi)
-- ADHD özellik: Kısa dikkat süresi, hiperaktivite, impulse kontrol zorluğu
-- Motivasyon: Görsel ödüller, hızlı geri bildirim, başarı hissi
+DURUMLARA GÖRE GÖREV AYARLA:
+- Mutlu/heyecanlı → daha zorlayıcı
+- Kafa karışık/yorgun → basit, net
+- Odaklanmış → dengeli
+- Stresli/sinirli → sakinleştirici
 
-${emotionData ? `KAMERA VERİSİ - TÜM DUYGUSAL DURUMLAR (Oyun süresince):
-${emotionData}
+İpuçlarını da emotion'a göre ayarla.` : ''}
 
-DİKKAT: Bu emotion data'dan çok boyutlu analiz yap:
+KURALLAR:
+- 30-60 saniye
+- Tek odak
+- Basit komut
+- Renkli emojiler
+${onerilenTip === 'sayma' ? '- SADECE SAYMA! tıklama yok.' : ''}
 
-DUYGUSAL DURUM ANALİZİ:
-- Hangi duygu baskın? Son trend nasıl?
-- Emotion stabilite: Sabit mi değişken mi?
-- Pozitif/negatif emotion dengesi?
+${performans.attentionMetrics ? `PERF: Dikkat ${performans.attentionMetrics.attentionScore.toFixed(0)}/100, Ekran %${performans.attentionMetrics.screenLookingPercentage.toFixed(0)}` : ''}
 
-ÖĞRENME STİLİ ÇIKARIMI:
-- confused→happy geçişi = Yavaş öğrenen ama başarılı mı?
-- happy→bored pattern = Hızla sıkılan, challenge isteyen mi?
-- surprised spike'ları = Yenilikçi görevleri seven mi?
-
-MOTİVASYON/STRES ANALİZİ:
-- İçsel motivasyon: happy/neutral dominant mı?
-- Frustration tolerance: angry/confused nasıl?
-- Kaygı seviyesi: emotion volatility yüksek mi?
-
-ATTENTION SPAN PATTERNİ:
-- Emotion değişim hızı = Dikkat süresi ipucu
-- Bored'a kadar geçen süre = Natural attention span
-- Cognitive load: neutral→confused geçiş noktası
-
-Bu analizlere göre en uygun görev stratejisini belirle:
-
-Bu analizine göre çocuğun mevcut duygusal durumuna uygun görev üret:
-- Mutlu/heyecanlı ise: Momentum sürdürecek, biraz daha zorlayıcı görevler
-- Kafa karışık/yorgun ise: Basit, net talimatlar, daha az dikkat dağıtıcı
-- Odaklanmış ise: Bu durumu koruyacak dengeli görevler
-- Stresli/sinirli ise: Sakinleştirici, pozitif, başarıya odaklı görevler
-
-İpuçlarını da bu duygusal duruma göre ayarla.` : ''}
-
-GÖREV KURALLARI:
-- Süre: 30-60 saniye (ADHD için kısa)
-- Tek odak: Sadece 1 şey yap (çoklu görev yok)
-- Net talimat: Basit, anlaşılır komutlar
-- Görsel zengin: Renkler, şekiller, emojiler kullan
-- Olumlu dil: "Yapma" yerine "Yap" kalıbı
-- Duygu durumuna uygun ipuçları ve zorluk seviyesi ayarla
-${onerilenTip === 'sayma' ? '- ÖNEMLİ: SADECE SAYMA GÖREVİ ÜRETİN! "tıkla", "bas", "yakala" gibi eylemler YOK. Sadece "say", "hesapla", "bul" kullanın.' : ''}
-
-ZORLUK SEVİYESİ: ${difficulty}
-
-PERFORMANS ÖZETİ:
-${performansMetni}
-
-${performans.attentionMetrics ? `
-DETAYLI DİKKAT METRİKLERİ:
-- Oyun süresi: ${performans.attentionMetrics.totalGameTime.toFixed(1)}s
-- Ekrana bakma: %${performans.attentionMetrics.screenLookingPercentage.toFixed(1)}
-- Dikkat skoru: ${performans.attentionMetrics.attentionScore.toFixed(1)}/100
-- Baskın duygu: ${performans.attentionMetrics.dominantEmotion}
-- Dikkat dağılması: ${performans.attentionMetrics.distractionEvents} kez
-- Emotion dağılımı: ${performans.attentionMetrics.emotionStats.map(s => `${s.emotion}(${s.percentage.toFixed(1)}%)`).join(', ')}
-
-Bu metrikleri de göz önünde bulundurarak çocuğun GERÇEK odaklanma seviyesini sen belirle:
-- Başarı oranı + Dikkat skoru + Ekrana bakma + Emotion pattern + Dikkat dağılması
-- "yuksek", "orta" veya "dusuk" olarak değerlendir
-` : ''}
-
-ÇIKTI ŞEMASI:
+JSON:
 {
-  "gorev": string, // ÖRNERİLEN TİPE GÖRE: ${onerilenTip === 'sayma' ? '"🔴 Kırmızı daireleri say"' : onerilenTip === 'tek-tıklama' ? '"🔴 Kırmızı daire çıktığında tıkla"' : onerilenTip === 'dinamik-tıklama' ? '"30 saniye içinde tüm 🔴 kırmızı daireleri tıkla"' : '"3 saniye bekle, sonra 🔴 kırmızı daire tıkla"'}
-  "sure_saniye": number, // 30-60 arası
-  "ipuclari": [string], // Max 2 ipucu, kısa ve net, duygusal duruma uygun
-  "hedefRenk": string, // Varsa: "kırmızı", "mavi" vs
-  "hedefSayi": number, // Varsa: sayma görevi için
-  "hedefSekil": string, // Varsa: "daire", "kare" vs
-  "dikkatDagitici": number, // 0-1 arası (0=yok, 1=maksimum)
+  "gorev": "${onerilenTip === 'sayma' ? '🔴 Kırmızı daireleri say' : '🔴 Kırmızı daire tıkla'}",
+  "sure_saniye": 45,
+  "ipuclari": ["İpucu 1", "İpucu 2"],
+  "hedefRenk": "kırmızı",
+  "hedefSayi": 5,
+  "dikkatDagitici": 0.3
 
   // EMOTION ANALİZİNE GÖRE OYUN PARAMETRELERİ:
   "gameParams": {
@@ -660,7 +608,27 @@ Genel Durum:
    */
   private parseSprintResponse(response: string, difficulty: 'kolay' | 'orta' | 'zor'): AttentionSprintTask {
     try {
-      const parsed = JSON.parse(response);
+      console.log('🔍 [SPRINT PARSE] Ham yanıt:', response);
+
+      // JSON temizleme - ```json wrapper'ları kaldır
+      let cleanedResponse = response.trim();
+
+      // ```json ve ``` kaldır
+      cleanedResponse = cleanedResponse.replace(/```json\s*/g, '');
+      cleanedResponse = cleanedResponse.replace(/```[\s\S]*$/g, '');
+
+      // İlk { ile son } arasındaki JSON'ı al
+      const startIndex = cleanedResponse.indexOf('{');
+      const lastIndex = cleanedResponse.lastIndexOf('}');
+
+      if (startIndex === -1 || lastIndex === -1) {
+        throw new Error('JSON bulunamadı');
+      }
+
+      const jsonText = cleanedResponse.substring(startIndex, lastIndex + 1);
+      console.log('🧹 [SPRINT PARSE] Temizlenmiş JSON:', jsonText);
+
+      const parsed = JSON.parse(jsonText);
 
       // Validasyon
       if (!parsed.gorev || typeof parsed.gorev !== 'string') {
@@ -689,7 +657,8 @@ Genel Durum:
 
       return correctedTask;
     } catch (error) {
-      console.error('Sprint response parse hatası:', error);
+      console.error('❌ [SPRINT PARSE] Parse hatası:', error);
+      console.error('❌ [SPRINT PARSE] Ham response:', response);
       throw new Error(`JSON parse hatası: ${error}`);
     }
   }
