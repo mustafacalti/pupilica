@@ -3,7 +3,9 @@ import { Card, CardContent } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { AttentionSprintTask, AttentionSprintPerformance, EmotionResult } from '../../types';
 import { attentionSprintGenerator } from '../../services/attentionSprintGenerator';
-import { Clock, Target, Zap, RotateCcw, Star, Brain, Play, Pause } from 'lucide-react';
+import { emotionAnalysisService } from '../../services/emotionAnalysisService';
+import { cameraEmotionService } from '../../services/cameraEmotionService';
+import { Clock, Target, Zap, RotateCcw, Star, Brain, Play, Pause, Camera } from 'lucide-react';
 
 interface AttentionSprintGameProps {
   studentId: string;
@@ -74,6 +76,12 @@ export const AttentionSprintGame: React.FC<AttentionSprintGameProps> = ({
   // Son görevleri takip et (çeşitlilik için)
   const [sonGorevler, setSonGorevler] = useState<string[]>([]);
 
+  // Emotion analysis states
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [emotionAnalysisActive, setEmotionAnalysisActive] = useState(false);
+  const [currentEmotion, setCurrentEmotion] = useState<any | null>(null);
+  const [attentionMetrics, setAttentionMetrics] = useState<any | null>(null);
+
   const roundStartTimeRef = useRef<number>(0);
   const hasGeneratedFirstTask = useRef(false);
   const isGeneratingRef = useRef(false);
@@ -92,6 +100,52 @@ export const AttentionSprintGame: React.FC<AttentionSprintGameProps> = ({
     const match = gorevText.match(pattern);
     return match ? parseInt(match[1]) : null;
   };
+
+  // Emotion tracking fonksiyonları
+  const startEmotionTracking = useCallback(async () => {
+    console.log('🎭 [EMOTION] Emotion tracking başlatılıyor...');
+
+    setEmotionAnalysisActive(true);
+
+    const handleDetectedEmotion = (result: any) => {
+      if (!emotionAnalysisService.isGameActiveStatus()) {
+        return;
+      }
+
+      setCurrentEmotion(result);
+      emotionAnalysisService.addEmotionResult(result);
+
+      const metrics = emotionAnalysisService.getCurrentGameMetrics();
+      setAttentionMetrics(metrics);
+    };
+
+    // Gerçek kamera dene
+    let cameraSuccess = false;
+    if (videoRef.current) {
+      cameraSuccess = await cameraEmotionService.startEmotionTracking(
+        videoRef.current,
+        handleDetectedEmotion
+      );
+    }
+
+    if (!cameraSuccess) {
+      console.log('📱 [EMOTION] Gerçek kamera bulunamadı - Python server çalışıyor mu?');
+    }
+
+    console.log('✅ [EMOTION] Emotion tracking aktif');
+  }, []);
+
+  const stopEmotionTracking = useCallback(() => {
+    console.log('⏹️ [EMOTION] Emotion tracking durduruluyor...');
+
+    cameraEmotionService.stopEmotionTracking();
+    setEmotionAnalysisActive(false);
+
+    const finalMetrics = emotionAnalysisService.endGameSession();
+    setAttentionMetrics(finalMetrics);
+
+    console.log('🏁 [EMOTION] Final metrics:', finalMetrics);
+  }, []);
 
   // İlk görevi yükle
   useEffect(() => {
@@ -129,6 +183,9 @@ export const AttentionSprintGame: React.FC<AttentionSprintGameProps> = ({
     };
 
     try {
+      // Emotion tracking başlat - oyun başlamadan önce kamera hazırla
+      await startEmotionTracking();
+
       const task = await attentionSprintGenerator.generateAttentionSprint({
         performansOzeti: initialPerformance,
         studentAge,
@@ -137,6 +194,9 @@ export const AttentionSprintGame: React.FC<AttentionSprintGameProps> = ({
 
       setCurrentTask(task);
       setTimeLeft(task.sure_saniye);
+
+      // OYUN BAŞLADI - emotion kaydetmeyi başlat
+      emotionAnalysisService.startGameSession();
 
       // Son görevleri güncelle
       setSonGorevler(prev => {
@@ -266,10 +326,19 @@ export const AttentionSprintGame: React.FC<AttentionSprintGameProps> = ({
     try {
       console.log('🔍 [TASK GENERATION] Mevcut son görevler:', sonGorevler);
 
+      // Emotion data'yı al
+      const gameEmotions = emotionAnalysisService.getAllEmotions();
+      const emotionDataString = gameEmotions.length > 0
+        ? JSON.stringify(gameEmotions.slice(-10)) // Son 10 emotion
+        : undefined;
+
+      console.log('🎭 [EMOTION] AI\'ya gönderilen emotion data:', emotionDataString?.substring(0, 100) + '...');
+
       const task = await attentionSprintGenerator.generateAttentionSprint({
         performansOzeti: performance,
         studentAge,
-        sonGorevler: sonGorevler
+        sonGorevler: sonGorevler,
+        emotionData: emotionDataString
       });
 
       console.log('🎯 [TASK DEBUG] Üretilen görev:', {
@@ -1000,8 +1069,16 @@ export const AttentionSprintGame: React.FC<AttentionSprintGameProps> = ({
    */
   const completeGame = () => {
     setGameState('completed');
+
+    // OYUN BİTTİ - emotion tracking durdur
+    console.log('🏁 [ATTENTION SPRINT] Oyun bitti, emotion tracking durduruluyor...');
+    stopEmotionTracking();
+
     const gameDuration = Math.floor((Date.now() - gameStartTime) / 1000);
-    onGameComplete(score, gameDuration, emotions);
+
+    // Emotion data'yı al ve onGameComplete'e gönder
+    const gameEmotions = emotionAnalysisService.getAllEmotions();
+    onGameComplete(score, gameDuration, gameEmotions);
   };
 
   /**
@@ -1091,6 +1168,21 @@ export const AttentionSprintGame: React.FC<AttentionSprintGameProps> = ({
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
+      {/* Hidden camera video for emotion detection */}
+      <video
+        ref={videoRef}
+        autoPlay
+        muted
+        playsInline
+        style={{
+          position: 'absolute',
+          top: '-9999px',
+          left: '-9999px',
+          width: '1px',
+          height: '1px'
+        }}
+      />
+
       {/* Header */}
       <Card>
         <CardContent>

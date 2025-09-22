@@ -439,13 +439,18 @@ ZORLUK: ${difficulty}
 
 ${emotionData ? `EMOTION DATA: ${emotionData}
 
-DURUMLARA GÖRE GÖREV AYARLA:
-- Mutlu/heyecanlı → daha zorlayıcı
-- Kafa karışık/yorgun → basit, net
-- Odaklanmış → dengeli
-- Stresli/sinirli → sakinleştirici
+DURUMLARA GÖRE GÖREV VE GAME PARAMS AYARLA:
+- Mutlu/heyecanlı → daha zorlayıcı → spawnInterval düşük, targetRatio düşük
+- Kafa karışık/yorgun → basit, net → spawnInterval yüksek, targetRatio yüksek
+- Odaklanmış → dengeli → orta değerler
+- Stresli/sinirli → sakinleştirici → objectLifespan uzun, feedbackFrequency yüksek
 
-İpuçlarını da emotion'a göre ayarla.` : ''}
+gameParams değerleri:
+- spawnInterval: 1500-4000ms (hızlı emotion = düşük)
+- objectLifespan: 3000-8000ms (confused = uzun)
+- targetRatio: 0.3-0.8 (stresli = yüksek)
+- visualComplexity: 0.2-1.0 (overwhelmed = düşük)
+- feedbackFrequency: 0.5-3.0 (low motivation = yüksek)` : ''}
 
 KURALLAR:
 - 30-60 saniye
@@ -456,22 +461,19 @@ ${onerilenTip === 'sayma' ? '- SADECE SAYMA! tıklama yok.' : ''}
 
 ${performans.attentionMetrics ? `PERF: Dikkat ${performans.attentionMetrics.attentionScore.toFixed(0)}/100, Ekran %${performans.attentionMetrics.screenLookingPercentage.toFixed(0)}` : ''}
 
-JSON:
+SADECE GEÇERLI JSON DÖNDÜR - COMMENT YOK!
 {
   "gorev": "${onerilenTip === 'sayma' ? '🔴 Kırmızı daireleri say' : '🔴 Kırmızı daire tıkla'}",
   "sure_saniye": 45,
-  "ipuclari": ["İpucu 1", "İpucu 2"],
   "hedefRenk": "kırmızı",
   "hedefSayi": 5,
-  "dikkatDagitici": 0.3
-
-  // EMOTION ANALİZİNE GÖRE OYUN PARAMETRELERİ:
+  "dikkatDagitici": 0.3,
   "gameParams": {
-    "spawnInterval": number, // 1500-4000ms - Kısa attention span = düşük değer, confused'dan kaçın
-    "objectLifespan": number, // 3000-8000ms - Yavaş reaction = yüksek değer, stressed ise uzat
-    "targetRatio": number, // 0.3-0.8 - Düşük frustration tolerance = yüksek ratio (kolay)
-    "visualComplexity": number, // 0.2-1.0 - Confused/overwhelmed ise düşür, happy/confident ise artır
-    "feedbackFrequency": number // 0.5-3.0 - Low motivation = sık feedback, high confidence = az feedback
+    "spawnInterval": 2000,
+    "objectLifespan": 5000,
+    "targetRatio": 0.5,
+    "visualComplexity": 0.7,
+    "feedbackFrequency": 1.0
   }
 }
 
@@ -617,6 +619,10 @@ Genel Durum:
       cleanedResponse = cleanedResponse.replace(/```json\s*/g, '');
       cleanedResponse = cleanedResponse.replace(/```[\s\S]*$/g, '');
 
+      // JavaScript tarzı comment'ları kaldır
+      cleanedResponse = cleanedResponse.replace(/\/\/.*$/gm, ''); // Satır sonu comment'ları
+      cleanedResponse = cleanedResponse.replace(/\/\*[\s\S]*?\*\//g, ''); // Blok comment'ları
+
       // İlk { ile son } arasındaki JSON'ı al
       const startIndex = cleanedResponse.indexOf('{');
       const lastIndex = cleanedResponse.lastIndexOf('}');
@@ -625,7 +631,11 @@ Genel Durum:
         throw new Error('JSON bulunamadı');
       }
 
-      const jsonText = cleanedResponse.substring(startIndex, lastIndex + 1);
+      let jsonText = cleanedResponse.substring(startIndex, lastIndex + 1);
+
+      // Trailing comma'ları kaldır
+      jsonText = jsonText.replace(/,(\s*[}\]])/g, '$1');
+
       console.log('🧹 [SPRINT PARSE] Temizlenmiş JSON:', jsonText);
 
       const parsed = JSON.parse(jsonText);
