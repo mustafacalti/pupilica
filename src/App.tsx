@@ -8,6 +8,7 @@ import { AnalyticsPage } from './pages/AnalyticsPage';
 import { StudentsPage } from './pages/StudentsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import Sidebar from './components/navigation/Sidebar';
+import { FloatingChatButton } from './components/chat/FloatingChatButton';
 
 const ProtectedRoute: React.FC<{
   children: React.ReactNode;
@@ -51,6 +52,10 @@ const ProtectedRoute: React.FC<{
       <div className={showSidebar ? 'ml-16' : ''}>
         {children}
       </div>
+      {/* Parent sayfalarında chat button göster */}
+      {currentUser?.role === 'parent' && showSidebar && (
+        <FloatingChatButton />
+      )}
     </div>
   );
 };

@@ -6,7 +6,6 @@ import { StatsCards } from '../components/dashboard/StatsCards';
 import { ParentStudentList } from '../components/dashboard/ParentStudentList';
 import { AIInsightsPanel } from '../components/dashboard/AIInsightsPanel';
 import { GameCalendar } from '../components/calendar/GameCalendar';
-import { FloatingChatButton } from '../components/chat/FloatingChatButton';
 import { Student, AIInsight, PerformanceStats, EmotionResult } from '../types';
 import { getStudentsByParent, getAIInsightsByStudent } from '../services/firestore';
 import { mockStudents, mockAIInsights, calculateGameStats } from '../data/mockData';
@@ -283,11 +282,6 @@ export const DashboardPage: React.FC = () => {
         onClose={() => setShowCalendar(false)}
         students={students.map(s => ({ id: s.id, name: s.name }))}
         externalSessions={calendarSessions}
-      />
-
-      {/* Floating Chat Button */}
-      <FloatingChatButton
-        studentName={students.length > 0 ? students[0].name : undefined}
       />
 
     </>
