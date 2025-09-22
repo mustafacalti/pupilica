@@ -452,6 +452,20 @@ EMOTION'A GÖRE gameParams AYARLA - ZORUNLU:
 
 MUTLAKA emotion'a uygun değerler seç!` : ''}
 
+PERFORMANS'A GÖRE DE gameParams AYARLA:
+- Başarı oranı ≥80% + Hızlı reaksiyon (<2s) → ZORLAŞTIR: spawnInterval: 1500-2000, targetRatio: 0.3-0.4, visualComplexity: 0.8-1.0
+- Başarı oranı ≥70% + Orta reaksiyon (2-4s) → ORTA: spawnInterval: 2000-2500, targetRatio: 0.4-0.6, visualComplexity: 0.6-0.7
+- Başarı oranı <50% + Yavaş reaksiyon (>4s) → KOLAYLAŞTIR: spawnInterval: 3000-4000, targetRatio: 0.6-0.8, objectLifespan: 6000-8000
+- İlk görev → BAŞLANGIÇ: spawnInterval: 2500, targetRatio: 0.5, objectLifespan: 5000, visualComplexity: 0.5
+
+KOMBINASYON KURALLAR:
+- Emotion + Performans = Birleşik karar
+- Kötü performans + stres = Çok basit yap
+- İyi performans + mutluluk = Çok zorlaştır
+
+MEVCUT PERFORMANS VERİLERİ:
+${performansMetni}
+
 ÇEŞİTLİLİK ZORUNLU:
 - RENK SEÇENEKLERİ: kırmızı, mavi, yeşil, sarı, mor, turuncu
 - ŞEKİL SEÇENEKLERİ: daire, kare, üçgen, yıldız, kalp, elmas
