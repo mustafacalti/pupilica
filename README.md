@@ -292,9 +292,8 @@ src/
 ## 🤖 AI Features
 
 ### Demo-Ready Özellikleri
-- **Generate Question** button - Hugging Face API'den yeni soru
+- **Generate Question** button - Ollama üzerinden çeşitli modellere atılan isteklerle yeni soru
 - **Live emotion indicator** - Kamera varsa emotion detection
-- **Voice interaction** - Mikrofon butonları
 - **Real-time charts** - Canlı güncellenen grafikler
 - **AI recommendations** - Smart notifications
 
