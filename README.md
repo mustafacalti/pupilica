@@ -49,7 +49,7 @@ DEHB'li (ADHD) öğrenciler için yapay zeka destekli eğitim platformu. Bu plat
 * **Veritabanı:** Oyun oturumları ve kullanıcı bilgileri bir veritabanında (Google Cloud'da olduğu görülüyor) kaydedilir.
 * **Analiz:** Kullanıcı paneli, genel başarı puanlarını (grafik olarak) ve oyun sırasında hissedilen duyguların analizini (pasta grafiği olarak) gösterir.
 
-* ### Renk Tanıma Oyunu
+* ### 4. Renk Tanıma Oyunu
 * **Oyun Amacı**: Kullanıcıların hızlı tepki verme ve odaklanma yeteneklerini geliştirmeyi amaçlar.
 * **Oyun Mekaniği**: Ekranda rastgele beliren duygu isimleri karşısında, 60 saniye içinde doğru zamanda boşluk tuşuna basmaya dayanır.
 * **Teknik Yapı**: Oyun, AI ile otomatik soru üretimi yapar.
@@ -67,6 +67,32 @@ DEHB'li (ADHD) öğrenciler için yapay zeka destekli eğitim platformu. Bu plat
 * **Kullanıcı Dashboard'u**: Kullanıcılar için toplanan verileri gösteren bir arayüzdür.
     * **Genel Başarı Puanı**: Kullanıcıların genel başarı puanları bir çubuk grafikte gösterilir.
     * **Duygu Analizi**: Oyun sırasındaki duygular, bir pasta grafiği ile analiz edilir.
+
+
+### 5. Hikayeye dikkat oyunu
+
+* **Oyun Başlangıcı**: Kullanıcı oyunun temasını (`adventure`, `space`, `underwater`) seçerek oyunu başlatır. Bu seçim, hikayenin gidişatını belirler. Oyun başladığında, `startGame` fonksiyonu çağrılır ve bu fonksiyon **duygu takibi (`emotion tracking`)** işlemini başlatır.
+* **Dinamik Hikaye Oluşturma**: `aiStoryService` kullanılarak yapay zeka tarafından dinamik olarak hikaye sahneleri (`StoryScene`) oluşturulur. Bu sahneler, kullanıcının daha önceki seçimlerine (`lastChoice`), yaşa (`studentAge`) ve toplanan duygu verilerine (`emotionData`) göre şekillenir.
+* **Kullanıcı Etkileşimi**: Her sahnede, kullanıcının hikayeyi ilerletmek için seçmesi gereken seçenekler (`choices`) bulunur. Kullanıcı bir seçeneğe tıkladığında, `handleChoiceClick` fonksiyonu tetiklenir ve kullanıcının tepki süresi hesaplanır.
+* **Oyun İçi Görevler**:
+    * **Arka Plan Görevi (`backgroundTask`)**: Ekranda periyodik olarak beliren bir sembolü yakalamayı gerektirir. Bu, kullanıcının **bölünmüş dikkatini** ölçer. Sembole tıklama (`handleBackgroundSymbolClick`), "çeldirici tıklama" (`distractorClicks`) olarak kaydedilir.
+    * **Acil Durum Görevi (`emergencyTask`)**: Aniden ortaya çıkan ve kullanıcının hızlı tepki vermesini gerektiren bir görevdir. Bu, kullanıcının **dürtü kontrolünü** ve **tepki süresini** test eder.
+
+### Dikkat Metriklerinin Hesaplanması
+
+Oyun, kullanıcının performansını ölçmek için çeşitli metrikler toplar ve bunları `attentionData` state'inde saklar. Oyun bittiğinde, `calculateFinalScores` fonksiyonu bu verileri kullanarak son dikkat puanlarını hesaplar.
+
+* **Seçici Dikkat**: Çeldirici tıklamaların sayısına göre hesaplanır (`100 - (distractorClicks * 20)`). Çeldiricilere ne kadar az tıklanırsa puan o kadar yüksek olur.
+* **Sürekli Dikkat**: Yanlış cevaplar ve tepki süresine göre hesaplanır (`100 - ((reactionTime.length - correctChoices) * 10)`). Dikkatin devamlılığını ölçer.
+* **Bölünmüş Dikkat**: Yine çeldirici tıklamaların sayısına göre hesaplanır (`100 - (distractorClicks * 15)`). Çoklu görev yeteneğini değerlendirir.
+* **Dürtü Kontrolü**: Çok hızlı tıklamaların sayısına göre hesaplanır (`reactionTime < 500ms`). Hızlı ve düşünmeden yapılan tıklamalar puanı düşürür.
+
+### Duygu Analizi ve Veritabanı Kaydı
+
+* **Kamera Entegrasyonu**: Oyun, kullanıcıların duygu durumlarını analiz etmek için kamera erişimi ister ve `cameraEmotionService` ile bir Python sunucusuna bağlanır. `startEmotionTracking` fonksiyonu bu süreci başlatır.
+* **Duygu Verileri**: `emotionAnalysisService` her sahne için duygu verilerini toplar ve bu veriler daha sonra hikayenin akışını dinamik olarak etkilemek için yapay zekaya gönderilir.
+* **Veri Saklama**: Oyun tamamlandığında, hesaplanan tüm dikkat metrikleri (`selectiveAttention`, `sustainedAttention`, `dividedAttention`, `impulseControl` vb.) ve diğer oyun bilgileri (`score`, `duration`, `studentId` gibi), `saveStoryAttentionGameData` fonksiyonu aracılığıyla **Firestore** veritabanına kaydedilir. Bu, öğrencinin performansının izlenmesini sağlar.
+
 
 ### 🤖 AI Özellikleri
 
