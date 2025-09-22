@@ -4,7 +4,6 @@ import {
   Home,
   BarChart3,
   Calendar,
-  MessageCircle,
   Users,
   Settings,
   ChevronRight,
@@ -44,13 +43,6 @@ const Sidebar: React.FC = () => {
       icon: Users,
       path: '/students',
       description: 'Çocuk profilleri ve detayları'
-    },
-    {
-      id: 'chat',
-      label: 'Uzman Chat',
-      icon: MessageCircle,
-      path: '/chat',
-      description: 'AI uzman desteği'
     },
     {
       id: 'settings',

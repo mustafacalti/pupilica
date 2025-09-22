@@ -420,10 +420,21 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ students
             const period = sectionPeriods['attention'];
 
             return days.map((day, i) => {
-              // Period'a göre farklı seed değerleri kullan
-              const seedValue = period === 'week' ? i + 100 : period === 'month' ? i + 200 : i + 300;
-              const attention = Math.floor(Math.sin(seedValue) * 5 + 15); // 10-20 dakika arası
-              const distractions = Math.floor(Math.cos(seedValue) * 3 + 5); // 2-8 dikkat dağılması arası
+              // Period'a göre artan değerler: all > month > week
+              let baseAttention, baseDistraction;
+              if (period === 'week') {
+                baseAttention = 10 + (i * 1.5); // 10-19.5 dk
+                baseDistraction = 2 + (i * 0.8); // 2-7.6
+              } else if (period === 'month') {
+                baseAttention = 12 + (i * 1.8); // 12-22.8 dk
+                baseDistraction = 3 + (i * 0.7); // 3-7.2
+              } else { // all
+                baseAttention = 15 + (i * 2.1); // 15-27.6 dk
+                baseDistraction = 2 + (i * 0.5); // 2-5
+              }
+
+              const attention = Math.floor(baseAttention);
+              const distractions = Math.floor(baseDistraction);
 
               return (
                 <div key={`${day}-${period}`} className="flex items-center justify-between">
@@ -478,9 +489,17 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ students
             ];
 
             return emotions.map((item, index) => {
-              // Period'a göre farklı seed değerleri kullan
-              const seedValue = period === 'week' ? index + 500 : period === 'month' ? index + 600 : index + 700;
-              const score = Math.floor(Math.abs(Math.sin(seedValue)) * 40 + 50); // 50-90 arası
+              // Period'a göre artan değerler: all > month > week
+              let baseScore;
+              if (period === 'week') {
+                baseScore = 60 + (index * 8); // 60-92 arası
+              } else if (period === 'month') {
+                baseScore = 65 + (index * 7); // 65-93 arası
+              } else { // all
+                baseScore = 70 + (index * 6); // 70-94 arası
+              }
+
+              const score = Math.min(95, Math.floor(baseScore));
 
               return (
                 <div key={`${item.key}-${period}`} className="flex items-center justify-between">

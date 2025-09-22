@@ -5,7 +5,6 @@ import { Header } from '../components/dashboard/Header';
 import { StatsCards } from '../components/dashboard/StatsCards';
 import { ParentStudentList } from '../components/dashboard/ParentStudentList';
 import { AIInsightsPanel } from '../components/dashboard/AIInsightsPanel';
-import { ExpertChat } from '../components/chat/ExpertChat';
 import { GameCalendar } from '../components/calendar/GameCalendar';
 import { Student, AIInsight, PerformanceStats, EmotionResult } from '../types';
 import { getStudentsByParent, getAIInsightsByStudent } from '../services/firestore';
@@ -99,11 +98,6 @@ export const DashboardPage: React.FC = () => {
     // Burada student detay sayfasına yönlendirme yapılabilir
   };
 
-  const handleChatScheduleGenerated = (sessions: any[]) => {
-    setCalendarSessions(prev => [...prev, ...sessions]);
-    // Bildirim göster
-    console.log('AI Chat\'ten takvim seansları eklendi:', sessions);
-  };
 
 
   return (
@@ -281,12 +275,6 @@ export const DashboardPage: React.FC = () => {
         </div>
       </main>
 
-      {/* AI Expert Chat - Floating */}
-      <ExpertChat
-        studentName={students.length > 0 ? students[0].name : undefined}
-        students={students.map(s => ({ id: s.id, name: s.name }))}
-        onScheduleGenerated={handleChatScheduleGenerated}
-      />
 
       {/* Game Calendar Modal */}
       <GameCalendar
