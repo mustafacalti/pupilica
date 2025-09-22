@@ -68,7 +68,7 @@ DEHB'li (ADHD) öğrenciler için yapay zeka destekli eğitim platformu. Bu plat
     * 45 saniyelik bir zamanlayıcı kullanır.
     * Sesli geri bildirim ve emoji/resim kartları içerir.
 
-    * ** Veri Toplama ve Analiz **
+    * **Veri Toplama ve Analiz**
 
 * **Toplanan Veriler**: Oyun sırasında kullanıcının performansına ve davranışına ilişkin veriler toplanır.
     * **Puan**: Doğru tepki sayısını gösteren nihai skor.
