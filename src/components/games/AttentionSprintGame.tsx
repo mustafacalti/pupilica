@@ -198,6 +198,9 @@ export const AttentionSprintGame: React.FC<AttentionSprintGameProps> = ({
       // OYUN BAŞLADI - emotion kaydetmeyi başlat
       emotionAnalysisService.startGameSession();
 
+      // FRAME ANALİZİ BAŞLAT - kameradan sürekli frame çekmeyi başlat
+      cameraEmotionService.startFrameAnalysis?.();
+
       // Son görevleri güncelle
       setSonGorevler(prev => {
         const yeniListe = [task.gorev, ...prev];
@@ -1072,6 +1075,10 @@ export const AttentionSprintGame: React.FC<AttentionSprintGameProps> = ({
 
     // OYUN BİTTİ - emotion tracking durdur
     console.log('🏁 [ATTENTION SPRINT] Oyun bitti, emotion tracking durduruluyor...');
+
+    // FRAME ANALİZİ DURDUR - Python server'a frame göndermeyi durdur
+    cameraEmotionService.stopFrameAnalysis?.();
+
     stopEmotionTracking();
 
     const gameDuration = Math.floor((Date.now() - gameStartTime) / 1000);

@@ -432,25 +432,32 @@ class AttentionSprintGenerator {
     const performansMetni = this.formatPerformanceForPrompt(performans);
     const tipOrnekleri = this.getTaskExamplesForType(onerilenTip, difficulty);
 
+    const sonGorevlerText = performans.son3Tur && performans.son3Tur.length > 0
+      ? `\nSON GÖREVLER (BUNLARI TEKRAR ETME): ${performans.son3Tur.map(tur => `"${tur.hedefTipi || 'bilinmiyor'} görev"`).join(', ')}`
+      : '';
+
     const fullPrompt = `12 yaş ADHD çocuk için görev üret. SADECE JSON döndür.
 
 TİP: ${onerilenTip}
-ZORLUK: ${difficulty}
+ZORLUK: ${difficulty}${sonGorevlerText}
 
 ${emotionData ? `EMOTION DATA: ${emotionData}
 
-DURUMLARA GÖRE GÖREV VE GAME PARAMS AYARLA:
-- Mutlu/heyecanlı → daha zorlayıcı → spawnInterval düşük, targetRatio düşük
-- Kafa karışık/yorgun → basit, net → spawnInterval yüksek, targetRatio yüksek
-- Odaklanmış → dengeli → orta değerler
-- Stresli/sinirli → sakinleştirici → objectLifespan uzun, feedbackFrequency yüksek
+EMOTION'A GÖRE gameParams AYARLA - ZORUNLU:
+- happy/excited → ZORLAYICI: spawnInterval: 1500-2000, targetRatio: 0.3-0.4, visualComplexity: 0.8-1.0
+- confused/tired → BASIT: spawnInterval: 3500-4000, targetRatio: 0.7-0.8, objectLifespan: 7000-8000
+- focused → DENGELI: spawnInterval: 2500, targetRatio: 0.5, visualComplexity: 0.6
+- sad/stressed → SAKİNLEŞTİRİCİ: objectLifespan: 6000-8000, feedbackFrequency: 2.5-3.0, spawnInterval: 3000
+- angry/frustrated → YAVAŞ: spawnInterval: 3000-3500, targetRatio: 0.6-0.7, feedbackFrequency: 2.0
 
-gameParams değerleri:
-- spawnInterval: 1500-4000ms (hızlı emotion = düşük)
-- objectLifespan: 3000-8000ms (confused = uzun)
-- targetRatio: 0.3-0.8 (stresli = yüksek)
-- visualComplexity: 0.2-1.0 (overwhelmed = düşük)
-- feedbackFrequency: 0.5-3.0 (low motivation = yüksek)` : ''}
+MUTLAKA emotion'a uygun değerler seç!` : ''}
+
+ÇEŞİTLİLİK ZORUNLU:
+- RENK SEÇENEKLERİ: kırmızı, mavi, yeşil, sarı, mor, turuncu
+- ŞEKİL SEÇENEKLERİ: daire, kare, üçgen, yıldız, kalp, elmas
+- HER SEFERINDE FARKLI RENK/ŞEKİL KOMBINASYONU SEÇ
+- ÖNCEKI GÖREVLERLE AYNI OLMASIN
+- gameParams'ı emotion'a göre ayarla
 
 KURALLAR:
 - 30-60 saniye
@@ -458,67 +465,77 @@ KURALLAR:
 - Basit komut
 - Renkli emojiler
 ${onerilenTip === 'sayma' ? '- SADECE SAYMA! tıklama yok.' : ''}
+- MUTLAKA farklı renk/şekil kullan
 
 ${performans.attentionMetrics ? `PERF: Dikkat ${performans.attentionMetrics.attentionScore.toFixed(0)}/100, Ekran %${performans.attentionMetrics.screenLookingPercentage.toFixed(0)}` : ''}
 
 SADECE GEÇERLI JSON DÖNDÜR - COMMENT YOK!
+ÖRNEK FORMAT:
 {
-  "gorev": "${onerilenTip === 'sayma' ? '🔴 Kırmızı daireleri say' : '🔴 Kırmızı daire tıkla'}",
+  "gorev": "🟢 Yeşil üçgenleri say",
   "sure_saniye": 45,
-  "hedefRenk": "kırmızı",
-  "hedefSayi": 5,
-  "dikkatDagitici": 0.3,
+  "hedefRenk": "yeşil",
+  "hedefSekil": "üçgen",
+  "dikkatDagitici": 0.4,
   "gameParams": {
-    "spawnInterval": 2000,
-    "objectLifespan": 5000,
-    "targetRatio": 0.5,
-    "visualComplexity": 0.7,
-    "feedbackFrequency": 1.0
+    "spawnInterval": 2500,
+    "objectLifespan": 4500,
+    "targetRatio": 0.6,
+    "visualComplexity": 0.5,
+    "feedbackFrequency": 1.2
   }
 }
 
+FARKLI RENK/ŞEKİL KOMBİNASYONLARI KULLAN:
+- 🔴🔵🟢🟡🟠🟣 (kırmızı, mavi, yeşil, sarı, turuncu, mor)
+- ⚪🟤⚫ (beyaz, kahverengi, siyah)
+- 🔴 + daire = 🔴, mavi + üçgen = 🔹, yeşil + kare = 🟩
+
 12 YAŞ İÇİN GÖREV ÖRNEKLERİ (ÖNERİLEN TİP: ${onerilenTip}):
 ${onerilenTip === 'sayma' ?
-`- "🔴 Kırmızı daireleri say"
-- "🟢 Yeşil kareleri hesapla"
-- "⭐ Yıldızların sayısını bul"
-- "🔵 Mavi şekilleri say"
-- "🟡 Sarı objeleri hesapla"` :
+`- "🟣 Mor yıldızları say"
+- "🟠 Turuncu kareleri hesapla"
+- "🔹 Mavi üçgenleri bul"
+- "🟤 Kahverengi daireleri say"` :
 onerilenTip === 'tek-tıklama' ?
-`- "🔴 Kırmızı daire çıktığında tıkla"
-- "🔵 Mavi kare belirdiğinde bas"
-- "🟢 Yeşil yıldız gördüğünde tıkla"
-- "🟡 Sarı üçgen görünce bas"
-- "⭐ Yıldız şekli çıktığında tıkla"` :
+`- "🟣 Mor kalp çıktığında tıkla"
+- "🟠 Turuncu elmas belirdiğinde bas"
+- "🔹 Mavi üçgen gördüğünde tıkla"
+- "🟤 Kahverengi yıldız görünce bas"` :
 onerilenTip === 'dinamik-tıklama' ?
-`- "30 saniye içinde tüm 🔴 kırmızı daireleri tıkla"
-- "25 saniye içinde tüm 🔵 mavi kareleri yakala"
-- "35 saniye içinde tüm 🟢 yeşil yıldızları tıkla"` :
-`- "🔴 Kırmızı butona 2 saniye sonra bas"
-- "🟢 Yeşil kareler sayısını bul"
-- "👀 Mavi ⭐ yıldızları takip et"
-- "⏰ 5 saniye sessizce bekle"
-- "🎯 Ortadaki hedefe odaklan"`}
+`- "40 saniye içinde tüm 🟣 mor yıldızları tıkla"
+- "35 saniye içinde tüm 🟠 turuncu kalpleri yakala"
+- "45 saniye içinde tüm 🔹 mavi üçgenleri tıkla"` :
+`- "🟣 Mor butona 3 saniye sonra bas"
+- "🟠 Turuncu şekiller sayısını bul"
+- "🔹 Mavi ⭐ elmasları takip et"
+- "⏰ 6 saniye sessizce bekle"`}
+
+ÇEŞİTLİLİK ZORUNLU KURALLAR:
+- Her görevde FARKLI renk/şekil kombinasyonu kullan
+- Aynı renk/şekil tekrarını ENGELLE
+- MUTLAKA yeni renk seç: mor, turuncu, kahverengi, beyaz dahil
+- gameParams'ı emotion'a göre ayarla
 
 YAPMA:
+- Aynı renk/şekil kombinasyonları
 - Uzun açıklamalar
 - Karmaşık çoklu adımlar
 - Olumsuz kelimeler
-- Soyut kavramlar
 
 ${onerilenTip === 'dinamik-tıklama' ? `ZORUNLU KURALLAR DİNAMİK TIKLAMA İÇİN:
 - Süre MUTLAKA belirt: "30 saniye içinde" formatında
-- Renk MUTLAKA emoji ile: 🔴 kırmızı, 🔵 mavi, 🟢 yeşil, 🟡 sarı
+- FARKLI renk/şekil kullan: 🟣 mor, 🟠 turuncu, 🔹 mavi üçgen
 - Şekil MUTLAKA spesifik: daire, kare, üçgen, yıldız, kalp, elmas
-- Örnek: "45 saniye içinde tüm 🔵 mavi daireleri tıkla"
+- Örnek: "45 saniye içinde tüm 🟣 mor yıldızları tıkla"
 - "hedefRenk" ve "hedefSekil" alanları MUTLAKA doldur` : ''}
 
 ${onerilenTip === 'sayma' ? `ZORUNLU KURALLAR SAYMA GÖREVLERİ İÇİN:
 - Sadece "say", "hesapla", "bul" eylemleri kullan
 - "tıkla", "bas", "yakala" gibi eylemler YASAKta
-- Renk MUTLAKA emoji ile: 🔴 kırmızı, 🔵 mavi, 🟢 yeşil, 🟡 sarı
+- FARKLI renk/şekil kullan: 🟣 mor, 🟠 turuncu, 🔹 mavi üçgen
 - Şekil MUTLAKA spesifik: daire, kare, üçgen, yıldız, kalp, elmas
-- Örnek: "🔵 Mavi daireleri say"
+- Örnek: "🟣 Mor kalpleri say"
 - "hedefRenk" ve "hedefSekil" alanları MUTLAKA doldur` : ''}`;
 
     // AI'A GİDEN GERÇEK PROMPT'U CONSOLE'A YAZDIR
