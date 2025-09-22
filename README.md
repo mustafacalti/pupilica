@@ -1,13 +1,25 @@
 # PeakFokus AI - DEHB'li (ADHD) Öğrenciler İçin Eğitim Platformu
 
-DEHB'li (ADHD) öğrenciler için yapay zeka destekli eğitim platformu. Bu platform, öğretmenlerin öğrencilerini takip etmesini sağlar ve AI teknolojileri ile kişiselleştirilmiş öğrenme deneyimi sunar.
+## 💡 Proje Hakkında
+
+**PeakFokus AI**, DEHB (Dikkat Eksikliği ve Hiperaktivite Bozukluğu) olan çocukların **dikkat, odaklanma ve bilişsel becerilerini geliştirmeye** yardımcı olmak için tasarlanmış **yapay zeka destekli** bir eğitim platformudur.  
+
+Bu platformda **yapay zeka (AI)** her aşamada aktif olarak rol oynar:  
+
+- 🎮 **Oyun Tabanlı Eğitim:** AI, her öğrencinin oyun performansına göre **zorluk seviyesini dinamik olarak ayarlar** ve kişiselleştirilmiş eğitim deneyimi sağlar.  
+- 🧠 **Kişiselleştirilmiş İçerik Üretimi:** Gelişmiş dil modelleri (Gemma) sayesinde öğrencinin yaşına, seviyesine ve ilgi alanına uygun **hikayeler, sorular ve senaryolar** otomatik olarak oluşturulur.  
+- 📹 **Gerçek Zamanlı Duygu Analizi:** Kamera entegrasyonu ile öğrencinin duyguları (mutlu, üzgün, kızgın, şaşkın vb.) **TensorFlow.js** kullanılarak gerçek zamanlı analiz edilir. Bu sayede, oyun sırasında öğrencinin duygusal tepkileri gözlemlenebilir ve içerik buna göre anlık olarak uyarlanır.  
+- 📊 **Performans Takibi:** Toplanan oyun verileri ve duygu analizi sonuçları, AI tarafından işlenerek öğrencinin gelişimi hakkında **detaylı raporlar ve metrikler** oluşturur.  
+
+PeakFokus AI, sadece eğlenceli bir oyun platformu değil, aynı zamanda **her öğrencinin ihtiyacına özel olarak uyarlanan akıllı bir öğrenme asistanıdır**.  
+Yapay zeka sayesinde eğitim süreci **kişiselleştirilmiş, ölçülebilir ve sürekli gelişen** bir yapıya dönüşür. 🚀
 
 ## 🚀 Özellikler
 
 ### 🎯 Ana Özellikler
 - **Öğretmen Dashboard'u** - Öğrenci yönetimi ve AI insights ile güçlü takip
 - **Öğrenci Oyun Arayüzü** - 5 eğitim oyunu 
-- **AI Entegrasyonları** - İçerik üretimi, duygu analizi, ses tanıma, zorluk belirleme
+- **AI Entegrasyonları** - İçerik üretimi, duygu analizi, zorluk belirleme
 - **Analytics Dashboard** - Gerçek zamanlı raporlama
 
 ### 🎮 Eğitim Oyunları
@@ -183,11 +195,7 @@ Bu sayede **geliştirme aşamasında kalite**, **canlı ortamda performans** ve 
 - Kamera tabanlı analiz
 - 6 farklı duygu durumu (mutlu, üzgün, kızgın, nötr, kafası karışık, şaşırmış)
 
-#### Ses Tanıma (Web Speech API)
-- Sesli cevap verme
-- Türkçe dil desteği
-- Oyun içi etkileşim
-- 
+
 
 ## 🛠️ Teknik Stack
 
@@ -205,7 +213,6 @@ Bu sayede **geliştirme aşamasında kalite**, **canlı ortamda performans** ve 
 ### AI & ML
 - **Hugging Face API** - NLP ve content generation
 - **TensorFlow.js** - Browser-based ML
-- **Web Speech API** - Ses tanıma
 
 ### Charts & Analytics
 - **Chart.js** - Grafik ve analytics
