@@ -213,6 +213,295 @@ export const mockActivities: Activity[] = [
       }
     ],
     createdAt: new Date('2024-03-11')
+  },
+
+  // Son 7 gün aktiviteleri (2025-09-15 - 2025-09-22)
+  {
+    id: 'recent-act1',
+    studentId: 'mustafa-child-1', // Ahmet Deneme
+    gameType: 'count',
+    score: 88,
+    duration: 420,
+    emotions: [
+      {
+        emotion: 'focused',
+        confidence: 0.94,
+        timestamp: new Date('2025-09-22T10:30:00')
+      }
+    ],
+    createdAt: new Date('2025-09-22')
+  },
+  {
+    id: 'recent-act2',
+    studentId: 'mustafa-child-2', // Ayşe Deneme
+    gameType: 'dynamic',
+    score: 92,
+    duration: 380,
+    emotions: [
+      {
+        emotion: 'happy',
+        confidence: 0.91,
+        timestamp: new Date('2025-09-21T14:15:00')
+      }
+    ],
+    createdAt: new Date('2025-09-21')
+  },
+  {
+    id: 'recent-act3',
+    studentId: 'mustafa-child-1',
+    gameType: 'conflict',
+    score: 85,
+    duration: 360,
+    emotions: [
+      {
+        emotion: 'focused',
+        confidence: 0.89,
+        timestamp: new Date('2025-09-20T16:45:00')
+      }
+    ],
+    createdAt: new Date('2025-09-20')
+  },
+  {
+    id: 'recent-act4',
+    studentId: 'mustafa-child-2',
+    gameType: 'colorRecognition',
+    score: 94,
+    duration: 340,
+    emotions: [
+      {
+        emotion: 'happy',
+        confidence: 0.96,
+        timestamp: new Date('2025-09-19T11:20:00')
+      }
+    ],
+    createdAt: new Date('2025-09-19')
+  },
+  {
+    id: 'recent-act5',
+    studentId: 'mustafa-child-1',
+    gameType: 'count',
+    score: 87,
+    duration: 390,
+    emotions: [
+      {
+        emotion: 'focused',
+        confidence: 0.92,
+        timestamp: new Date('2025-09-18T09:30:00')
+      }
+    ],
+    createdAt: new Date('2025-09-18')
+  },
+  {
+    id: 'recent-act6',
+    studentId: 'mustafa-child-2',
+    gameType: 'dynamic',
+    score: 89,
+    duration: 410,
+    emotions: [
+      {
+        emotion: 'neutral',
+        confidence: 0.88,
+        timestamp: new Date('2025-09-17T15:10:00')
+      }
+    ],
+    createdAt: new Date('2025-09-17')
+  },
+  {
+    id: 'recent-act7',
+    studentId: 'mustafa-child-1',
+    gameType: 'conflict',
+    score: 91,
+    duration: 370,
+    emotions: [
+      {
+        emotion: 'focused',
+        confidence: 0.95,
+        timestamp: new Date('2025-09-16T13:45:00')
+      }
+    ],
+    createdAt: new Date('2025-09-16')
+  },
+
+  // Son 30 gün aktiviteleri (2025-08-23 - 2025-09-15)
+  {
+    id: 'month-act1',
+    studentId: 'mustafa-child-1',
+    gameType: 'colorRecognition',
+    score: 86,
+    duration: 400,
+    emotions: [
+      {
+        emotion: 'happy',
+        confidence: 0.90,
+        timestamp: new Date('2025-09-15T10:00:00')
+      }
+    ],
+    createdAt: new Date('2025-09-15')
+  },
+  {
+    id: 'month-act2',
+    studentId: 'mustafa-child-2',
+    gameType: 'count',
+    score: 90,
+    duration: 350,
+    emotions: [
+      {
+        emotion: 'focused',
+        confidence: 0.93,
+        timestamp: new Date('2025-09-14T14:30:00')
+      }
+    ],
+    createdAt: new Date('2025-09-14')
+  },
+  {
+    id: 'month-act3',
+    studentId: 'mustafa-child-1',
+    gameType: 'dynamic',
+    score: 84,
+    duration: 380,
+    emotions: [
+      {
+        emotion: 'neutral',
+        confidence: 0.87,
+        timestamp: new Date('2025-09-12T11:15:00')
+      }
+    ],
+    createdAt: new Date('2025-09-12')
+  },
+  {
+    id: 'month-act4',
+    studentId: 'mustafa-child-2',
+    gameType: 'conflict',
+    score: 88,
+    duration: 420,
+    emotions: [
+      {
+        emotion: 'happy',
+        confidence: 0.91,
+        timestamp: new Date('2025-09-10T16:20:00')
+      }
+    ],
+    createdAt: new Date('2025-09-10')
+  },
+  {
+    id: 'month-act5',
+    studentId: 'mustafa-child-1',
+    gameType: 'count',
+    score: 92,
+    duration: 365,
+    emotions: [
+      {
+        emotion: 'focused',
+        confidence: 0.94,
+        timestamp: new Date('2025-09-08T09:45:00')
+      }
+    ],
+    createdAt: new Date('2025-09-08')
+  },
+  {
+    id: 'month-act6',
+    studentId: 'mustafa-child-2',
+    gameType: 'colorRecognition',
+    score: 87,
+    duration: 395,
+    emotions: [
+      {
+        emotion: 'happy',
+        confidence: 0.89,
+        timestamp: new Date('2025-09-06T13:30:00')
+      }
+    ],
+    createdAt: new Date('2025-09-06')
+  },
+  {
+    id: 'month-act7',
+    studentId: 'mustafa-child-1',
+    gameType: 'dynamic',
+    score: 89,
+    duration: 375,
+    emotions: [
+      {
+        emotion: 'focused',
+        confidence: 0.92,
+        timestamp: new Date('2025-09-04T15:00:00')
+      }
+    ],
+    createdAt: new Date('2025-09-04')
+  },
+  {
+    id: 'month-act8',
+    studentId: 'mustafa-child-2',
+    gameType: 'conflict',
+    score: 85,
+    duration: 390,
+    emotions: [
+      {
+        emotion: 'neutral',
+        confidence: 0.86,
+        timestamp: new Date('2025-09-02T10:15:00')
+      }
+    ],
+    createdAt: new Date('2025-09-02')
+  },
+  {
+    id: 'month-act9',
+    studentId: 'mustafa-child-1',
+    gameType: 'count',
+    score: 93,
+    duration: 355,
+    emotions: [
+      {
+        emotion: 'focused',
+        confidence: 0.95,
+        timestamp: new Date('2025-08-31T14:45:00')
+      }
+    ],
+    createdAt: new Date('2025-08-31')
+  },
+  {
+    id: 'month-act10',
+    studentId: 'mustafa-child-2',
+    gameType: 'colorRecognition',
+    score: 91,
+    duration: 385,
+    emotions: [
+      {
+        emotion: 'happy',
+        confidence: 0.93,
+        timestamp: new Date('2025-08-29T11:30:00')
+      }
+    ],
+    createdAt: new Date('2025-08-29')
+  },
+  {
+    id: 'month-act11',
+    studentId: 'mustafa-child-1',
+    gameType: 'dynamic',
+    score: 86,
+    duration: 405,
+    emotions: [
+      {
+        emotion: 'focused',
+        confidence: 0.90,
+        timestamp: new Date('2025-08-27T16:00:00')
+      }
+    ],
+    createdAt: new Date('2025-08-27')
+  },
+  {
+    id: 'month-act12',
+    studentId: 'mustafa-child-2',
+    gameType: 'conflict',
+    score: 88,
+    duration: 370,
+    emotions: [
+      {
+        emotion: 'happy',
+        confidence: 0.91,
+        timestamp: new Date('2025-08-25T12:15:00')
+      }
+    ],
+    createdAt: new Date('2025-08-25')
   }
 ];
 
