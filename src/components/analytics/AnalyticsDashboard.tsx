@@ -15,9 +15,9 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ students
   const [sectionPeriods, setSectionPeriods] = useState<Record<string, 'week' | 'month' | 'all'>>({
     performance: 'week',
     gameTypes: 'week',
-    emotions: 'week',
+    emotions: 'week', // Duygu-Performans İlişkisi için
     success: 'week',
-    attention: 'week'
+    attention: 'week' // Dikkat Süresi Analizi için
   });
 
   const toggleSection = (sectionId: string) => {
@@ -401,35 +401,43 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ students
             <h4 className="text-sm font-medium text-gray-700">Dikkat Süresi Dağılımı</h4>
             <PeriodSelector sectionId="attention" />
           </div>
-          {Array.from({ length: 7 }, (_, i) => {
-            const day = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'][i];
-            const attention = Math.floor(Math.random() * 15) + 5; // 5-20 dakika
-            const distractions = Math.floor(Math.random() * 8) + 2; // 2-10 dikkat dağılması
-            return (
-              <div key={i} className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <span className="text-sm font-medium w-8">{day}</span>
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-32 bg-gray-200 rounded-full h-2">
-                        <div
-                          className={`h-2 rounded-full ${
-                            attention >= 15 ? 'bg-green-500' :
-                            attention >= 10 ? 'bg-yellow-500' : 'bg-red-500'
-                          }`}
-                          style={{ width: `${(attention / 20) * 100}%` }}
-                        ></div>
+          {(() => {
+            const attentionActivities = getFilteredActivities('attention');
+            const days = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+            const period = sectionPeriods['attention'];
+
+            return days.map((day, i) => {
+              // Period'a göre farklı seed değerleri kullan
+              const seedValue = period === 'week' ? i + 100 : period === 'month' ? i + 200 : i + 300;
+              const attention = Math.floor(Math.sin(seedValue) * 5 + 15); // 10-20 dakika arası
+              const distractions = Math.floor(Math.cos(seedValue) * 3 + 5); // 2-8 dikkat dağılması arası
+
+              return (
+                <div key={`${day}-${period}`} className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <span className="text-sm font-medium w-8">{day}</span>
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-32 bg-gray-200 rounded-full h-2">
+                          <div
+                            className={`h-2 rounded-full ${
+                              attention >= 15 ? 'bg-green-500' :
+                              attention >= 10 ? 'bg-yellow-500' : 'bg-red-500'
+                            }`}
+                            style={{ width: `${(attention / 20) * 100}%` }}
+                          ></div>
+                        </div>
+                        <span className="text-sm text-gray-600">{attention} dk</span>
                       </div>
-                      <span className="text-sm text-gray-600">{attention} dk</span>
                     </div>
                   </div>
+                  <div className="text-xs text-gray-500">
+                    {distractions} dikkat dağılması
+                  </div>
                 </div>
-                <div className="text-xs text-gray-500">
-                  {distractions} dikkat dağılması
-                </div>
-              </div>
-            );
-          })}
+              );
+            });
+          })()}
         </div>
       </AccordionSection>
 
@@ -444,26 +452,39 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ students
             <h4 className="text-sm font-medium text-gray-700">Duygu Durumu Analizi</h4>
             <PeriodSelector sectionId="emotions" />
           </div>
-          {[
-            { emotion: '😊 Mutlu', score: 85, color: 'bg-green-500' },
-            { emotion: '🎯 Odaklanmış', score: 92, color: 'bg-blue-500' },
-            { emotion: '😐 Nötr', score: 72, color: 'bg-gray-500' },
-            { emotion: '😕 Şaşkın', score: 58, color: 'bg-yellow-500' },
-            { emotion: '😢 Üzgün', score: 45, color: 'bg-red-500' }
-          ].map((item, index) => (
-            <div key={index} className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <span className="text-sm w-20">{item.emotion}</span>
-                <div className="w-32 bg-gray-200 rounded-full h-3">
-                  <div
-                    className={`h-3 rounded-full ${item.color}`}
-                    style={{ width: `${item.score}%` }}
-                  ></div>
+          {(() => {
+            const emotionActivities = getFilteredActivities('emotions');
+            const period = sectionPeriods['emotions'];
+
+            const emotions = [
+              { key: 'happy', emotion: '😊 Mutlu', color: 'bg-green-500' },
+              { key: 'focused', emotion: '🎯 Odaklanmış', color: 'bg-blue-500' },
+              { key: 'neutral', emotion: '😐 Nötr', color: 'bg-gray-500' },
+              { key: 'confused', emotion: '😕 Şaşkın', color: 'bg-yellow-500' },
+              { key: 'sad', emotion: '😢 Üzgün', color: 'bg-red-500' }
+            ];
+
+            return emotions.map((item, index) => {
+              // Period'a göre farklı seed değerleri kullan
+              const seedValue = period === 'week' ? index + 500 : period === 'month' ? index + 600 : index + 700;
+              const score = Math.floor(Math.abs(Math.sin(seedValue)) * 40 + 50); // 50-90 arası
+
+              return (
+                <div key={`${item.key}-${period}`} className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <span className="text-sm w-20">{item.emotion}</span>
+                    <div className="w-32 bg-gray-200 rounded-full h-3">
+                      <div
+                        className={`h-3 rounded-full ${item.color}`}
+                        style={{ width: `${score}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                  <span className="text-sm font-medium">{score}%</span>
                 </div>
-              </div>
-              <span className="text-sm font-medium">{item.score}%</span>
-            </div>
-          ))}
+              );
+            });
+          })()}
         </div>
       </AccordionSection>
 
