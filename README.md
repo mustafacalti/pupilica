@@ -12,12 +12,15 @@ DEHB'li (ADHD) öğrenciler için yapay zeka destekli eğitim platformu. Bu plat
 
 ### 🎮 Eğitim Oyunları
 
-#### 1. Dikkat Sayma Oyunu
-- AI ile otomatik soru üretimi
-- 4 seçenekli multiple choice
-- Timer (45 saniye)
-- Sesli feedback
-- Emoji/resim kartları
+#### 1. Dikkat Sayma Oyunu (COUNT GAME)
+
+* **Oyunun Amacı:** Kullanıcının hızlı tepki verme ve odaklanma becerisini geliştirmeyi amaçlar.
+* **Oyun Mekaniği:** Ekranda rastgele beliren duygu isimleri karşısında, 60 saniye içinde doğru zamanda boşluk tuşuna basma üzerine kuruludur.
+* **Veri Toplama:** Oyun sırasında toplanan veriler şunlardır:
+    * **Puan:** Oyuncunun kaç defa doğru tepki verdiğini gösteren nihai skor.
+    * **Duygular:** Oyun boyunca ekranda gösterilen duyguların bir listesi. Bu veriler, duygu analizi için kullanılır.
+    * **Metrikler:** Oyuncunun oyuna ne kadar odaklandığını (`focusTime`) ve ekrana ne kadar süre baktığını (`gazeDuration`) gösterir.
+    * **Başarı Puanı:** Kullanıcının genel performansını yansıtan ve ana dashboard'da gösterilen genel başarı skoru.
 
 #### 2. Dinamik Dikkat
 - "Kaç tane [nesne] var?" soruları
