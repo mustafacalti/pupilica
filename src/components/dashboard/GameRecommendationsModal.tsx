@@ -119,7 +119,7 @@ export const GameRecommendationsModal: React.FC<GameRecommendationsModalProps> =
 
   return (
     <div
-      className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
       onClick={onClose}
     >
       <div
@@ -191,14 +191,9 @@ export const GameRecommendationsModal: React.FC<GameRecommendationsModalProps> =
                         <div className="text-xs text-blue-700 font-medium mb-1">Neden Öneriliyor:</div>
                         <div className="text-sm text-blue-800">{game.reason}</div>
                       </div>
-                      <div className="flex items-center justify-between text-sm text-gray-500">
-                        <div className="flex items-center space-x-4">
-                          <span>⏱️ {game.duration}</span>
-                          <span>🎯 {game.focus}</span>
-                        </div>
-                        <button className="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-600 transition-colors">
-                          Oyna
-                        </button>
+                      <div className="flex items-center space-x-4 text-sm text-gray-500">
+                        <span>⏱️ {game.duration}</span>
+                        <span>🎯 {game.focus}</span>
                       </div>
                     </div>
                   </div>
