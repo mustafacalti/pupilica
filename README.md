@@ -36,18 +36,29 @@ DEHB'li (ADHD) öğrenciler için yapay zeka destekli eğitim platformu. Bu plat
     * **Odaklanma Metrikleri:** Bu duygusal verilere dayanarak, oyuncunun odaklanma süresi (`focusTime`) ve ekrana bakma süresi (`gazeDuration`) gibi metrikler hesaplanır.
     * **Hızlı Tıklama Analizi:** Özellikle 3 saniyenin altındaki hızlı tıklamalar (`fastClicks`) analiz edilerek, hızlı tıklama oranı ve doğruluğu gibi daha derin metrikler elde edilir.
 
-#### 3. Dikkat Sayma Oyunu
+#### 3. Çatışma Oyunu
 
-* **Amaç:** Kullanıcının hızlı tepki verme ve odaklanma becerisini geliştirmeyi amaçlar.
-* **Oyun Mekaniği:** Ekranda beliren duygu isimleri karşısında, 60 saniye içinde doğru zamanda boşluk tuşuna basmaya dayanır.
-* **Özellikler:** Yapay zeka ile otomatik soru üretimi, 4 seçenekli çoktan seçmeli, 45 saniyelik bir zamanlayıcı, sesli geri bildirim ve emoji/resim kartları içerir.
-  
-* **Veri Toplama:**
-  
-* **Toplanan Veriler:** Oyun süresince puan, duygular (mutlu, üzgün, sıkılmış vb.), odaklanma süresi (`focusTime`), ekrana bakma süresi (`gazeDuration`) ve başarı puanı toplanır.
-* **Kullanıcı Verileri:** Kullanıcılar için ad, e-posta, rol (öğrenci/öğretmen) ve doğum tarihi gibi bilgiler saklanır.
-* **Veritabanı:** Oyun oturumları ve kullanıcı bilgileri bir veritabanında (Google Cloud'da olduğu görülüyor) kaydedilir.
-* **Analiz:** Kullanıcı paneli, genel başarı puanlarını (grafik olarak) ve oyun sırasında hissedilen duyguların analizini (pasta grafiği olarak) gösterir.
+* **Zamana Karşı Yarış**: Oyuncunun 60 saniye içinde en yüksek skoru yapması hedeflenir.
+* **İki Komut Tipi**: Oyun, iki farklı komut tipi kullanarak oyuncuyu zorlar:
+    1.  **Renk Komutu**: "KIRMIZI renkli yazana tıkla" gibi bir komutla oyuncudan belirtilen renge odaklanması istenir. Bu durumda, kutunun içindeki kelimenin ne olduğu önemli değildir.
+    2.  **Kelime Komutu**: "KIRMIZI yazısını seç" gibi bir komutla oyuncudan belirtilen kelimeye odaklanması istenir. Bu durumda, kelimenin rengi önemli değildir.
+* **Kutu Seçimi**: Oyuncu, ekranda beliren ve farklı renklerde yazılmış kelimelerin bulunduğu kutulardan doğru olanı seçmelidir.
+* **Puanlama**:
+    * **Doğru Cevap**: +100 puan kazanılır.
+    * **Yanlış Cevap**: -50 puan kaybedilir ve kalan süreden 2 saniye düşülür.
+* **AI Desteği**: Oyun, oyuncunun performansına göre zorluk seviyesini dinamik olarak ayarlayan bir yapay zeka (AI) içerir. AI, oyuncunun doğru/yanlış cevap sayılarını, reaksiyon süresini ve hatta kameradan gelen duygu analizlerini kullanarak oyunu kolaylaştırabilir veya zorlaştırabilir.
+
+### Oyun Metrikleri
+
+Oyun, kullanıcının performansını değerlendirmek için çeşitli veriler toplar:
+
+* **Toplam Puan**: Oyun sonunda elde edilen nihai skor.
+* **Doğruluk Oranı**: Doğru cevapların toplam denemeye oranı.
+* **En İyi Seri**: Ardı ardına verilen en yüksek doğru cevap sayısı.
+* **Ortalama Reaksiyon Süresi**: Oyuncunun bir komutun ardından tepki verme süresinin ortalaması.
+* **Duygu Analizi**: Oyun sırasında kameradan toplanan duygusal veriler, oyuncunun ne kadar odaklandığını ve oyuna olan tepkilerini anlamak için kullanılır.
+
+Bu oyun, sadece reaksiyon hızını değil, aynı zamanda bilişsel esnekliği ve dikkat becerilerini de ölçmeyi ve geliştirmeyi amaçlamaktadır.
 
 * ### 4. Renk Tanıma Oyunu
 * **Oyun Amacı**: Kullanıcıların hızlı tepki verme ve odaklanma yeteneklerini geliştirmeyi amaçlar.
