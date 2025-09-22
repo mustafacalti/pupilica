@@ -17,7 +17,7 @@ Yapay zeka sayesinde eğitim süreci **kişiselleştirilmiş, ölçülebilir ve 
 ## 🚀 Özellikler
 
 ### 🎯 Ana Özellikler
-- **Öğretmen Dashboard'u** - Öğrenci yönetimi ve AI insights ile güçlü takip
+- **Veli Dashboard'u** - Öğrenci yönetimi ve AI insights ile güçlü takip
 - **Öğrenci Oyun Arayüzü** - 5 eğitim oyunu 
 - **AI Entegrasyonları** - İçerik üretimi, duygu analizi, zorluk belirleme
 - **Analytics Dashboard** - Gerçek zamanlı raporlama
