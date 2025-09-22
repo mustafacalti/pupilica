@@ -70,7 +70,6 @@ export const GameCalendar: React.FC<GameCalendarProps> = ({ isOpen, onClose, stu
   const gameTypes = {
     'count': '🔢 Dikkat Sayma',
     'conflict': '🎨 Çatışma Oyunu',
-    'click': '🎯 Dikkat Tıklama',
     'dynamic': '⚡ Dinamik Dikkat',
     'colorRecognition': '📷 AI Renk Tanıma'
   };

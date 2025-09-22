@@ -65,7 +65,6 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ students
     }, {} as Record<string, number>);
 
     const gameTypeLabels: Record<string, string> = {
-      'click': 'Dikkat Tıklama',
       'count': 'Dikkat Sayma',
       'dynamic': 'Dinamik Dikkat',
       'conflict': 'Çatışma Oyunu',
@@ -113,7 +112,6 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ students
       return {
         type: type,
         name: {
-          'click': 'Dikkat Tıklama',
           'count': 'Dikkat Sayma',
           'dynamic': 'Dinamik Dikkat',
           'conflict': 'Çatışma Oyunu',

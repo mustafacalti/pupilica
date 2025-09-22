@@ -144,7 +144,6 @@ export const ExpertChat: React.FC<ExpertChatProps> = ({ studentName, students = 
         const gameTypes = {
           'count': '🔢 Dikkat Sayma',
           'conflict': '🎨 Çatışma Oyunu',
-          'click': '🎯 Dikkat Tıklama',
           'dynamic': '⚡ Dinamik Dikkat',
           'colorRecognition': '📷 AI Renk Tanıma'
         };

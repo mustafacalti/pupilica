@@ -27,7 +27,6 @@ export const AIScheduler: React.FC<AISchedulerProps> = ({ students, onSessionsGe
   const gameTypes = {
     'count': '🔢 Dikkat Sayma',
     'conflict': '🎨 Çatışma Oyunu',
-    'click': '🎯 Dikkat Tıklama',
     'dynamic': '⚡ Dinamik Dikkat',
     'colorRecognition': '📷 AI Renk Tanıma'
   };

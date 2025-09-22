@@ -334,7 +334,6 @@ export const calculateGameStats = (studentId: string) => {
   )[0];
 
   const gameTypeNames: Record<string, string> = {
-    'click': 'Dikkat Tıklama',
     'count': 'Dikkat Sayma',
     'conflict': 'Çatışma Oyunu',
     'dynamic': 'Dinamik Dikkat',
@@ -430,7 +429,6 @@ export const emotionLabels: Record<string, string> = {
 
 // Oyun tipi etiketleri
 export const gameTypeLabels: Record<string, string> = {
-  'click': 'Dikkat Tıklama',
   'count': 'Dikkat Sayma',
   'conflict': 'Çatışma Oyunu',
   'dynamic': 'Dinamik Dikkat',
