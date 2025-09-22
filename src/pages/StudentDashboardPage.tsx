@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { AttentionClickGame } from '../components/games/AttentionClickGame';
 import { AttentionCountGame } from '../components/games/AttentionCountGame';
 import { AttentionDynamicGame } from '../components/games/AttentionDynamicGame';
 import { ConflictGame } from '../components/games/ConflictGame';
@@ -8,7 +7,7 @@ import { ColorRecognitionGame } from '../components/games/ColorRecognitionGame';
 import { StoryAttentionGame } from '../components/games/StoryAttentionGame';
 import { Brain, MousePointer, Hash, Zap, Palette, Camera, LogOut, User, Trophy, Clock, Sparkles } from 'lucide-react';
 
-type GameType = 'attention-click' | 'attention-count' | 'attention-dynamic' | 'conflict' | 'color-recognition' | 'story-attention' | null;
+type GameType = 'attention-count' | 'attention-dynamic' | 'conflict' | 'color-recognition' | 'story-attention' | null;
 
 export const StudentDashboardPage: React.FC = () => {
   const { currentUser, logout } = useAuth();
@@ -40,13 +39,6 @@ export const StudentDashboardPage: React.FC = () => {
     if (!currentUser?.id) return null;
 
     switch (selectedGame) {
-      case 'attention-click':
-        return <AttentionClickGame
-          studentId={currentUser.id}
-          studentAge={currentUser.age || 12}
-          difficulty="orta"
-          onGameComplete={handleGameComplete}
-        />;
       case 'attention-count':
         return <AttentionCountGame
           studentId={currentUser.id}
@@ -190,36 +182,6 @@ export const StudentDashboardPage: React.FC = () => {
 
         {/* Games Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* Attention Click Game */}
-          <div className="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
-            <div className="bg-gradient-to-r from-blue-500 to-purple-500 p-6 text-white">
-              <MousePointer className="h-12 w-12 mb-4" />
-              <h3 className="text-xl font-bold mb-2">Dikkat Tıklama</h3>
-              <p className="text-blue-100">
-                Hızlı reaksiyon gerektiren tek hedef tıklama oyunu
-              </p>
-            </div>
-            <div className="p-6">
-              <div className="mb-4">
-                <div className="flex justify-between text-sm text-gray-600 mb-1">
-                  <span>Özellik</span>
-                  <span>Tek Hedef</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div className="bg-blue-500 h-2 rounded-full" style={{ width: '100%' }}></div>
-                </div>
-                <div className="mt-2 text-xs text-gray-600">
-                  Tek hedef odaklanma • Hızlı reaksiyon • Dikkat dağıtıcılar
-                </div>
-              </div>
-              <button
-                onClick={() => setSelectedGame('attention-click')}
-                className="w-full bg-blue-500 hover:bg-blue-600 text-white py-3 px-4 rounded-lg font-medium transition-colors"
-              >
-                Oyunu Başlat
-              </button>
-            </div>
-          </div>
 
           {/* Attention Count Game */}
           <div className="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow">

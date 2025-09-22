@@ -2,7 +2,6 @@ import React, { useState, useRef } from 'react';
 import { Card, CardContent } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { EmotionResult } from '../../types';
-import { AttentionClickGame } from './AttentionClickGame';
 import { AttentionCountGame } from './AttentionCountGame';
 import { AttentionDynamicGame } from './AttentionDynamicGame';
 import { ConflictGame } from './ConflictGame';
@@ -27,7 +26,7 @@ interface AttentionGameSelectorProps {
   onEmotionDetected?: (emotion: EmotionResult) => void;
 }
 
-type GameType = 'click' | 'count' | 'dynamic' | 'conflict' | 'colorRecognition';
+type GameType = 'count' | 'dynamic' | 'conflict' | 'colorRecognition';
 type DifficultyLevel = 'kolay' | 'orta' | 'zor';
 
 interface GameInfo {
@@ -79,20 +78,6 @@ export const AttentionGameSelector: React.FC<AttentionGameSelectorProps> = ({
   prevPropsRef.current = { studentId, studentAge, onGameComplete, onEmotionDetected };
 
   const gameTypes: GameInfo[] = [
-    {
-      id: 'click',
-      name: 'Dikkat Tıklama',
-      description: 'Hızlı reaksiyon gerektiren tek hedef tıklama oyunu',
-      icon: <MousePointer className="h-8 w-8" />,
-      color: 'blue',
-      bgGradient: 'from-blue-500 to-purple-500',
-      features: [
-        'Tek hedef odaklanma',
-        'Hızlı reaksiyon geliştirme',
-        'Dikkat dağıtıcılarla mücadele',
-        'Zamanlama becerileri'
-      ]
-    },
     {
       id: 'count',
       name: 'Dikkat Sayma',
@@ -220,9 +205,6 @@ export const AttentionGameSelector: React.FC<AttentionGameSelectorProps> = ({
 
     try {
       switch (selectedGame) {
-        case 'click':
-          console.log('🎯 [DEBUG] Loading AttentionClickGame');
-          return <AttentionClickGame {...commonProps} />;
         case 'count':
           console.log('🔢 [DEBUG] Loading AttentionCountGame');
           return <AttentionCountGame {...commonProps} />;
