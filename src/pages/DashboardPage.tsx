@@ -6,6 +6,7 @@ import { StatsCards } from '../components/dashboard/StatsCards';
 import { ParentStudentList } from '../components/dashboard/ParentStudentList';
 import { AIInsightsPanel } from '../components/dashboard/AIInsightsPanel';
 import { GameCalendar } from '../components/calendar/GameCalendar';
+import { GameRecommendationsModal } from '../components/dashboard/GameRecommendationsModal';
 import { Student, AIInsight, PerformanceStats, EmotionResult } from '../types';
 import { getStudentsByParent, getAIInsightsByStudent } from '../services/firestore';
 import { mockStudents, mockAIInsights, calculateGameStats } from '../data/mockData';
@@ -19,6 +20,7 @@ export const DashboardPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [aiStatus] = useState<'connected' | 'disconnected' | 'processing'>('connected');
   const [showCalendar, setShowCalendar] = useState(false);
+  const [showGameRecommendations, setShowGameRecommendations] = useState(false);
   const [calendarSessions, setCalendarSessions] = useState<any[]>([]);
 
 
@@ -219,7 +221,10 @@ export const DashboardPage: React.FC = () => {
                     <div className="text-blue-600 font-medium mb-1 group-hover:text-blue-700 text-sm">Gelişim Analizi</div>
                     <div className="text-xs text-gray-600">Detaylı performans grafikleri</div>
                   </button>
-                  <button className="w-full p-3 border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-orange-200 hover:shadow-sm transition-all text-left group">
+                  <button
+                    onClick={() => setShowGameRecommendations(true)}
+                    className="w-full p-3 border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-orange-200 hover:shadow-sm transition-all text-left group"
+                  >
                     <div className="text-orange-600 font-semibold mb-1 group-hover:text-orange-700 text-base">🎯</div>
                     <div className="text-orange-600 font-medium mb-1 group-hover:text-orange-700 text-sm">Oyun Önerileri</div>
                     <div className="text-xs text-gray-600">AI destekli kişisel öneriler</div>
@@ -282,6 +287,13 @@ export const DashboardPage: React.FC = () => {
         onClose={() => setShowCalendar(false)}
         students={students.map(s => ({ id: s.id, name: s.name }))}
         externalSessions={calendarSessions}
+      />
+
+      {/* Game Recommendations Modal */}
+      <GameRecommendationsModal
+        isOpen={showGameRecommendations}
+        onClose={() => setShowGameRecommendations(false)}
+        studentName={students.length > 0 ? students[0].name : undefined}
       />
 
     </>
